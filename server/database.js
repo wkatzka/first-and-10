@@ -527,6 +527,23 @@ function updateUserMaxPacks(userId, maxPacks) {
   return user;
 }
 
+// Update card image URL (for background AI generation)
+function updateCardImage(cardId, imageUrl) {
+  const db = getDb();
+  const card = db.cards.find(c => c.id === cardId);
+  
+  if (!card) {
+    console.error(`Card ${cardId} not found for image update`);
+    return null;
+  }
+  
+  card.image_url = imageUrl;
+  card.image_pending = false;
+  saveDb(db);
+  
+  return card;
+}
+
 // =============================================================================
 // EXPORTS
 // =============================================================================
@@ -555,6 +572,7 @@ module.exports = {
   getUserCards,
   getCard,
   getUserCardsByPosition,
+  updateCardImage,
   
   // Rosters
   getRoster,

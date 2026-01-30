@@ -260,6 +260,9 @@ app.get('/api/packs/info', authMiddleware, (req, res) => {
   });
 });
 
+// Check if AI image generation is enabled
+const AI_ENABLED = !!process.env.OPENAI_API_KEY;
+
 // Open a pack
 app.post('/api/packs/open', authMiddleware, async (req, res) => {
   try {
@@ -279,6 +282,8 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
     
     // Save cards to database AND mint them (mark as taken)
     const savedCards = [];
+    const cardsToGenerateImages = [];
+    
     for (const card of cards) {
       // Mint the card (mark as taken in ledger)
       try {
@@ -288,25 +293,60 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
         continue; // Skip if already minted somehow
       }
       
-      // Generate card image (async for AI generation)
-      const imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
-      card.image_url = imageUrl;
-      
       // Get formatted stats for card back
       card.stats = cardImageGenerator.getFormattedStats(card);
       
+      // Use placeholder image initially if AI is enabled
+      // For SVG (non-AI), generate immediately since it's fast
+      let imageUrl;
+      let imagePending = false;
+      
+      if (AI_ENABLED) {
+        // Use a placeholder, generate AI image in background
+        imageUrl = '/cards/placeholder.svg';
+        imagePending = true;
+      } else {
+        // SVG is instant, generate now
+        imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
+      }
+      
+      card.image_url = imageUrl;
+      card.image_pending = imagePending;
+      
       const cardId = db.addCard(req.user.id, card);
-      savedCards.push({ id: cardId, ...card, image_url: imageUrl });
+      const savedCard = { id: cardId, ...card, image_url: imageUrl, image_pending: imagePending };
+      savedCards.push(savedCard);
+      
+      if (imagePending) {
+        cardsToGenerateImages.push({ cardId, card: savedCard });
+      }
     }
     
     // Increment packs opened
     db.incrementPacksOpened(req.user.id);
+    
+    // Generate AI images in background (don't wait)
+    if (cardsToGenerateImages.length > 0) {
+      setImmediate(async () => {
+        for (const { cardId, card } of cardsToGenerateImages) {
+          try {
+            console.log(`Background: Generating AI image for card ${cardId}...`);
+            const imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
+            db.updateCardImage(cardId, imageUrl);
+            console.log(`Background: Card ${cardId} image ready: ${imageUrl}`);
+          } catch (err) {
+            console.error(`Background: Failed to generate image for card ${cardId}:`, err.message);
+          }
+        }
+      });
+    }
     
     res.json({
       packType: isStarterPack ? 'starter' : 'bonus',
       packNumber: user.packs_opened + 1,
       cards: savedCards,
       packsRemaining: user.max_packs - user.packs_opened - 1,
+      imagesGenerating: AI_ENABLED, // Tell frontend images are being generated
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -324,6 +364,7 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
     }
     
     const allCards = [];
+    const cardsToGenerateImages = [];
     
     for (let i = 0; i < remaining; i++) {
       const currentPackNum = user.packs_opened + i;
@@ -339,24 +380,56 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
           continue;
         }
         
-        // Generate card image (async for AI generation)
-        const imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
-        card.image_url = imageUrl;
-        
         // Get formatted stats for card back
         card.stats = cardImageGenerator.getFormattedStats(card);
         
+        // Use placeholder image initially if AI is enabled
+        let imageUrl;
+        let imagePending = false;
+        
+        if (AI_ENABLED) {
+          imageUrl = '/cards/placeholder.svg';
+          imagePending = true;
+        } else {
+          imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
+        }
+        
+        card.image_url = imageUrl;
+        card.image_pending = imagePending;
+        
         const cardId = db.addCard(req.user.id, card);
-        allCards.push({ 
+        const savedCard = { 
           id: cardId, 
           ...card,
           image_url: imageUrl,
+          image_pending: imagePending,
           packNumber: currentPackNum + 1,
           packType: isStarterPack ? 'starter' : 'bonus'
-        });
+        };
+        allCards.push(savedCard);
+        
+        if (imagePending) {
+          cardsToGenerateImages.push({ cardId, card: savedCard });
+        }
       }
       
       db.incrementPacksOpened(req.user.id);
+    }
+    
+    // Generate AI images in background (don't wait)
+    if (cardsToGenerateImages.length > 0) {
+      setImmediate(async () => {
+        for (const { cardId, card } of cardsToGenerateImages) {
+          try {
+            console.log(`Background: Generating AI image for card ${cardId}...`);
+            const imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
+            db.updateCardImage(cardId, imageUrl);
+            console.log(`Background: Card ${cardId} image ready: ${imageUrl}`);
+          } catch (err) {
+            console.error(`Background: Failed to generate image for card ${cardId}:`, err.message);
+          }
+        }
+      });
     }
     
     res.json({
@@ -364,6 +437,7 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
       totalCards: allCards.length,
       cards: allCards,
       packsRemaining: 0,
+      imagesGenerating: AI_ENABLED,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

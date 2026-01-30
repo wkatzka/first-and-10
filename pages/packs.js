@@ -14,6 +14,7 @@ export default function Packs({ user, onLogout, unreadMessages }) {
   const [showResults, setShowResults] = useState(false);
   const [revealIndex, setRevealIndex] = useState(-1);
   const [selectedCard, setSelectedCard] = useState(null);
+  const [imagesGenerating, setImagesGenerating] = useState(false);
   
   useEffect(() => {
     if (!user) {
@@ -41,11 +42,13 @@ export default function Packs({ user, onLogout, unreadMessages }) {
     setShowResults(false);
     setOpenedCards([]);
     setRevealIndex(-1);
+    setImagesGenerating(false);
     
     try {
       const data = await openPack();
       setOpenedCards(data.cards);
       setShowResults(true);
+      setImagesGenerating(data.imagesGenerating || false);
       
       // Reveal cards one by one
       for (let i = 0; i < data.cards.length; i++) {
@@ -72,12 +75,14 @@ export default function Packs({ user, onLogout, unreadMessages }) {
     setShowResults(false);
     setOpenedCards([]);
     setRevealIndex(-1);
+    setImagesGenerating(false);
     
     try {
       const data = await openAllPacks();
       setOpenedCards(data.cards);
       setShowResults(true);
       setRevealIndex(data.cards.length - 1); // Show all at once
+      setImagesGenerating(data.imagesGenerating || false);
       
       // Reload pack info
       loadPackInfo();
@@ -200,6 +205,22 @@ export default function Packs({ user, onLogout, unreadMessages }) {
               )}
               <p className="text-sm text-gray-400 mt-2">Tap any card to view details</p>
             </div>
+            
+            {/* AI Image Generation Notice */}
+            {imagesGenerating && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-blue-900/50 to-purple-900/50 rounded-xl border border-blue-500/30">
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl animate-pulse">🎨</div>
+                  <div>
+                    <div className="text-blue-300 font-semibold">AI is generating unique card artwork!</div>
+                    <div className="text-sm text-gray-400">
+                      Cards appear below. Images will be delivered once AI finishes generating them.
+                      Check back in a few minutes or visit "My Cards" to see the finished artwork.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             
             <div className="flex flex-wrap justify-center gap-4">
               {openedCards.map((card, index) => (
