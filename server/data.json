@@ -4,22 +4,22 @@
     {
       "username": "Ash!",
       "max_packs": 8,
-      "created_at": "2026-01-29T00:00:00.000Z"
+      "created_at": "2026-01-30T00:00:00.000Z"
     },
     {
       "username": "Will!",
       "max_packs": 8,
-      "created_at": "2026-01-29T00:00:00.000Z"
+      "created_at": "2026-01-30T00:00:00.000Z"
     },
     {
       "username": "John!",
       "max_packs": 8,
-      "created_at": "2026-01-29T00:00:00.000Z"
+      "created_at": "2026-01-30T00:00:00.000Z"
     },
     {
       "username": "Jamie!",
       "max_packs": 8,
-      "created_at": "2026-01-29T00:00:00.000Z"
+      "created_at": "2026-01-30T00:00:00.000Z"
     }
   ],
   "cards": [],
@@ -28,5 +28,5 @@
   "nextUserId": 1,
   "nextCardId": 1,
   "nextGameId": 1,
-  "_note": "Reset on 2026-01-29 - all cards unminted"
+  "_note": "Reset on 2026-01-30 - new starter pack system guarantees all positions"
 }
