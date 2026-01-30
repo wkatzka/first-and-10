@@ -5,49 +5,37 @@
  * 6 Eras × 10 Tiers = 60 unique style combinations
  */
 
-// Era definitions with aesthetic styles - SECONDARY visual element (subtle influence)
+// Era definitions with aesthetic styles - SECONDARY visual element (clearly recognizable art direction)
 const ERAS = {
   "1920-1939": {
     name: "Golden Age",
     aesthetic:
-      "Art deco poster illustration vibe. Ornamental corner flourishes, sunburst rays, engraved/inked linework, aged paper grain, slight vignette. Feels like a 1920s/30s illustrated program cover.",
-    colorInfluence:
-      "Sepia + cream base with muted black ink lines; occasional vintage orange/navy accents; paper aging, foxing, and light stains.",
+      "Art deco poster illustration, ornamental corners, sunburst rays, engraved/inked linework, aged paper grain, vignette.",
   },
   "1940-1959": {
     name: "Post-War Classic",
     aesthetic:
-      "Mid‑century print/illustration look. Screen-printed shapes, thick outlines, halftone dots, paper stock texture, simple badge shapes (non-branded), classic scoreboard/diagram motifs.",
-    colorInfluence:
-      "Warm off-white paper with bold primary accents; slightly faded inks; subtle halftone and misregistration.",
+      "Mid-century print look: screen-printed shapes, thick outlines, halftone dots, paper stock texture, simple (non-branded) badge shapes, diagram motifs.",
   },
   "1960-1979": {
     name: "Retro Era",
     aesthetic:
-      "60s/70s retro graphic design. Wavy shapes, thick geometric frames, psychedelic poster energy, film grain, slightly soft focus photography/illustration blend.",
-    colorInfluence:
-      "Earth tones + harvest gold + avocado green + burnt orange; slightly faded with analog noise.",
+      "Psychedelic/wavy shapes, bold geometry, film grain, soft-focus analog feel, retro poster energy.",
   },
   "1980-1999": {
     name: "Classic Card Era",
     aesthetic:
-      "80s/90s trading-card vibe: loud geometry, neon stripes, airbrushed gradients, starbursts, chrome-ish graphic panels, bold framing, lens flares, dot-matrix/halftone textures, analog scanlines. Should feel unmistakably 1980s/early-90s.",
-    colorInfluence:
-      "Hot neon accents (cyan/magenta/yellow) with bold team colors; high-contrast glow; subtle VHS/scanline artifacts.",
+      "Loud neon geometry, airbrushed gradients, starbursts, chrome-ish panels, lens flares, halftone/dot-matrix texture, subtle scanlines/VHS artifacts.",
   },
   "2000-2019": {
     name: "Modern Era",
     aesthetic:
-      "2000s/2010s modern sports design: clean layouts, sharp angles, carbon-fiber textures, tasteful lens flares, high-clarity digital look, subtle grunge overlays.",
-    colorInfluence:
-      "Neutral darks with crisp highlights; tasteful metallic accents; modern UI-like panels (no text).",
+      "Clean sharp angles, carbon-fiber texture, tasteful lens flare, high clarity, subtle grunge overlays.",
   },
   "2020+": {
     name: "Contemporary",
     aesthetic:
-      "2020s premium digital art: ultra-clean rendering, cinematic lighting, crisp depth-of-field, modern abstract shapes, tasteful glitch accents, high-end collectible vibe (without logos/text).",
-    colorInfluence:
-      "Contemporary palette with controlled neon pops; clean blacks; modern gradients; subtle glitch noise.",
+      "Ultra-clean cinematic lighting, crisp DOF, modern abstract shapes, tasteful glitch accents, premium collectible vibe.",
   },
 };
 
@@ -56,70 +44,70 @@ const TIER_QUALITIES = {
   10: {
     name: "Legendary",
     primaryEffect:
-      "VERY SPARKLY TEXTURED GOLD FOIL — ultra-luxury gold leaf + glitter foil. Deep embossed texture (micro-hammered + brushed), heavy specular highlights, star-like sparkles, radiant bloom glow, and shimmering gold dust. Add subtle random variation in the gold grain/emboss pattern so Tier 10 cards look slightly different from each other while staying unmistakably gold.",
+      "VERY SPARKLY TEXTURED GOLD — Ultra-luxury gold leaf + glitter foil, deep embossed texture (micro-hammered + brushed), heavy specular highlights, star-like sparkles, bloom glow, shimmering gold dust; slight random grain/emboss variation per card.",
     visualDominance:
-      "DOMINANT LAYER: the *entire card* is coated in premium textured gold foil. Gold must be the first thing you notice at a glance (not the era).",
+      "DOMINANT LAYER: the *entire card* is coated in premium textured gold foil. Gold must be the first thing you notice at a glance.",
   },
   9: {
     name: "Epic",
     primaryEffect:
-      "RAINBOW OIL SHEEN REFRACTOR — iridescent oil-slick film with smooth color-shift bands (cyan→magenta→gold→green), pearlescent interference patterns, and prismatic refractor streaks. Looks like rainbow gasoline sheen on water but as premium card foil. Subtle swirls/flow lines should vary per card.",
+      "RAINBOW OIL SHEEN — Iridescent oil-slick film with smooth color-shift bands (cyan→magenta→gold→green), pearlescent interference, prismatic refractor streaks; swirl/flow varies per card.",
     visualDominance:
-      "DOMINANT LAYER: the card surface shows an obvious rainbow oil-sheen refractor across the frame/background. It must read as Tier 9 immediately.",
+      "DOMINANT LAYER: the card surface shows an obvious rainbow oil-sheen refractor effect. It must read as Tier 9 immediately.",
   },
   8: {
     name: "Ultra Rare",
     primaryEffect:
-      "SHATTERED GLASS PRISM — dramatic cracked crystal with sharp shards, spiderweb fractures, and refracted light beams. Bright highlights on shard edges, internal caustics, and a sense of depth like broken tempered glass over the card. Shard pattern should be different each time.",
+      "SHATTERED GLASS — Dramatic cracked crystal overlay, shards + spiderweb fractures, bright shard edges, internal caustics + refracted beams; shard pattern varies each mint.",
     visualDominance:
-      "DOMINANT LAYER: shattered glass and refraction effects dominate the card design. Viewers should instantly think 'Tier 8 = glass shatter.'",
+      "DOMINANT LAYER: shattered glass and refraction effects dominate the card design.",
   },
   7: {
     name: "Very Rare",
     primaryEffect:
-      "LIQUID SILVER CHROME — mirror-like molten silver with fluid ripples and rolling highlights, like mercury metal. High reflectivity, bright chrome specular streaks, subtle depth waves. (Optional: extremely faint rainbow undertone only in highlights, but it should still read mostly silver.)",
+      "LIQUID SILVER CHROME — Mirror-like molten silver (mercury) with fluid ripples, rolling highlights, strong chrome streaks; optional ultra-faint rainbow only in highlights.",
     visualDominance:
-      "DOMINANT LAYER: liquid silver chrome finish is the main surface treatment (not bronze, not gold, not rainbow).",
+      "DOMINANT LAYER: liquid silver chrome finish is the main surface treatment.",
   },
   6: {
     name: "Rare",
     primaryEffect:
-      "WORN BRONZE (LOWER-TIER) — scuffed and oxidized bronze with uneven patina, scratches, dull hotspots, grime in corners, rubbed edges, and blotchy discoloration. Reads as bronze but clearly *imperfect* and used, with low sparkle and low reflectivity.",
+      "WORN BRONZE (LOWER-TIER) — Scuffed/oxidized bronze, uneven patina, scratches, dull hotspots, grime in corners, rubbed edges, blotchy discoloration; low sparkle, low reflectivity.",
     visualDominance:
-      "DOMINANT LAYER: bronze is obvious but intentionally worn/aged. Must feel clearly weaker than Tier 7 (liquid silver) and weaker than any shiny/high-gloss tier.",
+      "DOMINANT LAYER: bronze is obvious but intentionally worn/aged. Must feel clearly weaker than Tier 7.",
   },
   5: {
     name: "Uncommon+",
     primaryEffect:
-      "BRUSHED METALLIC (ALUMINUM/STEEL) — clean brushed metal grain with directional streaks, subtle satin reflections, light edge highlights. Premium but restrained. Not rainbow, not gold, not chrome—just tasteful brushed metal texture.",
+      "BRUSHED METALLIC — Satin brushed aluminum/steel grain, directional streaks, subtle reflections, light edge highlights; premium but restrained.",
     visualDominance:
-      "DOMINANT LAYER: brushed metallic grain is clearly visible across frame/panels, but not overly shiny.",
+      "DOMINANT LAYER: brushed metallic grain is clearly visible, but not overly shiny.",
   },
   4: {
     name: "Uncommon",
     primaryEffect:
-      "DULL BRONZE / ANTIQUE BRONZE — muted bronze tint with minimal sheen, slightly chalky patina, soft low-contrast reflections. Reads as bronze-adjacent but flatter/cheaper than Tier 6.",
+      "DULL/ANTIQUE BRONZE — Muted bronze tint, chalky patina, low-contrast reflections; flatter/cheaper than Tier 6.",
     visualDominance:
-      "DOMINANT LAYER: dull bronze tone and patina are the main finish, clearly lower-impact than Tier 6.",
+      "DOMINANT LAYER: dull bronze tone and patina are the main finish.",
   },
   3: {
     name: "Common+",
     primaryEffect:
-      "PEWTER FRAME — simple gray pewter border with light metallic edge highlights. Slight texture like cast pewter, minimal reflectivity. Mostly matte with a hint of metal on the frame only.",
+      "PEWTER FRAME — Simple gray pewter border, slight cast texture, minimal reflectivity; mostly matte and concentrated on the frame.",
     visualDominance:
-      "DOMINANT LAYER: pewter effect is primarily on the border/frame, not the whole card.",
+      "DOMINANT LAYER: pewter effect is primarily visible on edges and frame areas.",
   },
   2: {
     name: "Common",
     primaryEffect:
-      "BASIC FOIL ACCENT — very small, simple silver foil accents (thin lines or corners only). Minimal shine, mostly flat print with a couple metallic touches.",
+      "BASIC FOIL ACCENT — Mostly matte print with tiny silver foil accents (thin corners/lines only).",
     visualDominance:
       "DOMINANT LAYER: mostly matte/printed look; foil is subtle and limited to small accents.",
   },
   1: {
     name: "Basic",
     primaryEffect:
-      "WOOD FINISH — natural wood grain texture (oak/maple vibe), matte non-reflective surface, slight wear/print imperfections. Looks like a cheap novelty wooden card. Wood grain should vary per card.",
+      "WOOD FINISH — Natural wood grain, matte/non-reflective, slight wear/print imperfections; grain varies per card.",
     visualDominance:
       "DOMINANT LAYER: wood texture is clearly visible across the whole card (no metal).",
   },
@@ -154,32 +142,28 @@ function buildEraBasedPrompt(player) {
   const teamColors = getTeamColors(player.team);
   const positionContext = getPositionContext(player.position);
   
-  // Build the main prompt - TIER EFFECT IS PRIMARY (finish), ERA IS SECONDARY but SALIENT (art direction/layout)
-  const prompt = `Professional NFL trading card artwork for a ${player.position} player in ${player.team} uniform.
+  // Build the main prompt - TIER EFFECT IS PRIMARY (finish), ERA IS SECONDARY but clearly recognizable (art direction)
+  const prompt = `Professional NFL trading card artwork for a ${player.position} player.
 
-PRIMARY VISUAL (TIER ${tier} - ${tierConfig.name}):
+PRIMARY VISUAL - TIER ${tier} (${tierConfig.name}) FINISH:
 ${tierConfig.primaryEffect}
 ${tierConfig.visualDominance}
 
-ERA ART DIRECTION (${eraConfig.name} Era - ${era}) — must be clearly recognizable:
+SECONDARY - ERA ART DIRECTION (${eraConfig.name}, ${era}):
 ${eraConfig.aesthetic}
-Color/print influence: ${eraConfig.colorInfluence}
 
 Player Details:
 - Dynamic ${positionContext} pose
 - Team colors: ${teamColors}
-- Era: ${era}
 
 CRITICAL REQUIREMENTS:
-1. THE TIER ${tier} EFFECT (${tierConfig.primaryEffect}) MUST BE THE DOMINANT VISUAL - this is the most important element
-2. The era must be clearly recognizable via layout/illustration/printing artifacts, but it must NOT overpower the tier finish/material
-3. NO TEXT, NO WORDS, NO NAMES, NO NUMBERS on the card
-4. Trading card proportions (2.5:3.5 ratio, portrait orientation)
-5. Professional sports card design
+1. TIER EFFECT IS DOMINANT - the ${tierConfig.name} finish must be the most prominent visual element
+2. ERA IS RECOGNIZABLE - the ${eraConfig.name} art style should be clearly visible but not overpower the tier finish
+3. FULL BLEED / EDGE-TO-EDGE - artwork fills the ENTIRE image with NO borders, NO frames, NO margins
+4. NO TEXT of any kind - no words, names, numbers, letters, labels, or logos
+5. Trading card proportions (portrait orientation)
 
-The tier effect must be immediately recognizable - a viewer should be able to identify this as Tier ${tier} (${tierConfig.name}) at first glance.
-
-Do NOT include any text, words, names, numbers, letters, typography, labels, badges, watermarks, or logos. Avoid NFL shields or any recognizable team marks. Create original artistic interpretations.`;
+The image must fill edge-to-edge with no borders. A viewer should immediately recognize this as Tier ${tier} (${tierConfig.name}).`;
 
   return prompt;
 }
