@@ -274,7 +274,7 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
     
     // Determine pack type
     const isStarterPack = user.packs_opened < 3; // First 3 are starter packs
-    const cards = isStarterPack ? packs.openStarterPack() : packs.openPack();
+    const cards = isStarterPack ? packs.openStarterPack(user.packs_opened) : packs.openPack();
     
     if (cards.length === 0) {
       return res.status(400).json({ error: 'No cards available to mint' });
@@ -369,7 +369,7 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
     for (let i = 0; i < remaining; i++) {
       const currentPackNum = user.packs_opened + i;
       const isStarterPack = currentPackNum < 3;
-      const cards = isStarterPack ? packs.openStarterPack() : packs.openPack();
+      const cards = isStarterPack ? packs.openStarterPack(currentPackNum) : packs.openPack();
       
       for (const card of cards) {
         // Mint the card (mark as taken in ledger)

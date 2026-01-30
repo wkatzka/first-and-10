@@ -228,11 +228,25 @@ function openPack() {
 }
 
 /**
- * Open a starter pack (guaranteed positions for a balanced start)
- * 1 QB, 1 RB, 1 WR, 1 defensive player, 1 random
- * Only returns AVAILABLE (unminted) cards
+ * Starter pack position assignments
+ * Guarantees ALL 11 roster positions across 3 starter packs:
+ * - Pack 1 (packNum 0): QB, RB, WR, TE, OL
+ * - Pack 2 (packNum 1): DL, LB, DB, DB, K
+ * - Pack 3 (packNum 2): WR (2nd), + 4 random bonus cards
  */
-function openStarterPack() {
+const STARTER_PACK_POSITIONS = {
+  0: ['QB', 'RB', 'WR', 'TE', 'OL'],    // Pack 1: Core offense
+  1: ['DL', 'LB', 'DB', 'DB', 'K'],      // Pack 2: Defense + kicker
+  2: ['WR', null, null, null, null],     // Pack 3: 2nd WR + randoms
+};
+
+/**
+ * Open a starter pack (guaranteed positions for a balanced start)
+ * Ensures ALL 11 roster positions are covered across 3 starter packs
+ * Only returns AVAILABLE (unminted) cards
+ * @param {number} packNum - Which starter pack (0, 1, or 2)
+ */
+function openStarterPack(packNum = 0) {
   loadPlayers();
   
   const cards = [];
@@ -249,28 +263,21 @@ function openStarterPack() {
     return pickRandomPlayerFromPosition(position);
   };
   
-  // Guaranteed QB (tier 4-7 range for starter)
-  const qb = findAvailableAtPosition('QB', 4, 7);
-  if (qb) cards.push(qb);
+  // Get position requirements for this pack
+  const positions = STARTER_PACK_POSITIONS[packNum] || STARTER_PACK_POSITIONS[0];
   
-  // Guaranteed RB
-  const rb = findAvailableAtPosition('RB', 4, 7);
-  if (rb) cards.push(rb);
-  
-  // Guaranteed WR
-  const wr = findAvailableAtPosition('WR', 4, 7);
-  if (wr) cards.push(wr);
-  
-  // Guaranteed defensive player (DB or LB or DL)
-  const defPositions = ['DB', 'LB', 'DL'];
-  const defPos = defPositions[Math.floor(Math.random() * defPositions.length)];
-  const def = findAvailableAtPosition(defPos, 4, 7);
-  if (def) cards.push(def);
-  
-  // One random card
-  const randomTier = pickRandomTier();
-  const random = pickRandomPlayerFromTier(randomTier);
-  if (random) cards.push(random);
+  for (const position of positions) {
+    if (position) {
+      // Guaranteed position card
+      const player = findAvailableAtPosition(position, 4, 7);
+      if (player) cards.push(player);
+    } else {
+      // Random card (null means random)
+      const randomTier = pickRandomTier();
+      const player = pickRandomPlayerFromTier(randomTier);
+      if (player) cards.push(player);
+    }
+  }
   
   // Fill remaining slots if we couldn't get all 5
   while (cards.length < 5) {
