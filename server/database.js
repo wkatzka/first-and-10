@@ -8,7 +8,9 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const DB_PATH = path.join(__dirname, 'data.json');
+// Use persistent disk in production, local file in development
+const DATA_DIR = fs.existsSync('/var/data') ? '/var/data' : __dirname;
+const DB_PATH = path.join(DATA_DIR, 'data.json');
 
 // Default database structure
 const DEFAULT_DB = {

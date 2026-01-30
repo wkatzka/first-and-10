@@ -7,7 +7,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const CHAT_FILE = path.join(__dirname, 'press-conferences.json');
+// Use persistent disk in production, local file in development
+const DATA_DIR = fs.existsSync('/var/data') ? '/var/data' : __dirname;
+const CHAT_FILE = path.join(DATA_DIR, 'press-conferences.json');
 const CHAT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 
 // Load chat data

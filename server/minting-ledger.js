@@ -8,7 +8,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const LEDGER_PATH = path.join(__dirname, 'minting-ledger.json');
+// Use persistent disk in production, local file in development
+const DATA_DIR = fs.existsSync('/var/data') ? '/var/data' : __dirname;
+const LEDGER_PATH = path.join(DATA_DIR, 'minting-ledger.json');
 
 // Ledger structure: { "player_season": { userId, mintedAt } }
 let ledger = null;

@@ -12,7 +12,9 @@ const path = require('path');
 const db = require('./database');
 const gameEngine = require('./game-bridge');
 
-const SCHEDULE_PATH = path.join(__dirname, 'schedule.json');
+// Use persistent disk in production, local file in development
+const DATA_DIR = fs.existsSync('/var/data') ? '/var/data' : __dirname;
+const SCHEDULE_PATH = path.join(DATA_DIR, 'schedule.json');
 
 // Game times in EST (24-hour format)
 const GAME_TIMES = [19, 21]; // 7 PM and 9 PM EST
