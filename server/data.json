@@ -1,0 +1,21 @@
+{
+  "users": [],
+  "preregistered": [
+    {
+      "username": "Ash!",
+      "max_packs": 8,
+      "created_at": "2026-01-29T00:00:00.000Z"
+    },
+    {
+      "username": "Will!",
+      "max_packs": 8,
+      "created_at": "2026-01-29T00:00:00.000Z"
+    }
+  ],
+  "cards": [],
+  "rosters": [],
+  "games": [],
+  "nextUserId": 1,
+  "nextCardId": 1,
+  "nextGameId": 1
+}
