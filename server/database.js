@@ -9,8 +9,11 @@ const path = require('path');
 const crypto = require('crypto');
 
 // Use persistent disk in production, local file in development
-const DATA_DIR = fs.existsSync('/var/data') ? '/var/data' : __dirname;
+const PERSISTENT_DIR = '/var/data';
+const USE_PERSISTENT = fs.existsSync(PERSISTENT_DIR);
+const DATA_DIR = USE_PERSISTENT ? PERSISTENT_DIR : __dirname;
 const DB_PATH = path.join(DATA_DIR, 'data.json');
+const REPO_DB_PATH = path.join(__dirname, 'data.json'); // Original repo file
 
 // Default database structure
 const DEFAULT_DB = {
@@ -27,9 +30,22 @@ const DEFAULT_DB = {
 // Load database
 function loadDb() {
   try {
+    // First, check if persistent disk has data
     if (fs.existsSync(DB_PATH)) {
       const data = fs.readFileSync(DB_PATH, 'utf-8');
+      console.log('Loaded database from:', DB_PATH);
       return JSON.parse(data);
+    }
+    
+    // If using persistent disk but no data yet, copy from repo
+    if (USE_PERSISTENT && fs.existsSync(REPO_DB_PATH)) {
+      console.log('Initializing persistent storage from repo data...');
+      const repoData = fs.readFileSync(REPO_DB_PATH, 'utf-8');
+      const db = JSON.parse(repoData);
+      // Save to persistent disk
+      fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+      console.log('Copied initial data to:', DB_PATH);
+      return db;
     }
   } catch (err) {
     console.error('Failed to load database:', err);
