@@ -15,6 +15,7 @@ const mintingLedger = require('./minting-ledger');
 const scheduler = require('./scheduler');
 const cardImageGenerator = require('./card-image-generator');
 const pressConference = require('./press-conference');
+const messages = require('./messages');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -875,6 +876,88 @@ app.post('/api/schedule/run-now', authMiddleware, (req, res) => {
 app.get('/api/minting/stats', authMiddleware, (req, res) => {
   const stats = mintingLedger.getAvailabilityStats();
   res.json(stats);
+});
+
+// =============================================================================
+// DIRECT MESSAGES
+// =============================================================================
+
+// Get unread message count
+app.get('/api/messages/unread-count', authMiddleware, (req, res) => {
+  const count = messages.getUnreadCount(req.user.id);
+  res.json({ count });
+});
+
+// Get inbox (received messages)
+app.get('/api/messages/inbox', authMiddleware, (req, res) => {
+  const inbox = messages.getInbox(req.user.id);
+  
+  // Enrich with sender info
+  const enriched = inbox.map(msg => {
+    const sender = db.getUser(msg.from_user_id);
+    return {
+      ...msg,
+      from_username: sender?.username || 'Unknown',
+      from_team_name: sender?.team_name || 'Unknown Team',
+    };
+  });
+  
+  res.json({ messages: enriched });
+});
+
+// Get conversation with a user
+app.get('/api/messages/conversation/:userId', authMiddleware, (req, res) => {
+  const otherUserId = parseInt(req.params.userId);
+  const conversation = messages.getConversation(req.user.id, otherUserId);
+  
+  // Mark messages from other user as read
+  messages.markAsRead(req.user.id, otherUserId);
+  
+  // Enrich with user info
+  const otherUser = db.getUser(otherUserId);
+  const enriched = conversation.map(msg => ({
+    ...msg,
+    is_mine: msg.from_user_id === req.user.id,
+  }));
+  
+  res.json({ 
+    messages: enriched,
+    other_user: {
+      id: otherUser?.id,
+      username: otherUser?.username,
+      team_name: otherUser?.team_name,
+    },
+  });
+});
+
+// Send a message
+app.post('/api/messages/send', authMiddleware, (req, res) => {
+  try {
+    const { to_user_id, content } = req.body;
+    
+    if (!to_user_id || !content) {
+      return res.status(400).json({ error: 'Missing to_user_id or content' });
+    }
+    
+    // Verify recipient exists
+    const recipient = db.getUser(parseInt(to_user_id));
+    if (!recipient) {
+      return res.status(404).json({ error: 'Recipient not found' });
+    }
+    
+    const message = messages.sendMessage(req.user.id, parseInt(to_user_id), content);
+    
+    res.json({ 
+      success: true, 
+      message: {
+        ...message,
+        to_username: recipient.username,
+        to_team_name: recipient.team_name,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // =============================================================================

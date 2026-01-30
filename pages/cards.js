@@ -7,7 +7,7 @@ import { getCards, TIER_NAMES, POSITION_COLORS } from '../lib/api';
 
 const POSITIONS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'OL', 'DL', 'LB', 'DB', 'K', 'P'];
 
-export default function Cards({ user, onLogout }) {
+export default function Cards({ user, onLogout, unreadMessages }) {
   const router = useRouter();
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +60,7 @@ export default function Cards({ user, onLogout }) {
   if (!user) return null;
   
   return (
-    <Layout user={user} onLogout={onLogout}>
+    <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

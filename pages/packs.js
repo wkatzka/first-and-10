@@ -5,7 +5,7 @@ import Card from '../components/Card';
 import CardModal from '../components/CardModal';
 import { getPackInfo, openPack, openAllPacks, TIER_NAMES } from '../lib/api';
 
-export default function Packs({ user, onLogout }) {
+export default function Packs({ user, onLogout, unreadMessages }) {
   const router = useRouter();
   const [packInfo, setPackInfo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -96,7 +96,7 @@ export default function Packs({ user, onLogout }) {
   if (!user) return null;
   
   return (
-    <Layout user={user} onLogout={onLogout}>
+    <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="space-y-8">
         {/* Header */}
         <div className="text-center">

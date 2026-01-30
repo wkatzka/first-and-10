@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import '../styles/globals.css';
-import { getMe, setToken, getActiveConferences } from '../lib/api';
+import { getMe, setToken, getActiveConferences, getUnreadCount } from '../lib/api';
 import PressConference, { PressConferenceBadge } from '../components/PressConference';
 
 export default function App({ Component, pageProps }) {
@@ -9,6 +9,7 @@ export default function App({ Component, pageProps }) {
   const [loading, setLoading] = useState(true);
   const [activeConferences, setActiveConferences] = useState([]);
   const [openConferenceGameId, setOpenConferenceGameId] = useState(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const router = useRouter();
   
   useEffect(() => {
@@ -53,6 +54,40 @@ export default function App({ Component, pageProps }) {
     return () => clearInterval(interval);
   }, [user]);
   
+  // Check for unread messages
+  useEffect(() => {
+    if (!user) {
+      setUnreadMessages(0);
+      return;
+    }
+    
+    const checkUnread = async () => {
+      try {
+        const data = await getUnreadCount();
+        setUnreadMessages(data.count || 0);
+      } catch (e) {
+        // Ignore errors
+      }
+    };
+    
+    checkUnread();
+    
+    // Poll every 30 seconds
+    const interval = setInterval(checkUnread, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
+  
+  const refreshUnreadCount = async () => {
+    if (user) {
+      try {
+        const data = await getUnreadCount();
+        setUnreadMessages(data.count || 0);
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+  };
+  
   const handleLogin = (userData) => {
     setUser(userData);
     router.push('/cards');
@@ -90,6 +125,8 @@ export default function App({ Component, pageProps }) {
         onLogout={handleLogout}
         activeConferences={activeConferences}
         onOpenConference={handleOpenConference}
+        unreadMessages={unreadMessages}
+        onMessageRead={refreshUnreadCount}
       />
       {/* Press Conference Badge */}
       {user && activeConferences.length > 0 && !openConferenceGameId && (

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { logout } from '../lib/api';
 
-export default function Layout({ children, user, onLogout }) {
+export default function Layout({ children, user, onLogout, unreadMessages = 0 }) {
   const router = useRouter();
   
   const handleLogout = async () => {
@@ -16,7 +16,7 @@ export default function Layout({ children, user, onLogout }) {
     { href: '/cards', label: 'My Cards', icon: '🃏' },
     { href: '/packs', label: 'Open Packs', icon: '📦' },
     { href: '/roster', label: 'Roster', icon: '📋' },
-    { href: '/players', label: 'Players', icon: '👥' },
+    { href: '/league', label: 'League', icon: '🏟️', badge: unreadMessages },
     { href: '/schedule', label: 'Schedule', icon: '📅' },
     { href: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
     { href: '/how-to-play', label: 'Help', icon: '📖' },
@@ -27,7 +27,7 @@ export default function Layout({ children, user, onLogout }) {
     { href: '/cards', label: 'Cards', icon: '🃏' },
     { href: '/packs', label: 'Packs', icon: '📦' },
     { href: '/roster', label: 'Roster', icon: '📋' },
-    { href: '/schedule', label: 'Games', icon: '📅' },
+    { href: '/league', label: 'League', icon: '🏟️', badge: unreadMessages },
     { href: '/leaderboard', label: 'Ranks', icon: '🏆' },
   ];
   
@@ -49,13 +49,18 @@ export default function Layout({ children, user, onLogout }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors relative ${
                     router.pathname === item.href
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-300 hover:bg-gray-700 hover:text-white'
                   }`}
                 >
                   {item.label}
+                  {item.badge > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </span>
+                  )}
                 </Link>
               ))}
             </nav>
@@ -92,11 +97,18 @@ export default function Layout({ children, user, onLogout }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center flex-1 h-full touch-target ${
+                className={`flex flex-col items-center justify-center flex-1 h-full touch-target relative ${
                   isActive ? 'text-blue-400' : 'text-gray-400'
                 }`}
               >
-                <span className="text-xl mb-0.5">{item.icon}</span>
+                <span className="text-xl mb-0.5 relative">
+                  {item.icon}
+                  {item.badge > 0 && (
+                    <span className="absolute -top-1 -right-3 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </span>
+                  )}
+                </span>
                 <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );

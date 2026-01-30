@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import { getLeaderboard } from '../lib/api';
 
-export default function Leaderboard({ user, onLogout }) {
+export default function Leaderboard({ user, onLogout, unreadMessages }) {
   const router = useRouter();
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,7 @@ export default function Leaderboard({ user, onLogout }) {
   if (!user) return null;
   
   return (
-    <Layout user={user} onLogout={onLogout}>
+    <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center">

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 
-export default function Schedule({ user, onLogout }) {
+export default function Schedule({ user, onLogout, unreadMessages }) {
   const router = useRouter();
   const [todayGames, setTodayGames] = useState([]);
   const [tomorrowGames, setTomorrowGames] = useState([]);
@@ -117,7 +117,7 @@ export default function Schedule({ user, onLogout }) {
   if (!user) return null;
   
   return (
-    <Layout user={user} onLogout={onLogout}>
+    <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center">

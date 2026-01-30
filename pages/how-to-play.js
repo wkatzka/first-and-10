@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import Layout from '../components/Layout';
 
-export default function HowToPlay({ user, onLogout }) {
+export default function HowToPlay({ user, onLogout, unreadMessages }) {
   return (
-    <Layout user={user} onLogout={onLogout}>
+    <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="max-w-2xl mx-auto">
         <h1 className="text-3xl font-bold text-white mb-6 text-center">How to Play</h1>
         

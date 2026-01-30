@@ -26,7 +26,7 @@ const ROSTER_LAYOUT = [
   ]},
 ];
 
-export default function Roster({ user, onLogout }) {
+export default function Roster({ user, onLogout, unreadMessages }) {
   const router = useRouter();
   const [roster, setRoster] = useState(null);
   const [cards, setCards] = useState([]);
@@ -121,7 +121,7 @@ export default function Roster({ user, onLogout }) {
   if (!user) return null;
   
   return (
-    <Layout user={user} onLogout={onLogout}>
+    <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

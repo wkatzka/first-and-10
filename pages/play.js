@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import { getOpponents, challengeOpponent, quickMatch, getGameHistory } from '../lib/api';
 
-export default function Play({ user, onLogout, onOpenConference, activeConferences = [] }) {
+export default function Play({ user, onLogout, onOpenConference, activeConferences = [], unreadMessages }) {
   const router = useRouter();
   const [opponents, setOpponents] = useState([]);
   const [games, setGames] = useState([]);
@@ -75,7 +75,7 @@ export default function Play({ user, onLogout, onOpenConference, activeConferenc
   if (!user) return null;
   
   return (
-    <Layout user={user} onLogout={onLogout}>
+    <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center">

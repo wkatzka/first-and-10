@@ -5,7 +5,7 @@ import Card from '../components/Card';
 import CardModal from '../components/CardModal';
 import { getAllUsers, getUserCards } from '../lib/api';
 
-export default function Players({ user, onLogout }) {
+export default function Players({ user, onLogout, unreadMessages }) {
   const router = useRouter();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +56,7 @@ export default function Players({ user, onLogout }) {
   if (!user) return null;
   
   return (
-    <Layout user={user} onLogout={onLogout}>
+    <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white mb-2">Players</h1>
