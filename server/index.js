@@ -397,6 +397,70 @@ app.get('/api/cards/:id', authMiddleware, (req, res) => {
 });
 
 // =============================================================================
+// VIEW OTHER USERS' COLLECTIONS
+// =============================================================================
+
+// Get all users with their card counts (for browsing)
+app.get('/api/users', authMiddleware, (req, res) => {
+  const users = db.getAllUsers();
+  const userList = users.map(u => {
+    const cards = db.getUserCards(u.id);
+    const stats = db.getUserStats(u.id);
+    return {
+      id: u.id,
+      username: u.username,
+      team_name: u.team_name,
+      card_count: cards.length,
+      stats,
+    };
+  });
+  res.json({ users: userList });
+});
+
+// Get another user's card collection
+app.get('/api/users/:userId/cards', authMiddleware, (req, res) => {
+  const userId = parseInt(req.params.userId);
+  const user = db.getUser(userId);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  
+  const cards = db.getUserCards(userId);
+  
+  res.json({ 
+    user: {
+      id: user.id,
+      username: user.username,
+      team_name: user.team_name,
+    },
+    cards,
+    count: cards.length,
+  });
+});
+
+// Get another user's roster
+app.get('/api/users/:userId/roster', authMiddleware, (req, res) => {
+  const userId = parseInt(req.params.userId);
+  const user = db.getUser(userId);
+  
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+  
+  const fullRoster = db.getFullRoster(userId);
+  
+  res.json({
+    user: {
+      id: user.id,
+      username: user.username,
+      team_name: user.team_name,
+    },
+    roster: fullRoster,
+  });
+});
+
+// =============================================================================
 // ROSTER ROUTES
 // =============================================================================
 

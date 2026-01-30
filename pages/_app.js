@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import '../styles/globals.css';
 import { getMe, setToken, getActiveConferences } from '../lib/api';
-import InstallPrompt from '../components/InstallPrompt';
 import PressConference, { PressConferenceBadge } from '../components/PressConference';
 
 export default function App({ Component, pageProps }) {
@@ -92,8 +91,6 @@ export default function App({ Component, pageProps }) {
         activeConferences={activeConferences}
         onOpenConference={handleOpenConference}
       />
-      <InstallPrompt />
-      
       {/* Press Conference Badge */}
       {user && activeConferences.length > 0 && !openConferenceGameId && (
         <PressConferenceBadge 

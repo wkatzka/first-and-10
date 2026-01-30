@@ -16,8 +16,8 @@ export default function Layout({ children, user, onLogout }) {
     { href: '/cards', label: 'My Cards', icon: '🃏' },
     { href: '/packs', label: 'Open Packs', icon: '📦' },
     { href: '/roster', label: 'Roster', icon: '📋' },
+    { href: '/players', label: 'Players', icon: '👥' },
     { href: '/schedule', label: 'Schedule', icon: '📅' },
-    { href: '/play', label: 'Play', icon: '🎮' },
     { href: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
     { href: '/how-to-play', label: 'Help', icon: '📖' },
   ];
