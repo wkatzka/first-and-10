@@ -66,28 +66,59 @@ function authMiddleware(req, res, next) {
 // AUTH ROUTES
 // =============================================================================
 
-// Register
+// Check if username exists or is pre-registered
+app.get('/api/auth/check/:username', (req, res) => {
+  const username = req.params.username;
+  
+  const existingUser = db.getUserByUsername(username);
+  if (existingUser) {
+    return res.json({ status: 'exists', message: 'Username already registered. Please login.' });
+  }
+  
+  const preregistered = db.getPreregisteredUser(username);
+  if (preregistered) {
+    return res.json({ 
+      status: 'preregistered', 
+      message: 'Welcome! Set your password and team name to get started.',
+      maxPacks: preregistered.max_packs,
+    });
+  }
+  
+  return res.json({ status: 'not_found', message: 'Username not found. Contact admin for access.' });
+});
+
+// Register (for open registration - disabled for invite-only)
 app.post('/api/auth/register', (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, teamName } = req.body;
     
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required' });
-    }
-    
-    if (username.length < 3 || username.length > 20) {
-      return res.status(400).json({ error: 'Username must be 3-20 characters' });
     }
     
     if (password.length < 4) {
       return res.status(400).json({ error: 'Password must be at least 4 characters' });
     }
     
-    const user = db.createUser(username, password);
-    const token = generateToken();
-    sessions.set(token, user);
+    // Check if pre-registered (use claim flow)
+    const preregistered = db.getPreregisteredUser(username);
+    if (preregistered) {
+      const user = db.claimPreregisteredUser(username, password, teamName);
+      const token = generateToken();
+      sessions.set(token, user);
+      return res.json({ user, token, claimed: true });
+    }
     
-    res.json({ user, token });
+    // For now, require pre-registration (invite-only MVP)
+    return res.status(403).json({ 
+      error: 'Registration is invite-only. Contact admin for access.' 
+    });
+    
+    // Uncomment below for open registration:
+    // const user = db.createUser(username, password, teamName);
+    // const token = generateToken();
+    // sessions.set(token, user);
+    // res.json({ user, token });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -96,12 +127,23 @@ app.post('/api/auth/register', (req, res) => {
 // Login
 app.post('/api/auth/login', (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, teamName } = req.body;
     
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required' });
     }
     
+    // Check if this is a pre-registered user claiming their account
+    const preregistered = db.getPreregisteredUser(username);
+    if (preregistered) {
+      // This is their first login - set password and create account
+      const user = db.claimPreregisteredUser(username, password, teamName);
+      const token = generateToken();
+      sessions.set(token, user);
+      return res.json({ user, token, firstLogin: true });
+    }
+    
+    // Regular login
     const user = db.authenticateUser(username, password);
     const token = generateToken();
     sessions.set(token, user);
@@ -124,6 +166,78 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
   const user = db.getUser(req.user.id);
   const stats = db.getUserStats(req.user.id);
   res.json({ user, stats });
+});
+
+// Update team name
+app.put('/api/auth/team-name', authMiddleware, (req, res) => {
+  try {
+    const { teamName } = req.body;
+    const user = db.updateTeamName(req.user.id, teamName);
+    res.json({ success: true, team_name: user.team_name });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// =============================================================================
+// ADMIN ROUTES (for pre-registration)
+// =============================================================================
+
+const ADMIN_KEY = process.env.ADMIN_KEY || 'first10admin2024';
+
+function adminAuth(req, res, next) {
+  const key = req.headers['x-admin-key'];
+  if (key !== ADMIN_KEY) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+}
+
+// Pre-register a username
+app.post('/api/admin/preregister', adminAuth, (req, res) => {
+  try {
+    const { username, maxPacks } = req.body;
+    
+    if (!username) {
+      return res.status(400).json({ error: 'Username required' });
+    }
+    
+    const preUser = db.preregisterUser(username, maxPacks || 8);
+    res.json({ success: true, user: preUser });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// List all pre-registered users
+app.get('/api/admin/preregistered', adminAuth, (req, res) => {
+  const list = db.listPreregistered();
+  res.json({ preregistered: list });
+});
+
+// Update user's max packs
+app.put('/api/admin/user/:userId/packs', adminAuth, (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    const { maxPacks } = req.body;
+    const user = db.updateUserMaxPacks(userId, maxPacks);
+    res.json({ success: true, user });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// List all users (admin)
+app.get('/api/admin/users', adminAuth, (req, res) => {
+  const users = db.getAllUsers();
+  res.json({ users: users.map(u => ({
+    id: u.id,
+    username: u.username,
+    team_name: u.team_name,
+    packs_opened: u.packs_opened,
+    max_packs: u.max_packs,
+    created_at: u.created_at,
+  }))});
 });
 
 // =============================================================================

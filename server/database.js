@@ -13,6 +13,7 @@ const DB_PATH = path.join(__dirname, 'data.json');
 // Default database structure
 const DEFAULT_DB = {
   users: [],
+  preregistered: [], // Usernames created by admin, awaiting password setup
   cards: [],
   rosters: [],
   games: [],
@@ -57,18 +58,108 @@ function hashPassword(password) {
 // USER OPERATIONS
 // =============================================================================
 
-function createUser(username, password) {
+// Pre-register a username (admin function)
+// User will set their password when they first "login"
+function preregisterUser(username, maxPacks = 8) {
+  const db = getDb();
+  
+  // Check if username exists in either list
+  if (db.users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
+    throw new Error('Username already exists');
+  }
+  if (db.preregistered.find(u => u.username.toLowerCase() === username.toLowerCase())) {
+    throw new Error('Username already pre-registered');
+  }
+  
+  const preUser = {
+    username,
+    max_packs: maxPacks,
+    created_at: new Date().toISOString(),
+  };
+  
+  db.preregistered.push(preUser);
+  saveDb(db);
+  
+  return preUser;
+}
+
+// Check if a username is pre-registered and unclaimed
+function getPreregisteredUser(username) {
+  const db = getDb();
+  return db.preregistered.find(u => u.username.toLowerCase() === username.toLowerCase());
+}
+
+// Claim a pre-registered username (set password)
+function claimPreregisteredUser(username, password, teamName = null) {
+  const db = getDb();
+  
+  const preUserIndex = db.preregistered.findIndex(u => u.username.toLowerCase() === username.toLowerCase());
+  if (preUserIndex === -1) {
+    throw new Error('Username not found. Ask the admin to create your account.');
+  }
+  
+  const preUser = db.preregistered[preUserIndex];
+  
+  const user = {
+    id: db.nextUserId++,
+    username: preUser.username, // Preserve original casing
+    password_hash: hashPassword(password),
+    team_name: teamName || `${preUser.username}'s Team`,
+    created_at: new Date().toISOString(),
+    packs_opened: 0,
+    max_packs: preUser.max_packs,
+  };
+  
+  // Remove from preregistered list
+  db.preregistered.splice(preUserIndex, 1);
+  
+  db.users.push(user);
+  
+  // Create empty roster
+  db.rosters.push({
+    user_id: user.id,
+    qb_card_id: null,
+    rb_card_id: null,
+    wr1_card_id: null,
+    wr2_card_id: null,
+    te_card_id: null,
+    ol_card_id: null,
+    dl_card_id: null,
+    lb_card_id: null,
+    db1_card_id: null,
+    db2_card_id: null,
+    k_card_id: null,
+  });
+  
+  saveDb(db);
+  
+  return { id: user.id, username: user.username, team_name: user.team_name };
+}
+
+// List all pre-registered usernames (admin)
+function listPreregistered() {
+  const db = getDb();
+  return db.preregistered;
+}
+
+function createUser(username, password, teamName = null) {
   const db = getDb();
   
   // Check if username exists
-  if (db.users.find(u => u.username === username)) {
+  if (db.users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
     throw new Error('Username already exists');
+  }
+  
+  // Check if pre-registered (should use claim flow instead)
+  if (db.preregistered.find(u => u.username.toLowerCase() === username.toLowerCase())) {
+    throw new Error('This username is reserved. Please set your password to claim it.');
   }
   
   const user = {
     id: db.nextUserId++,
     username,
     password_hash: hashPassword(password),
+    team_name: teamName || `${username}'s Team`,
     created_at: new Date().toISOString(),
     packs_opened: 0,
     max_packs: 8,
@@ -380,6 +471,44 @@ function getLeaderboard(limit = 20) {
     .slice(0, limit);
 }
 
+// Update user's team name
+function updateTeamName(userId, teamName) {
+  const db = getDb();
+  const user = db.users.find(u => u.id === userId);
+  
+  if (!user) {
+    throw new Error('User not found');
+  }
+  
+  if (!teamName || teamName.trim().length < 2) {
+    throw new Error('Team name must be at least 2 characters');
+  }
+  
+  if (teamName.trim().length > 30) {
+    throw new Error('Team name must be 30 characters or less');
+  }
+  
+  user.team_name = teamName.trim();
+  saveDb(db);
+  
+  return user;
+}
+
+// Update user's max packs (admin function)
+function updateUserMaxPacks(userId, maxPacks) {
+  const db = getDb();
+  const user = db.users.find(u => u.id === userId);
+  
+  if (!user) {
+    throw new Error('User not found');
+  }
+  
+  user.max_packs = maxPacks;
+  saveDb(db);
+  
+  return user;
+}
+
 // =============================================================================
 // EXPORTS
 // =============================================================================
@@ -394,6 +523,14 @@ module.exports = {
   getUserByUsername,
   getAllUsers,
   incrementPacksOpened,
+  updateTeamName,
+  updateUserMaxPacks,
+  
+  // Pre-registration (admin)
+  preregisterUser,
+  getPreregisteredUser,
+  claimPreregisteredUser,
+  listPreregistered,
   
   // Cards
   addCard,

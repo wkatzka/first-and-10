@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { register, login } from '../lib/api';
+import { checkUsername, login } from '../lib/api';
 
 export default function Home({ user, onLogin }) {
-  const [mode, setMode] = useState('login');
+  const [step, setStep] = useState('username'); // 'username', 'password', 'newuser'
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [teamName, setTeamName] = useState('');
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [maxPacks, setMaxPacks] = useState(8);
   const router = useRouter();
   
   useEffect(() => {
@@ -16,15 +19,50 @@ export default function Home({ user, onLogin }) {
     }
   }, [user, router]);
   
-  const handleSubmit = async (e) => {
+  // Check username status
+  const handleCheckUsername = async (e) => {
+    e.preventDefault();
+    if (!username.trim()) return;
+    
+    setError('');
+    setLoading(true);
+    
+    try {
+      const result = await checkUsername(username.trim());
+      
+      if (result.status === 'exists') {
+        // Existing user - just need password
+        setStep('password');
+        setMessage('Welcome back! Enter your password.');
+      } else if (result.status === 'preregistered') {
+        // Pre-registered - need password + team name
+        setStep('newuser');
+        setMessage(result.message);
+        setMaxPacks(result.maxPacks || 8);
+        setTeamName(`${username}'s Team`);
+      } else {
+        // Not found
+        setError('Username not found. This is an invite-only beta. Contact the admin for access.');
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Login or claim account
+  const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     
     try {
-      const data = mode === 'login' 
-        ? await login(username, password)
-        : await register(username, password);
+      const data = await login(
+        username.trim(), 
+        password, 
+        step === 'newuser' ? teamName : null
+      );
       
       onLogin(data.user);
     } catch (err) {
@@ -32,6 +70,14 @@ export default function Home({ user, onLogin }) {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const handleBack = () => {
+    setStep('username');
+    setPassword('');
+    setTeamName('');
+    setError('');
+    setMessage('');
   };
   
   return (
@@ -46,84 +92,156 @@ export default function Home({ user, onLogin }) {
         
         {/* Auth Card */}
         <div className="bg-gray-800 rounded-xl p-6 shadow-2xl">
-          {/* Tabs */}
-          <div className="flex mb-6">
-            <button
-              onClick={() => setMode('login')}
-              className={`flex-1 py-2 text-center font-semibold transition-colors ${
-                mode === 'login'
-                  ? 'text-white border-b-2 border-blue-500'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Login
-            </button>
-            <button
-              onClick={() => setMode('register')}
-              className={`flex-1 py-2 text-center font-semibold transition-colors ${
-                mode === 'register'
-                  ? 'text-white border-b-2 border-blue-500'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              Register
-            </button>
-          </div>
           
-          {/* Form */}
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Username</label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter username"
-                  required
-                />
+          {/* Step 1: Enter Username */}
+          {step === 'username' && (
+            <form onSubmit={handleCheckUsername}>
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-bold text-white">Enter Your Username</h2>
+                <p className="text-sm text-gray-400 mt-1">Invite-only beta</p>
               </div>
               
-              <div>
-                <label className="block text-sm text-gray-400 mb-1">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter password"
-                  required
-                />
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Username</label>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+                    placeholder="Enter your username"
+                    autoFocus
+                    required
+                  />
+                </div>
+                
+                {error && (
+                  <div className="text-red-400 text-sm text-center">{error}</div>
+                )}
+                
+                <button
+                  type="submit"
+                  disabled={loading || !username.trim()}
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Checking...' : 'Continue'}
+                </button>
               </div>
-              
-              {error && (
-                <div className="text-red-400 text-sm text-center">{error}</div>
-              )}
-              
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-lg transition-colors disabled:opacity-50 touch-target"
-              >
-                {loading ? 'Please wait...' : mode === 'login' ? 'Login' : 'Create Account'}
-              </button>
-            </div>
-          </form>
+            </form>
+          )}
           
-          {/* Bonus Info */}
-          {mode === 'register' && (
-            <div className="mt-6 p-4 bg-gradient-to-r from-yellow-900/30 to-orange-900/30 rounded-lg border border-yellow-600/30">
-              <div className="text-yellow-400 font-semibold mb-1">
-                New Player Bonus!
+          {/* Step 2: Existing User - Password Only */}
+          {step === 'password' && (
+            <form onSubmit={handleLogin}>
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-bold text-white">Welcome back, {username}!</h2>
+                {message && <p className="text-sm text-green-400 mt-1">{message}</p>}
               </div>
-              <div className="text-sm text-gray-300">
-                Get <span className="text-white font-bold">8 free packs</span> (40 cards) when you sign up!
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter your password"
+                    autoFocus
+                    required
+                  />
+                </div>
+                
+                {error && (
+                  <div className="text-red-400 text-sm text-center">{error}</div>
+                )}
+                
+                <button
+                  type="submit"
+                  disabled={loading || !password}
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Logging in...' : 'Login'}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="w-full py-2 text-gray-400 hover:text-white transition-colors"
+                >
+                  ← Back
+                </button>
               </div>
-              <div className="text-xs text-gray-400 mt-1">
-                3 Starter Packs + 5 Bonus Packs
+            </form>
+          )}
+          
+          {/* Step 3: New User - Password + Team Name */}
+          {step === 'newuser' && (
+            <form onSubmit={handleLogin}>
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-bold text-white">Welcome, {username}!</h2>
+                {message && <p className="text-sm text-green-400 mt-1">{message}</p>}
               </div>
-            </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Create Password</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Choose a password"
+                    autoFocus
+                    required
+                    minLength={4}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm text-gray-400 mb-1">Team Name</label>
+                  <input
+                    type="text"
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Name your team"
+                    maxLength={30}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">You can change this later</p>
+                </div>
+                
+                {error && (
+                  <div className="text-red-400 text-sm text-center">{error}</div>
+                )}
+                
+                <button
+                  type="submit"
+                  disabled={loading || !password || password.length < 4}
+                  className="w-full py-3.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Creating account...' : 'Start Playing!'}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="w-full py-2 text-gray-400 hover:text-white transition-colors"
+                >
+                  ← Back
+                </button>
+              </div>
+              
+              {/* Bonus Info */}
+              <div className="mt-6 p-4 bg-gradient-to-r from-yellow-900/30 to-orange-900/30 rounded-lg border border-yellow-600/30">
+                <div className="text-yellow-400 font-semibold mb-1">
+                  Your Welcome Bonus!
+                </div>
+                <div className="text-sm text-gray-300">
+                  You'll receive <span className="text-white font-bold">{maxPacks} free packs</span> ({maxPacks * 5} cards)!
+                </div>
+              </div>
+            </form>
           )}
         </div>
         
