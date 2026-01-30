@@ -15,6 +15,7 @@ export default function Packs({ user, onLogout, unreadMessages }) {
   const [revealIndex, setRevealIndex] = useState(-1);
   const [selectedCard, setSelectedCard] = useState(null);
   const [imagesGenerating, setImagesGenerating] = useState(false);
+  const [showAiPopup, setShowAiPopup] = useState(false);
   
   useEffect(() => {
     if (!user) {
@@ -50,6 +51,11 @@ export default function Packs({ user, onLogout, unreadMessages }) {
       setShowResults(true);
       setImagesGenerating(data.imagesGenerating || false);
       
+      // Show AI popup if images are generating
+      if (data.imagesGenerating) {
+        setShowAiPopup(true);
+      }
+      
       // Reveal cards one by one
       for (let i = 0; i < data.cards.length; i++) {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -83,6 +89,11 @@ export default function Packs({ user, onLogout, unreadMessages }) {
       setShowResults(true);
       setRevealIndex(data.cards.length - 1); // Show all at once
       setImagesGenerating(data.imagesGenerating || false);
+      
+      // Show AI popup if images are generating
+      if (data.imagesGenerating) {
+        setShowAiPopup(true);
+      }
       
       // Reload pack info
       loadPackInfo();
@@ -206,21 +217,6 @@ export default function Packs({ user, onLogout, unreadMessages }) {
               <p className="text-sm text-gray-400 mt-2">Tap any card to view details</p>
             </div>
             
-            {/* AI Image Generation Notice */}
-            {imagesGenerating && (
-              <div className="mb-6 p-4 bg-gradient-to-r from-blue-900/50 to-purple-900/50 rounded-xl border border-blue-500/30">
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl animate-pulse">🎨</div>
-                  <div>
-                    <div className="text-blue-300 font-semibold">AI is generating unique card artwork!</div>
-                    <div className="text-sm text-gray-400">
-                      Cards appear below. Images will be delivered once AI finishes generating them.
-                      Check back in a few minutes or visit "My Cards" to see the finished artwork.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
             
             <div className="flex flex-wrap justify-center gap-4">
               {openedCards.map((card, index) => (
@@ -264,6 +260,30 @@ export default function Packs({ user, onLogout, unreadMessages }) {
             card={selectedCard} 
             onClose={() => setSelectedCard(null)} 
           />
+        )}
+        
+        {/* AI Image Generation Popup */}
+        {showAiPopup && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-2xl p-6 max-w-md w-full text-center shadow-2xl border border-blue-500/30">
+              <div className="text-5xl mb-4 animate-pulse">🎨</div>
+              <h2 className="text-2xl font-bold text-white mb-3">
+                AI is generating unique card artwork!
+              </h2>
+              <p className="text-gray-300 mb-2">
+                Your cards appear below with placeholder images.
+              </p>
+              <p className="text-gray-400 text-sm mb-6">
+                The AI will generate unique artwork for each card. Check "My Cards" in a few minutes to see the finished artwork.
+              </p>
+              <button
+                onClick={() => setShowAiPopup(false)}
+                className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors text-lg"
+              >
+                OK
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </Layout>
