@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f0f1a"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffd700"/>
+      <stop offset="50%" style="stop-color:#ffed4a"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="144" height="144" rx="28.8" fill="url(#bg)"/>
+  
+  <!-- Border -->
+  <rect x="4.32" y="4.32" width="135.35999999999999" height="135.35999999999999" rx="25.919999999999998" fill="none" stroke="url(#gold)" stroke-width="2.88"/>
+  
+  <!-- Football shape -->
+  <ellipse cx="72" cy="72" rx="40.32000000000001" ry="25.919999999999998" fill="#8B4513" transform="rotate(-30 72 72)"/>
+  <ellipse cx="72" cy="72" rx="37.44" ry="23.04" fill="#A0522D" transform="rotate(-30 72 72)"/>
+  
+  <!-- Laces -->
+  <line x1="60.48" y1="54.72" x2="83.52" y2="89.28" stroke="white" stroke-width="2.16" stroke-linecap="round"/>
+  <line x1="63.36" y1="63.36" x2="69.12" y2="60.48" stroke="white" stroke-width="1.728" stroke-linecap="round"/>
+  <line x1="69.12" y1="69.12" x2="74.88" y2="66.24000000000001" stroke="white" stroke-width="1.728" stroke-linecap="round"/>
+  <line x1="74.88" y1="77.76" x2="80.64000000000001" y2="74.88" stroke="white" stroke-width="1.728" stroke-linecap="round"/>
+  
+  <!-- "1st" text -->
+  <text x="72" y="126.72" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="20.160000000000004" font-weight="bold" fill="url(#gold)">1st &amp; 10</text>
+</svg>

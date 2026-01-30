@@ -1,0 +1,18 @@
+{
+  "name": "first-and-10-api",
+  "version": "1.0.0",
+  "description": "First & 10 - Football Card Game API Server",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "uuid": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

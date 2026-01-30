@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1125" height="2436" viewBox="0 0 1125 2436">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e"/>
+      <stop offset="50%" style="stop-color:#16213e"/>
+      <stop offset="100%" style="stop-color:#0f0f1a"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffd700"/>
+      <stop offset="50%" style="stop-color:#ffed4a"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+  </defs>
+  
+  <rect width="1125" height="2436" fill="url(#bg)"/>
+  
+  <!-- Football -->
+  <ellipse cx="562.5" cy="1168" rx="80" ry="50" fill="#8B4513" transform="rotate(-30 562.5 1168)"/>
+  <ellipse cx="562.5" cy="1168" rx="75" ry="45" fill="#A0522D" transform="rotate(-30 562.5 1168)"/>
+  
+  <!-- Laces -->
+  <line x1="542.5" y1="1148" x2="582.5" y2="1188" stroke="white" stroke-width="4" stroke-linecap="round"/>
+  <line x1="547.5" y1="1158" x2="557.5" y2="1153" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="557.5" y1="1168" x2="567.5" y2="1163" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  <line x1="567.5" y1="1178" x2="577.5" y2="1173" stroke="white" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Title -->
+  <text x="562.5" y="1278" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="48" font-weight="bold" fill="url(#gold)">FIRST &amp; 10</text>
+  <text x="562.5" y="1313" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" fill="#9CA3AF">Football Card Game</text>
+</svg>

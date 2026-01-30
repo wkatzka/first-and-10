@@ -1,0 +1,16 @@
+# Render Blueprint for First & 10 Backend
+# Deploy to Render: https://render.com
+
+services:
+  - type: web
+    name: first-and-10-api
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        sync: false  # Set this in Render dashboard to your Vercel URL

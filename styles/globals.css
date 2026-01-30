@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --tier-1: #9CA3AF;
+  --tier-2: #6B7280;
+  --tier-3: #22C55E;
+  --tier-4: #3B82F6;
+  --tier-5: #6366F1;
+  --tier-6: #8B5CF6;
+  --tier-7: #A855F7;
+  --tier-8: #EC4899;
+  --tier-9: #F97316;
+  --tier-10: #EAB308;
+  
+  /* Safe area insets for notched phones */
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left: env(safe-area-inset-left, 0px);
+  --safe-area-right: env(safe-area-inset-right, 0px);
+}
+
+/* Prevent pull-to-refresh on mobile */
+html {
+  overscroll-behavior: none;
+}
+
+body {
+  @apply bg-gray-900 text-white;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  
+  /* Mobile optimizations */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  
+  /* Safe area padding for notched phones */
+  padding-top: var(--safe-area-top);
+  padding-bottom: var(--safe-area-bottom);
+  padding-left: var(--safe-area-left);
+  padding-right: var(--safe-area-right);
+}
+
+/* Prevent text selection on interactive elements */
+button, a, .card {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Smooth scrolling */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent zoom on input focus (iOS) */
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+/* Fix for 100vh on mobile browsers */
+.min-h-screen-mobile {
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  min-height: 100dvh;
+}
+
+/* Touch-friendly tap targets */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Active states for touch */
+button:active, .card:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+/* Hide scrollbars but keep functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Safe area padding for bottom navigation */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile card grid adjustments */
+@media (max-width: 640px) {
+  .card-grid {
+    gap: 0.5rem;
+  }
+}
+
+/* Card styles */
+.card {
+  @apply rounded-lg overflow-hidden transition-all duration-300;
+}
+
+/* Only apply hover on devices that support it (not touch) */
+@media (hover: hover) {
+  .card:hover {
+    @apply transform scale-105;
+  }
+}
+
+.card-tier-1 { border: 2px solid var(--tier-1); }
+.card-tier-2 { border: 2px solid var(--tier-2); }
+.card-tier-3 { border: 2px solid var(--tier-3); }
+.card-tier-4 { border: 2px solid var(--tier-4); }
+.card-tier-5 { border: 2px solid var(--tier-5); }
+.card-tier-6 { border: 2px solid var(--tier-6); }
+.card-tier-7 { border: 2px solid var(--tier-7); }
+.card-tier-8 { border: 2px solid var(--tier-8); }
+.card-tier-9 { border: 2px solid var(--tier-9); box-shadow: 0 0 15px var(--tier-9); }
+.card-tier-10 { border: 3px solid var(--tier-10); box-shadow: 0 0 20px var(--tier-10), 0 0 40px var(--tier-10); }
+
+/* Tier badges */
+.tier-badge {
+  @apply px-2 py-1 rounded text-xs font-bold uppercase;
+}
+
+.tier-badge-1 { @apply bg-gray-500 text-white; }
+.tier-badge-2 { @apply bg-gray-600 text-white; }
+.tier-badge-3 { @apply bg-green-500 text-white; }
+.tier-badge-4 { @apply bg-blue-500 text-white; }
+.tier-badge-5 { @apply bg-indigo-500 text-white; }
+.tier-badge-6 { @apply bg-purple-500 text-white; }
+.tier-badge-7 { @apply bg-violet-500 text-white; }
+.tier-badge-8 { @apply bg-pink-500 text-white; }
+.tier-badge-9 { @apply bg-orange-500 text-black; }
+.tier-badge-10 { @apply bg-yellow-400 text-black; animation: pulse 2s infinite; }
+
+/* Pack opening animation */
+@keyframes packOpen {
+  0% { transform: scale(1) rotateY(0deg); opacity: 1; }
+  50% { transform: scale(1.2) rotateY(90deg); opacity: 0.5; }
+  100% { transform: scale(1) rotateY(180deg); opacity: 1; }
+}
+
+.pack-opening {
+  animation: packOpen 1s ease-in-out;
+}
+
+/* Button styles */
+.btn {
+  @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200;
+}
+
+.btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white;
+}
+
+.btn-success {
+  @apply bg-green-600 hover:bg-green-700 text-white;
+}
+
+.btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white;
+}
+
+.btn-gold {
+  @apply bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-black font-bold;
+}
+
+/* Position colors */
+.pos-QB { @apply bg-red-600; }
+.pos-RB { @apply bg-green-600; }
+.pos-WR { @apply bg-blue-600; }
+.pos-TE { @apply bg-purple-600; }
+.pos-OL { @apply bg-yellow-600; }
+.pos-DL { @apply bg-orange-600; }
+.pos-LB { @apply bg-pink-600; }
+.pos-DB { @apply bg-cyan-600; }
+.pos-K { @apply bg-gray-600; }
+.pos-P { @apply bg-gray-500; }
