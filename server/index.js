@@ -260,7 +260,7 @@ app.get('/api/packs/info', authMiddleware, (req, res) => {
 });
 
 // Open a pack
-app.post('/api/packs/open', authMiddleware, (req, res) => {
+app.post('/api/packs/open', authMiddleware, async (req, res) => {
   try {
     const user = db.getUser(req.user.id);
     
@@ -287,9 +287,12 @@ app.post('/api/packs/open', authMiddleware, (req, res) => {
         continue; // Skip if already minted somehow
       }
       
-      // Generate card image
-      const imageUrl = cardImageGenerator.getOrGenerateCardImage(card);
+      // Generate card image (async for AI generation)
+      const imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
       card.image_url = imageUrl;
+      
+      // Get formatted stats for card back
+      card.stats = cardImageGenerator.getFormattedStats(card);
       
       const cardId = db.addCard(req.user.id, card);
       savedCards.push({ id: cardId, ...card, image_url: imageUrl });
@@ -310,7 +313,7 @@ app.post('/api/packs/open', authMiddleware, (req, res) => {
 });
 
 // Open all remaining packs at once
-app.post('/api/packs/open-all', authMiddleware, (req, res) => {
+app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
   try {
     const user = db.getUser(req.user.id);
     const remaining = user.max_packs - user.packs_opened;
@@ -335,9 +338,12 @@ app.post('/api/packs/open-all', authMiddleware, (req, res) => {
           continue;
         }
         
-        // Generate card image
-        const imageUrl = cardImageGenerator.getOrGenerateCardImage(card);
+        // Generate card image (async for AI generation)
+        const imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
         card.image_url = imageUrl;
+        
+        // Get formatted stats for card back
+        card.stats = cardImageGenerator.getFormattedStats(card);
         
         const cardId = db.addCard(req.user.id, card);
         allCards.push({ 

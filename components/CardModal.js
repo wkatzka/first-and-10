@@ -28,12 +28,23 @@ export default function CardModal({ card, onClose }) {
 
   // Format stats for display
   const formatStats = () => {
-    const stats = card.stats || {};
     const statList = [];
     
-    // Add all available stats
+    // Add overall rating first
+    if (card.composite_score) {
+      statList.push({ label: 'Overall Rating', value: Math.round(card.composite_score), highlight: true });
+    }
+    
+    const stats = card.stats || {};
+    
+    // Check if stats is already an array (new format)
+    if (Array.isArray(stats)) {
+      return [...statList, ...stats];
+    }
+    
+    // Convert object to array (old format)
     for (const [key, value] of Object.entries(stats)) {
-      if (value != null && value !== '') {
+      if (value != null && value !== '' && value !== 0) {
         const label = key
           .replace(/_/g, ' ')
           .replace(/pg$/i, '/G')
@@ -43,11 +54,6 @@ export default function CardModal({ card, onClose }) {
           : value;
         statList.push({ label, value: displayValue });
       }
-    }
-    
-    // Add card-level stats if available
-    if (card.composite_score) {
-      statList.unshift({ label: 'Overall Rating', value: Math.round(card.composite_score), highlight: true });
     }
     
     return statList;

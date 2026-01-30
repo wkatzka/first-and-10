@@ -27,5 +27,6 @@
   "games": [],
   "nextUserId": 1,
   "nextCardId": 1,
-  "nextGameId": 1
+  "nextGameId": 1,
+  "_note": "Reset on 2026-01-29 - all cards unminted"
 }
