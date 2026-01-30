@@ -19,6 +19,7 @@ export default function Layout({ children, user, onLogout }) {
     { href: '/schedule', label: 'Schedule', icon: '📅' },
     { href: '/play', label: 'Play', icon: '🎮' },
     { href: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
+    { href: '/how-to-play', label: 'Help', icon: '📖' },
   ];
   
   // Mobile bottom nav (5 main items)

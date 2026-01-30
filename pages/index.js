@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { checkUsername, login } from '../lib/api';
 
 export default function Home({ user, onLogin }) {
@@ -245,8 +246,15 @@ export default function Home({ user, onLogin }) {
           )}
         </div>
         
+        {/* Games Start Monday Banner */}
+        <div className="mt-6 p-4 bg-gradient-to-r from-green-900/50 to-emerald-900/50 rounded-xl border border-green-500/30 text-center">
+          <div className="text-2xl mb-1">🏈</div>
+          <div className="text-green-400 font-bold text-lg">Games Start Monday!</div>
+          <div className="text-sm text-gray-300">Get your roster ready before 7 PM EST</div>
+        </div>
+        
         {/* Features */}
-        <div className="mt-8 grid grid-cols-3 gap-4 text-center">
+        <div className="mt-6 grid grid-cols-3 gap-4 text-center">
           <div>
             <div className="text-2xl mb-1">📦</div>
             <div className="text-xs text-gray-400">Open Packs</div>
@@ -259,6 +267,17 @@ export default function Home({ user, onLogin }) {
             <div className="text-2xl mb-1">⚔️</div>
             <div className="text-xs text-gray-400">Compete</div>
           </div>
+        </div>
+        
+        {/* How to Play Link */}
+        <div className="mt-6 text-center">
+          <Link 
+            href="/how-to-play"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-colors border border-gray-600"
+          >
+            <span>📖</span>
+            <span>How to Play</span>
+          </Link>
         </div>
       </div>
     </div>
