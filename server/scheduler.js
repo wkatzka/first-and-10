@@ -19,6 +19,31 @@ const SCHEDULE_PATH = path.join(DATA_DIR, 'schedule.json');
 // Game times in EST (24-hour format)
 const GAME_TIMES = [19, 21]; // 7 PM and 9 PM EST
 
+// Required roster positions (11 total)
+const REQUIRED_POSITIONS = ['QB', 'RB', 'WR1', 'WR2', 'TE', 'OL', 'DL', 'LB', 'DB1', 'DB2', 'K'];
+
+/**
+ * Check if a user has a full roster (all 11 positions filled)
+ * @param {number} userId - User ID to check
+ * @returns {boolean} - True if roster is complete
+ */
+function hasFullRoster(userId) {
+  const roster = db.getFullRoster(userId);
+  if (!roster || !roster.cards) return false;
+  
+  const filledPositions = Object.keys(roster.cards);
+  return REQUIRED_POSITIONS.every(pos => filledPositions.includes(pos));
+}
+
+/**
+ * Filter users to only include those with full rosters
+ * @param {array} users - Array of user objects
+ * @returns {array} - Filtered users with full rosters
+ */
+function getEligibleUsers(users) {
+  return users.filter(user => hasFullRoster(user.id));
+}
+
 /**
  * Load schedule from file
  */
@@ -186,10 +211,15 @@ function generateWeekSchedule(startDate, users) {
  */
 function initializeSchedule(forceReset = false) {
   let schedule = loadSchedule();
-  const users = db.getAllUsers();
+  const allUsers = db.getAllUsers();
   
-  if (users.length < 2) {
-    console.log('Not enough users to generate schedule (need at least 2)');
+  // Only include users with full rosters
+  const eligibleUsers = getEligibleUsers(allUsers);
+  
+  console.log(`Scheduling: ${eligibleUsers.length}/${allUsers.length} users have full rosters`);
+  
+  if (eligibleUsers.length < 2) {
+    console.log('Not enough users with full rosters to generate schedule (need at least 2)');
     return schedule;
   }
   
@@ -202,9 +232,9 @@ function initializeSchedule(forceReset = false) {
     schedule.games = [];
     schedule.completedGames = [];
     
-    // Generate first week's schedule
+    // Generate first week's schedule (only eligible users)
     const weekStart = new Date(schedule.seasonStart);
-    schedule.games = generateWeekSchedule(weekStart, users);
+    schedule.games = generateWeekSchedule(weekStart, eligibleUsers);
     
     saveSchedule(schedule);
     console.log(`Season initialized. Starts ${schedule.seasonStart}`);
@@ -388,11 +418,21 @@ function checkAndGenerateNextWeek() {
   const daysRemaining = Math.floor((lastDateObj - todayObj) / (1000 * 60 * 60 * 24));
   
   if (daysRemaining <= 2) {
-    const users = db.getAllUsers();
+    const allUsers = db.getAllUsers();
+    // Only include users with full rosters
+    const eligibleUsers = getEligibleUsers(allUsers);
+    
+    console.log(`Next week scheduling: ${eligibleUsers.length}/${allUsers.length} users have full rosters`);
+    
+    if (eligibleUsers.length < 2) {
+      console.log('Not enough users with full rosters for next week');
+      return;
+    }
+    
     const nextWeekStart = new Date(lastDateObj);
     nextWeekStart.setDate(nextWeekStart.getDate() + 1);
     
-    const newGames = generateWeekSchedule(nextWeekStart, users);
+    const newGames = generateWeekSchedule(nextWeekStart, eligibleUsers);
     schedule.games.push(...newGames);
     schedule.currentWeek++;
     
@@ -469,4 +509,6 @@ module.exports = {
   startScheduler,
   getESTDate,
   formatDate,
+  hasFullRoster,
+  getEligibleUsers,
 };

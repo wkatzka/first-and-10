@@ -25,6 +25,16 @@
       "username": "Nick!",
       "max_packs": 13,
       "created_at": "2026-01-30T00:00:00.000Z"
+    },
+    {
+      "username": "Dimo!",
+      "max_packs": 13,
+      "created_at": "2026-01-30T00:00:00.000Z"
+    },
+    {
+      "username": "Pink!",
+      "max_packs": 13,
+      "created_at": "2026-01-30T00:00:00.000Z"
     }
   ],
   "cards": [],
