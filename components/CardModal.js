@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TIER_NAMES, TIER_COLORS, POSITION_COLORS } from '../lib/api';
+import { TIER_NAMES, TIER_COLORS, POSITION_COLORS, isHOFTier, getStrategicAdvantage } from '../lib/api';
 
 /**
  * Full-screen card modal with flip animation
@@ -181,23 +181,33 @@ export default function CardModal({ card, onClose }) {
                 </p>
               </div>
               
+              {/* Strategic Advantage */}
+              <div className="mb-3 p-2 rounded-lg bg-white/5 border border-white/10">
+                <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">
+                  Strategic Advantage
+                </div>
+                <p className="text-sm text-gray-300 leading-snug">
+                  {getStrategicAdvantage(card)}
+                </p>
+              </div>
+              
               {/* Stats */}
               <div className="flex-1 overflow-y-auto">
                 <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">
                   Season Statistics
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {stats.length > 0 ? (
-                    stats.slice(0, 12).map((stat, i) => (
+                    stats.slice(0, 10).map((stat, i) => (
                       <div 
                         key={i}
-                        className={`flex justify-between items-center py-1.5 px-2 rounded ${
+                        className={`flex justify-between items-center py-1 px-2 rounded ${
                           stat.highlight ? 'bg-white/10' : 'bg-white/5'
                         }`}
                       >
-                        <span className="text-gray-400 text-sm">{stat.label}</span>
+                        <span className="text-gray-400 text-xs">{stat.label}</span>
                         <span 
-                          className={`font-bold ${stat.highlight ? 'text-lg' : 'text-base'}`}
+                          className={`font-bold ${stat.highlight ? 'text-base' : 'text-sm'}`}
                           style={{ color: stat.highlight ? tierColor : '#fff' }}
                         >
                           {stat.value}

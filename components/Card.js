@@ -1,11 +1,20 @@
 import { useState } from 'react';
-import { TIER_NAMES, TIER_COLORS, POSITION_COLORS } from '../lib/api';
+import { TIER_NAMES, TIER_COLORS, POSITION_COLORS, isHOFTier } from '../lib/api';
 
 export default function Card({ card, onClick, selected, small, showImage = true }) {
   const [imageError, setImageError] = useState(false);
   const tierColor = TIER_COLORS[card.tier] || TIER_COLORS[1];
   const posColor = POSITION_COLORS[card.position] || '#6B7280';
   const isLegendary = card.tier >= 9;
+  const isHOF = isHOFTier(card.tier);
+  
+  // HOF rainbow gradient style
+  const hofGradient = 'linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000)';
+  const hofBorderStyle = isHOF ? {
+    background: hofGradient,
+    backgroundSize: '200% 100%',
+    animation: 'rainbowShift 3s linear infinite',
+  } : {};
   
   // Check if image should be shown (has valid URL and hasn't errored)
   const hasValidImage = showImage && card.image_url && !small && !imageError && !card.image_url.includes('placeholder');
@@ -19,19 +28,45 @@ export default function Card({ card, onClick, selected, small, showImage = true 
           relative rounded-lg overflow-hidden cursor-pointer
           transition-all duration-200 active:scale-95
           ${selected ? 'ring-4 ring-green-400' : ''}
+          ${isHOF ? 'hof-rainbow-border' : ''}
           w-48
         `}
         style={{
-          boxShadow: isLegendary ? `0 0 20px ${tierColor}` : 'none',
+          border: isHOF ? 'none' : `3px solid ${tierColor}`,
+          boxShadow: isHOF 
+            ? '0 0 25px rgba(255,255,255,0.5), 0 0 50px rgba(138,43,226,0.3)' 
+            : isLegendary ? `0 0 20px ${tierColor}` : 'none',
+          padding: isHOF ? '3px' : 0,
+          background: isHOF ? hofGradient : 'transparent',
+          backgroundSize: isHOF ? '200% 100%' : 'auto',
         }}
       >
+        {isHOF && (
+          <style jsx>{`
+            @keyframes rainbowShift {
+              0% { background-position: 0% 50%; }
+              100% { background-position: 200% 50%; }
+            }
+          `}</style>
+        )}
         <img 
           src={card.image_url} 
           alt={`${card.player_name || card.player} ${card.season}`}
-          className="w-full h-auto"
+          className="w-full h-auto rounded-md"
           style={{ aspectRatio: '512 / 720' }}
           onError={() => setImageError(true)}
         />
+        
+        {/* HOF Shimmer Animation */}
+        {isHOF && (
+          <div 
+            className="absolute inset-0 pointer-events-none animate-pulse"
+            style={{ 
+              boxShadow: 'inset 0 0 40px rgba(255,255,255,0.4)',
+              opacity: 0.5,
+            }}
+          />
+        )}
         
         {/* Legendary Glow Animation */}
         {card.tier === 10 && (
@@ -60,8 +95,13 @@ export default function Card({ card, onClick, selected, small, showImage = true 
           w-full aspect-[3/4]
         `}
         style={{
-          border: `2px solid ${tierColor}`,
-          boxShadow: isLegendary ? `0 0 15px ${tierColor}` : 'none',
+          border: isHOF ? 'none' : `2px solid ${tierColor}`,
+          boxShadow: isHOF 
+            ? '0 0 15px rgba(255,255,255,0.4)' 
+            : isLegendary ? `0 0 15px ${tierColor}` : 'none',
+          padding: isHOF ? '2px' : 0,
+          background: isHOF ? hofGradient : 'transparent',
+          backgroundSize: isHOF ? '200% 100%' : 'auto',
         }}
       >
         {/* Card Background */}
@@ -101,11 +141,16 @@ export default function Card({ card, onClick, selected, small, showImage = true 
           </div>
         </div>
         
-        {/* Legendary Glow */}
-        {card.tier === 10 && (
+        {/* HOF/Legendary Glow */}
+        {(isHOF || card.tier === 10) && (
           <div 
             className="absolute inset-0 pointer-events-none animate-pulse"
-            style={{ boxShadow: `inset 0 0 20px ${tierColor}`, opacity: 0.3 }}
+            style={{ 
+              boxShadow: isHOF 
+                ? 'inset 0 0 15px rgba(255,255,255,0.5)' 
+                : `inset 0 0 20px ${tierColor}`, 
+              opacity: 0.3 
+            }}
           />
         )}
       </div>
@@ -123,8 +168,13 @@ export default function Card({ card, onClick, selected, small, showImage = true 
         w-48
       `}
       style={{
-        border: `${card.tier >= 9 ? 3 : 2}px solid ${tierColor}`,
-        boxShadow: isLegendary ? `0 0 20px ${tierColor}` : 'none',
+        border: isHOF ? 'none' : `${card.tier >= 9 ? 3 : 2}px solid ${tierColor}`,
+        boxShadow: isHOF 
+          ? '0 0 25px rgba(255,255,255,0.5), 0 0 50px rgba(138,43,226,0.3)' 
+          : isLegendary ? `0 0 20px ${tierColor}` : 'none',
+        padding: isHOF ? '3px' : 0,
+        background: isHOF ? hofGradient : 'transparent',
+        backgroundSize: isHOF ? '200% 100%' : 'auto',
       }}
     >
       {/* Card Background */}
@@ -183,12 +233,14 @@ export default function Card({ card, onClick, selected, small, showImage = true 
         </div>
       </div>
       
-      {/* Legendary Glow Animation */}
-      {card.tier === 10 && (
+      {/* HOF/Legendary Glow Animation */}
+      {(isHOF || card.tier === 10) && (
         <div 
           className="absolute inset-0 pointer-events-none animate-pulse"
           style={{ 
-            boxShadow: `inset 0 0 30px ${tierColor}`,
+            boxShadow: isHOF 
+              ? 'inset 0 0 30px rgba(255,255,255,0.5)' 
+              : `inset 0 0 30px ${tierColor}`,
             opacity: 0.3,
           }}
         />

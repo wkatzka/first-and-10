@@ -3,16 +3,18 @@
 @tailwind utilities;
 
 :root {
-  --tier-1: #9CA3AF;
-  --tier-2: #6B7280;
-  --tier-3: #22C55E;
-  --tier-4: #3B82F6;
-  --tier-5: #6366F1;
-  --tier-6: #8B5CF6;
-  --tier-7: #A855F7;
-  --tier-8: #EC4899;
-  --tier-9: #F97316;
-  --tier-10: #EAB308;
+  /* Tier colors - updated scheme */
+  --tier-1: #6B7280;   /* Gray */
+  --tier-2: #6B7280;   /* Gray */
+  --tier-3: #6B7280;   /* Gray */
+  --tier-4: #6B7280;   /* Gray */
+  --tier-5: #6B7280;   /* Gray */
+  --tier-6: #10B981;   /* Platinum green */
+  --tier-7: #EC4899;   /* Pink */
+  --tier-8: #8B5CF6;   /* Purple */
+  --tier-9: #F97316;   /* Orange */
+  --tier-10: #EAB308;  /* Gold */
+  --tier-11: #FFFFFF;  /* HOF - White */
   
   /* Safe area insets for notched phones */
   --safe-area-top: env(safe-area-inset-top, 0px);
@@ -116,11 +118,32 @@ button:active, .card:active {
 .card-tier-3 { border: 2px solid var(--tier-3); }
 .card-tier-4 { border: 2px solid var(--tier-4); }
 .card-tier-5 { border: 2px solid var(--tier-5); }
-.card-tier-6 { border: 2px solid var(--tier-6); }
-.card-tier-7 { border: 2px solid var(--tier-7); }
-.card-tier-8 { border: 2px solid var(--tier-8); }
+.card-tier-6 { border: 2px solid var(--tier-6); box-shadow: 0 0 10px var(--tier-6); }
+.card-tier-7 { border: 2px solid var(--tier-7); box-shadow: 0 0 12px var(--tier-7); }
+.card-tier-8 { border: 2px solid var(--tier-8); box-shadow: 0 0 15px var(--tier-8); }
 .card-tier-9 { border: 2px solid var(--tier-9); box-shadow: 0 0 15px var(--tier-9); }
 .card-tier-10 { border: 3px solid var(--tier-10); box-shadow: 0 0 20px var(--tier-10), 0 0 40px var(--tier-10); }
+.card-tier-11 { 
+  border: none;
+  background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000);
+  background-size: 200% 100%;
+  animation: rainbowShift 3s linear infinite;
+  padding: 3px;
+  box-shadow: 0 0 25px rgba(255,255,255,0.5), 0 0 50px rgba(138,43,226,0.3);
+}
+
+/* Rainbow animation for HOF cards */
+@keyframes rainbowShift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* HOF rainbow border utility class */
+.hof-rainbow-border {
+  background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000);
+  background-size: 200% 100%;
+  animation: rainbowShift 3s linear infinite;
+}
 
 /* Tier badges */
 .tier-badge {
@@ -128,15 +151,22 @@ button:active, .card:active {
 }
 
 .tier-badge-1 { @apply bg-gray-500 text-white; }
-.tier-badge-2 { @apply bg-gray-600 text-white; }
-.tier-badge-3 { @apply bg-green-500 text-white; }
-.tier-badge-4 { @apply bg-blue-500 text-white; }
-.tier-badge-5 { @apply bg-indigo-500 text-white; }
-.tier-badge-6 { @apply bg-purple-500 text-white; }
-.tier-badge-7 { @apply bg-violet-500 text-white; }
-.tier-badge-8 { @apply bg-pink-500 text-white; }
+.tier-badge-2 { @apply bg-gray-500 text-white; }
+.tier-badge-3 { @apply bg-gray-500 text-white; }
+.tier-badge-4 { @apply bg-gray-500 text-white; }
+.tier-badge-5 { @apply bg-gray-500 text-white; }
+.tier-badge-6 { @apply bg-emerald-500 text-white; }
+.tier-badge-7 { @apply bg-pink-500 text-white; }
+.tier-badge-8 { @apply bg-purple-500 text-white; }
 .tier-badge-9 { @apply bg-orange-500 text-black; }
 .tier-badge-10 { @apply bg-yellow-400 text-black; animation: pulse 2s infinite; }
+.tier-badge-11 { 
+  background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3, #ff0000);
+  background-size: 200% 100%;
+  animation: rainbowShift 3s linear infinite;
+  @apply text-white font-bold;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
 
 /* Pack opening animation */
 @keyframes packOpen {
