@@ -17,8 +17,8 @@ export default function Card({ card, onClick, selected, small, showImage = true 
         onClick={onClick}
         className={`
           relative rounded-lg overflow-hidden cursor-pointer
-          transition-all duration-300 transform hover:scale-105
-          ${selected ? 'ring-4 ring-green-400 scale-105' : ''}
+          transition-all duration-200 active:scale-95
+          ${selected ? 'ring-4 ring-green-400' : ''}
           w-48
         `}
         style={{
@@ -53,8 +53,8 @@ export default function Card({ card, onClick, selected, small, showImage = true 
       onClick={onClick}
       className={`
         relative rounded-lg overflow-hidden cursor-pointer
-        transition-all duration-300 transform hover:scale-105
-        ${selected ? 'ring-4 ring-green-400 scale-105' : ''}
+        transition-all duration-200 active:scale-95
+        ${selected ? 'ring-4 ring-green-400' : ''}
         ${small ? 'w-32' : 'w-48'}
       `}
       style={{
@@ -138,21 +138,22 @@ export default function Card({ card, onClick, selected, small, showImage = true 
 export function MiniCard({ card, position, onClick, empty }) {
   if (empty || !card) {
     return (
-      <div
+      <button
         onClick={onClick}
-        className="w-20 h-24 rounded border-2 border-dashed border-gray-600 flex items-center justify-center cursor-pointer hover:border-gray-400 transition-colors"
+        className="w-20 h-24 rounded-lg border-2 border-dashed border-gray-500 flex flex-col items-center justify-center bg-gray-700/30 active:bg-gray-600 active:border-blue-500 active:scale-95 transition-all"
       >
-        <span className="text-gray-500 text-xs">{position}</span>
-      </div>
+        <span className="text-2xl mb-1">+</span>
+        <span className="text-gray-400 text-xs font-medium">{position}</span>
+      </button>
     );
   }
   
   const tierColor = TIER_COLORS[card.tier] || TIER_COLORS[1];
   
   return (
-    <div
+    <button
       onClick={onClick}
-      className="w-20 h-24 rounded overflow-hidden cursor-pointer hover:scale-105 transition-transform"
+      className="w-20 h-24 rounded-lg overflow-hidden active:scale-95 active:opacity-80 transition-all"
       style={{ border: `2px solid ${tierColor}` }}
     >
       <div className="h-full flex flex-col p-1 bg-gray-800">
@@ -179,6 +180,6 @@ export function MiniCard({ card, position, onClick, empty }) {
           {card.season}
         </div>
       </div>
-    </div>
+    </button>
   );
 }

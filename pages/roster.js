@@ -216,10 +216,6 @@ export default function Roster({ user, onLogout, unreadMessages }) {
                 </button>
               )}
               
-              <p className="text-sm text-gray-400 mb-4">
-                Tap to select · Long press to view details
-              </p>
-              
               {/* Available Cards */}
               {availableCards.length === 0 ? (
                 <div className="text-center text-gray-400 py-8">
@@ -233,41 +229,60 @@ export default function Roster({ user, onLogout, unreadMessages }) {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {availableCards
                     .sort((a, b) => b.tier - a.tier)
                     .map(card => {
                       const isUsed = usedCardIds.has(card.id) && roster?.cards?.[selectedSlot.id]?.id !== card.id;
+                      const isCurrentlySelected = roster?.cards?.[selectedSlot.id]?.id === card.id;
+                      const tierColor = card.tier >= 9 ? '#EAB308' : card.tier >= 7 ? '#A855F7' : card.tier >= 5 ? '#3B82F6' : '#6B7280';
+                      
                       return (
-                        <div
+                        <button
                           key={card.id}
-                          className={`relative group ${isUsed ? 'opacity-50' : ''}`}
+                          onClick={() => !isUsed && handleCardSelect(card)}
+                          disabled={isUsed || saving}
+                          className={`
+                            relative text-left p-3 rounded-xl transition-all
+                            ${isCurrentlySelected 
+                              ? 'bg-green-600/30 ring-2 ring-green-500' 
+                              : isUsed 
+                                ? 'bg-gray-700/50 opacity-50 cursor-not-allowed' 
+                                : 'bg-gray-700 active:bg-gray-600 active:scale-95'
+                            }
+                          `}
                         >
-                          <Card
-                            card={card}
-                            small
-                            onClick={() => !isUsed && handleCardSelect(card)}
-                            selected={roster?.cards?.[selectedSlot.id]?.id === card.id}
-                          />
-                          {/* View button overlay */}
-                          {!isUsed && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setViewCard(card);
-                              }}
-                              className="absolute top-1 left-1 w-6 h-6 bg-black/70 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="View card details"
-                            >
-                              👁
-                            </button>
+                          {/* Tier indicator */}
+                          <div 
+                            className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                            style={{ backgroundColor: tierColor, color: card.tier >= 9 ? '#000' : '#fff' }}
+                          >
+                            {card.tier}
+                          </div>
+                          
+                          {/* Player info */}
+                          <div className="pr-8">
+                            <div className="text-white font-bold text-sm leading-tight">
+                              {card.player_name || card.player}
+                            </div>
+                            <div className="text-gray-400 text-xs mt-1">
+                              {card.season} · {card.team}
+                            </div>
+                            <div className="text-xs mt-2" style={{ color: tierColor }}>
+                              OVR {Math.round(card.composite_score || 0)}
+                            </div>
+                          </div>
+                          
+                          {/* Selection indicator */}
+                          {isCurrentlySelected && (
+                            <div className="absolute bottom-2 right-2 text-green-400 text-lg">✓</div>
                           )}
                           {isUsed && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
-                              <span className="text-xs text-gray-400">In Use</span>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <span className="text-xs text-gray-400 bg-black/70 px-2 py-1 rounded">In Use</span>
                             </div>
                           )}
-                        </div>
+                        </button>
                       );
                     })}
                 </div>
