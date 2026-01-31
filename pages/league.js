@@ -293,29 +293,29 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
         {/* Conversation Modal */}
         {selectedTeam && (
           <div 
-            className="fixed inset-0 bg-black/80 flex items-end sm:items-center justify-center z-50"
+            className="fixed inset-0 bg-black/90 flex flex-col z-50"
             onClick={() => setSelectedTeam(null)}
           >
             <div 
-              className="bg-gray-800 rounded-t-xl sm:rounded-xl w-full sm:max-w-lg max-h-[80vh] flex flex-col"
+              className="flex-1 flex flex-col max-w-lg w-full mx-auto bg-gray-800 sm:my-8 sm:rounded-xl"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="flex justify-between items-center p-4 border-b border-gray-700">
+              <div className="flex justify-between items-center p-4 border-b border-gray-700 safe-area-pt">
                 <div>
-                  <h2 className="font-bold text-white">{selectedTeam.team_name || selectedTeam.username}</h2>
+                  <h2 className="font-bold text-white text-lg">{selectedTeam.team_name || selectedTeam.username}</h2>
                   <p className="text-xs text-gray-400">{selectedTeam.username}</p>
                 </div>
                 <button
                   onClick={() => setSelectedTeam(null)}
-                  className="text-gray-400 hover:text-white text-2xl leading-none"
+                  className="text-gray-400 hover:text-white text-3xl leading-none w-10 h-10 flex items-center justify-center"
                 >
                   ×
                 </button>
               </div>
               
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px] max-h-[400px]">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {loadingConvo ? (
                   <p className="text-gray-400 text-center">Loading...</p>
                 ) : conversation.length === 0 ? (
@@ -344,7 +344,7 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
               </div>
               
               {/* Input */}
-              <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700">
+              <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700 safe-area-pb">
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -352,12 +352,16 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type a message..."
                     maxLength={500}
-                    className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    autoFocus
+                    autoComplete="off"
+                    autoCapitalize="sentences"
+                    enterKeyHint="send"
+                    className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white text-base placeholder-gray-400 focus:outline-none focus:border-blue-500"
                   />
                   <button
                     type="submit"
                     disabled={!newMessage.trim() || sendingMessage}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                   >
                     {sendingMessage ? '...' : 'Send'}
                   </button>
