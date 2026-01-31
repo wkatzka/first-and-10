@@ -455,9 +455,57 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
 // CARD ROUTES
 // =============================================================================
 
+// Helper: Check if card needs image regeneration
+function cardNeedsImage(card) {
+  if (!card.image_url) return true;
+  if (card.image_url.includes('placeholder')) return true;
+  if (card.image_pending) return true;
+  
+  // Check if file actually exists
+  const fs = require('fs');
+  const path = require('path');
+  
+  // Get the actual file path
+  const PERSISTENT_DIR = '/var/data';
+  const USE_PERSISTENT = fs.existsSync(PERSISTENT_DIR);
+  const IMAGES_DIR = USE_PERSISTENT 
+    ? path.join(PERSISTENT_DIR, 'cards')
+    : path.join(__dirname, '../public/cards');
+  
+  // Extract filename from URL
+  const filename = card.image_url.split('/').pop();
+  const filepath = path.join(IMAGES_DIR, filename);
+  
+  return !fs.existsSync(filepath);
+}
+
+// Helper: Regenerate image for a card in background
+function regenerateCardImage(cardId, card) {
+  setImmediate(async () => {
+    try {
+      console.log(`Regenerating image for card ${cardId} (${card.player || card.player_name})...`);
+      const imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
+      db.updateCardImage(cardId, imageUrl);
+      console.log(`Card ${cardId} image regenerated: ${imageUrl}`);
+    } catch (err) {
+      console.error(`Failed to regenerate image for card ${cardId}:`, err.message);
+    }
+  });
+}
+
 // Get all user's cards
 app.get('/api/cards', authMiddleware, (req, res) => {
   const cards = db.getUserCards(req.user.id);
+  
+  // Check for cards needing image regeneration
+  if (AI_ENABLED) {
+    for (const card of cards) {
+      if (cardNeedsImage(card)) {
+        regenerateCardImage(card.id, card);
+      }
+    }
+  }
+  
   res.json({ cards });
 });
 
@@ -509,6 +557,15 @@ app.get('/api/users/:userId/cards', authMiddleware, (req, res) => {
   }
   
   const cards = db.getUserCards(userId);
+  
+  // Check for cards needing image regeneration
+  if (AI_ENABLED) {
+    for (const card of cards) {
+      if (cardNeedsImage(card)) {
+        regenerateCardImage(card.id, card);
+      }
+    }
+  }
   
   res.json({ 
     user: {
@@ -1039,6 +1096,39 @@ app.post('/api/messages/send', authMiddleware, (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+// =============================================================================
+// ADMIN: Regenerate missing images
+// =============================================================================
+
+app.post('/api/admin/regenerate-images', authMiddleware, (req, res) => {
+  if (!AI_ENABLED) {
+    return res.status(400).json({ error: 'AI image generation not enabled (no OPENAI_API_KEY)' });
+  }
+  
+  // Get all cards from all users
+  const allUsers = db.getAllUsers();
+  let cardsToRegenerate = [];
+  
+  for (const user of allUsers) {
+    const cards = db.getUserCards(user.id);
+    for (const card of cards) {
+      if (cardNeedsImage(card)) {
+        cardsToRegenerate.push(card);
+      }
+    }
+  }
+  
+  // Trigger regeneration for all missing images
+  for (const card of cardsToRegenerate) {
+    regenerateCardImage(card.id, card);
+  }
+  
+  res.json({ 
+    message: `Regenerating images for ${cardsToRegenerate.length} cards`,
+    cards: cardsToRegenerate.map(c => ({ id: c.id, player: c.player || c.player_name })),
+  });
 });
 
 // =============================================================================
