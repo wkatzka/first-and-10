@@ -223,6 +223,7 @@ function getUser(userId) {
   return {
     id: user.id,
     username: user.username,
+    team_name: user.team_name,
     packs_opened: user.packs_opened,
     max_packs: user.max_packs,
     created_at: user.created_at,
@@ -237,6 +238,7 @@ function getUserByUsername(username) {
   return {
     id: user.id,
     username: user.username,
+    team_name: user.team_name,
     packs_opened: user.packs_opened,
     max_packs: user.max_packs,
     created_at: user.created_at,
@@ -248,6 +250,7 @@ function getAllUsers() {
   return db.users.map(u => ({
     id: u.id,
     username: u.username,
+    team_name: u.team_name,
     packs_opened: u.packs_opened,
     created_at: u.created_at,
   }));
