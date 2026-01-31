@@ -1170,8 +1170,8 @@ app.post('/api/messages/send', authMiddleware, (req, res) => {
 // ADMIN: Debug card images
 // =============================================================================
 
-// Debug endpoint to see card image status
-app.get('/api/admin/debug-images', authMiddleware, (req, res) => {
+// Debug endpoint to see card image status (no auth for easy debugging)
+app.get('/api/admin/debug-images', (req, res) => {
   const fs = require('fs');
   const path = require('path');
   
