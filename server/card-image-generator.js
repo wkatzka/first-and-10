@@ -119,6 +119,9 @@ async function generateAICard(player) {
   const filename = getCardFilename(player, 'png');
   const filepath = path.join(IMAGES_DIR, filename);
   
+  console.log(`[AI-GEN] Starting for ${cardData.name} (${cardData.season}) -> ${filepath}`);
+  console.log(`[AI-GEN] API Key present: ${!!process.env.OPENAI_API_KEY}`);
+  
   try {
     await generateCardWithAI({
       name: cardData.name,
@@ -134,10 +137,11 @@ async function generateAICard(player) {
       quality: 'standard',
     });
     
-    console.log(`AI image generated: ${filename}`);
+    console.log(`[AI-GEN] SUCCESS: ${filename}`);
     return `/cards/${filename}`;
   } catch (err) {
-    console.error(`AI generation failed for ${cardData.name}: ${err.message}`);
+    console.error(`[AI-GEN] FAILED for ${cardData.name}: ${err.message}`);
+    console.error(`[AI-GEN] Full error:`, err);
     // Fallback to SVG
     return generateSVGCard(player);
   }

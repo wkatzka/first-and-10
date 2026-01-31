@@ -551,19 +551,22 @@ function regenerateCardImage(cardId, card) {
         ...card,
       };
       
-      console.log(`Regenerating image for card ${cardId} (${playerData.player}, ${playerData.season})...`);
+      console.log(`[REGEN] Starting for card ${cardId}: ${playerData.player} (${playerData.season})`);
       
       // Force regeneration by not using cache
       const imageUrl = await cardImageGenerator.generateAICard(playerData);
       
-      if (imageUrl && !imageUrl.includes('placeholder')) {
+      console.log(`[REGEN] Card ${cardId} returned: ${imageUrl}`);
+      
+      // Only update if we got a PNG (not SVG fallback)
+      if (imageUrl && imageUrl.endsWith('.png')) {
         db.updateCardImage(cardId, imageUrl);
-        console.log(`Card ${cardId} image regenerated successfully: ${imageUrl}`);
+        console.log(`[REGEN] Card ${cardId} SUCCESS - updated to PNG`);
       } else {
-        console.log(`Card ${cardId} regeneration returned placeholder, skipping update`);
+        console.log(`[REGEN] Card ${cardId} FAILED - got SVG fallback, not updating`);
       }
     } catch (err) {
-      console.error(`Failed to regenerate image for card ${cardId}:`, err.message);
+      console.error(`[REGEN] Card ${cardId} ERROR:`, err.message);
     }
   });
 }
