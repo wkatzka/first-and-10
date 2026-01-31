@@ -32,6 +32,5 @@
   "games": [],
   "nextUserId": 1,
   "nextCardId": 1,
-  "nextGameId": 1,
-  "_note": "Reset on 2026-01-30 - new starter pack system guarantees all positions"
+  "nextGameId": 1
 }

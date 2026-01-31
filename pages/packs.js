@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import Card from '../components/Card';
 import CardModal from '../components/CardModal';
+import PackOpeningAnimation from '../components/PackOpeningAnimation';
 import { getPackInfo, openPack, openAllPacks, TIER_NAMES } from '../lib/api';
 
 export default function Packs({ user, onLogout, unreadMessages }) {
@@ -16,6 +17,9 @@ export default function Packs({ user, onLogout, unreadMessages }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [imagesGenerating, setImagesGenerating] = useState(false);
   const [showAiPopup, setShowAiPopup] = useState(false);
+  const [showPackAnimation, setShowPackAnimation] = useState(false);
+  const [pendingPackData, setPendingPackData] = useState(null);
+  const [currentPackType, setCurrentPackType] = useState('starter');
   
   useEffect(() => {
     if (!user) {
@@ -45,31 +49,53 @@ export default function Packs({ user, onLogout, unreadMessages }) {
     setRevealIndex(-1);
     setImagesGenerating(false);
     
+    // Determine pack type for animation
+    const isStarter = packInfo.packsOpened < 3;
+    setCurrentPackType(isStarter ? 'starter' : 'bonus');
+    
     try {
       const data = await openPack();
-      setOpenedCards(data.cards);
-      setShowResults(true);
-      setImagesGenerating(data.imagesGenerating || false);
       
-      // Show AI popup if images are generating
-      if (data.imagesGenerating) {
-        setShowAiPopup(true);
-      }
+      // Store data and show animation
+      setPendingPackData(data);
+      setShowPackAnimation(true);
       
-      // Reveal cards one by one
-      for (let i = 0; i < data.cards.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setRevealIndex(i);
-      }
-      
-      // Reload pack info
-      loadPackInfo();
     } catch (err) {
       console.error('Failed to open pack:', err);
       alert(err.message);
-    } finally {
       setOpening(false);
     }
+  };
+  
+  const handleAnimationComplete = async () => {
+    setShowPackAnimation(false);
+    
+    if (!pendingPackData) {
+      setOpening(false);
+      return;
+    }
+    
+    const data = pendingPackData;
+    setPendingPackData(null);
+    
+    setOpenedCards(data.cards);
+    setShowResults(true);
+    setImagesGenerating(data.imagesGenerating || false);
+    
+    // Show AI popup if images are generating
+    if (data.imagesGenerating) {
+      setShowAiPopup(true);
+    }
+    
+    // Reveal cards one by one
+    for (let i = 0; i < data.cards.length; i++) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setRevealIndex(i);
+    }
+    
+    // Reload pack info
+    loadPackInfo();
+    setOpening(false);
   };
   
   const handleOpenAll = async () => {
@@ -112,8 +138,16 @@ export default function Packs({ user, onLogout, unreadMessages }) {
   if (!user) return null;
   
   return (
-    <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
-      <div className="space-y-8">
+    <>
+      {/* Pack Opening Animation */}
+      <PackOpeningAnimation
+        isOpen={showPackAnimation}
+        onComplete={handleAnimationComplete}
+        packType={currentPackType}
+      />
+      
+      <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
+        <div className="space-y-8">
         {/* Header */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white mb-2">Open Packs</h1>
@@ -286,6 +320,7 @@ export default function Packs({ user, onLogout, unreadMessages }) {
           </div>
         )}
       </div>
-    </Layout>
+      </Layout>
+    </>
   );
 }
