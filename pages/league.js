@@ -10,11 +10,13 @@ import {
   getConversation, 
   sendMessage,
   getUnreadCount,
+  getLeaderboard,
 } from '../lib/api';
 
 export default function League({ user, onLogout, unreadMessages, onMessageRead }) {
   const router = useRouter();
   const [teams, setTeams] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Messages state
@@ -52,8 +54,38 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
   
   const loadTeams = async () => {
     try {
-      const data = await getAllUsers();
-      setTeams(data.users || []);
+      const [usersData, leaderboardData] = await Promise.all([
+        getAllUsers(),
+        getLeaderboard(50),
+      ]);
+      
+      const users = usersData.users || [];
+      const lb = leaderboardData.leaderboard || [];
+      
+      // Merge leaderboard ranks into teams
+      const teamsWithRank = users.map(team => {
+        const lbEntry = lb.find(e => e.id === team.id);
+        const rank = lbEntry ? lb.indexOf(lbEntry) + 1 : 999;
+        return {
+          ...team,
+          rank,
+          wins: lbEntry?.wins || team.stats?.wins || 0,
+          losses: lbEntry?.losses || team.stats?.losses || 0,
+          ties: lbEntry?.ties || team.stats?.ties || 0,
+          total_games: lbEntry?.total_games || 0,
+        };
+      });
+      
+      // Sort by rank (teams with games first, then by wins)
+      teamsWithRank.sort((a, b) => {
+        if (a.total_games === 0 && b.total_games === 0) return 0;
+        if (a.total_games === 0) return 1;
+        if (b.total_games === 0) return -1;
+        return a.rank - b.rank;
+      });
+      
+      setTeams(teamsWithRank);
+      setLeaderboard(lb);
     } catch (err) {
       console.error('Failed to load teams:', err);
     } finally {
@@ -224,69 +256,82 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
           </div>
         )}
         
-        {/* Teams Grid */}
+        {/* Teams List - Ranked */}
         {loading ? (
           <div className="text-center text-gray-400 py-12">Loading teams...</div>
-        ) : teams.filter(t => t.id !== user.id).length === 0 ? (
+        ) : teams.length === 0 ? (
           <div className="text-center text-gray-400 py-12">
-            No other teams yet. Invite some friends!
+            No teams yet. Invite some friends!
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {teams
-              .filter(t => t.id !== user.id)
-              .map(team => (
+          <div className="space-y-3 max-w-2xl mx-auto">
+            {teams.map((team, index) => {
+              const isMe = team.id === user.id;
+              const rank = team.total_games > 0 ? team.rank : '-';
+              const rankBg = rank === 1 ? 'bg-yellow-500' : rank === 2 ? 'bg-gray-400' : rank === 3 ? 'bg-orange-500' : 'bg-gray-600';
+              
+              return (
                 <div
                   key={team.id}
-                  className="bg-gray-800 rounded-xl p-4"
+                  className={`bg-gray-800 rounded-xl p-4 ${isMe ? 'ring-2 ring-blue-500' : ''}`}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <h3 className="text-lg font-bold text-white">
-                        {team.team_name || 'Unnamed Team'}
-                      </h3>
+                  <div className="flex items-center gap-4">
+                    {/* Rank Badge */}
+                    <div className={`w-12 h-12 ${rankBg} rounded-full flex items-center justify-center flex-shrink-0`}>
+                      <span className={`font-bold text-lg ${rank <= 3 && rank !== '-' ? 'text-black' : 'text-white'}`}>
+                        {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
+                      </span>
+                    </div>
+                    
+                    {/* Team Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-white truncate">
+                          {team.team_name || 'Unnamed Team'}
+                        </h3>
+                        {isMe && <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">YOU</span>}
+                      </div>
                       <p className="text-sm text-gray-400">{team.username}</p>
                     </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-white">{team.card_count}</div>
-                      <div className="text-xs text-gray-500">cards</div>
+                    
+                    {/* Record */}
+                    <div className="text-center flex-shrink-0">
+                      <div className="text-lg font-bold">
+                        <span className="text-green-400">{team.wins}</span>
+                        <span className="text-gray-500">-</span>
+                        <span className="text-red-400">{team.losses}</span>
+                        {team.ties > 0 && (
+                          <>
+                            <span className="text-gray-500">-</span>
+                            <span className="text-yellow-400">{team.ties}</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500">{team.card_count} cards</div>
                     </div>
                   </div>
                   
-                  {/* Stats */}
-                  <div className="flex gap-4 text-sm mb-4">
-                    <div className="text-center">
-                      <div className="text-green-400 font-bold">{team.stats?.wins || 0}</div>
-                      <div className="text-xs text-gray-500">Wins</div>
+                  {/* Action Buttons - only for other teams */}
+                  {!isMe && (
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-700">
+                      <button
+                        onClick={() => viewTeamCards(team)}
+                        disabled={team.card_count === 0}
+                        className="flex-1 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                      >
+                        View Cards
+                      </button>
+                      <button
+                        onClick={() => openConversation(team)}
+                        className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors text-sm"
+                      >
+                        Message
+                      </button>
                     </div>
-                    <div className="text-center">
-                      <div className="text-red-400 font-bold">{team.stats?.losses || 0}</div>
-                      <div className="text-xs text-gray-500">Losses</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-gray-400 font-bold">{team.stats?.ties || 0}</div>
-                      <div className="text-xs text-gray-500">Ties</div>
-                    </div>
-                  </div>
-                  
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => viewTeamCards(team)}
-                      disabled={team.card_count === 0}
-                      className="flex-1 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-                    >
-                      View Cards
-                    </button>
-                    <button
-                      onClick={() => openConversation(team)}
-                      className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors text-sm"
-                    >
-                      Message
-                    </button>
-                  </div>
+                  )}
                 </div>
-              ))}
+              );
+            })}
           </div>
         )}
         

@@ -731,6 +731,49 @@ app.post('/api/roster/auto-fill', authMiddleware, (req, res) => {
 // GAME ROUTES
 // =============================================================================
 
+// Practice simulation (doesn't affect standings)
+app.post('/api/games/practice', authMiddleware, (req, res) => {
+  try {
+    const { opponent_id } = req.body;
+    
+    if (!opponent_id) {
+      return res.status(400).json({ error: 'Opponent ID required' });
+    }
+    
+    const opponent = db.getUser(opponent_id);
+    if (!opponent) {
+      return res.status(404).json({ error: 'Opponent not found' });
+    }
+    
+    // Get both rosters
+    const myRoster = db.getFullRoster(req.user.id);
+    const opponentRoster = db.getFullRoster(opponent_id);
+    
+    if (!myRoster.cards || Object.keys(myRoster.cards).length === 0) {
+      return res.status(400).json({ error: 'You need to set your roster first' });
+    }
+    
+    if (!opponentRoster.cards || Object.keys(opponentRoster.cards).length === 0) {
+      return res.status(400).json({ error: 'Opponent has no roster set' });
+    }
+    
+    // Run simulation using game engine
+    const result = gameEngine.simulateGame(myRoster.cards, opponentRoster.cards);
+    
+    // Return result WITHOUT recording it (practice only)
+    res.json({
+      yourScore: result.homeScore,
+      opponentScore: result.awayScore,
+      winner: result.homeScore > result.awayScore ? 'you' : 
+              result.awayScore > result.homeScore ? 'opponent' : 'tie',
+      isPractice: true,
+    });
+  } catch (err) {
+    console.error('Practice simulation error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get list of opponents
 app.get('/api/opponents', authMiddleware, (req, res) => {
   const users = db.getAllUsers().filter(u => u.id !== req.user.id);

@@ -18,7 +18,6 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
     { href: '/roster', label: 'Roster', icon: '📋' },
     { href: '/league', label: 'League', icon: '🏟️', badge: unreadMessages },
     { href: '/schedule', label: 'Schedule', icon: '📅' },
-    { href: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
     { href: '/how-to-play', label: 'Help', icon: '📖' },
   ];
   
@@ -28,7 +27,7 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
     { href: '/packs', label: 'Packs', icon: '📦' },
     { href: '/roster', label: 'Roster', icon: '📋' },
     { href: '/league', label: 'League', icon: '🏟️', badge: unreadMessages },
-    { href: '/leaderboard', label: 'Ranks', icon: '🏆' },
+    { href: '/schedule', label: 'Schedule', icon: '📅' },
     { href: '/how-to-play', label: 'Rules', icon: '📖' },
   ];
   
