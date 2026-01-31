@@ -43,14 +43,42 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
 
-// Serve card images from persistent storage if available
+// Serve card images - check persistent storage FIRST, then fall back to public
 const PERSISTENT_DIR = '/var/data';
-if (require('fs').existsSync(PERSISTENT_DIR)) {
-  app.use('/cards', express.static(path.join(PERSISTENT_DIR, 'cards')));
-  console.log('Serving card images from persistent storage: /var/data/cards');
+const fs = require('fs');
+if (fs.existsSync(PERSISTENT_DIR)) {
+  // Ensure the cards directory exists in persistent storage
+  const persistentCardsDir = path.join(PERSISTENT_DIR, 'cards');
+  if (!fs.existsSync(persistentCardsDir)) {
+    fs.mkdirSync(persistentCardsDir, { recursive: true });
+  }
+  
+  // Custom middleware to serve cards from persistent OR public
+  app.use('/cards', (req, res, next) => {
+    const filename = req.path.replace(/^\//, ''); // Remove leading slash
+    const persistentPath = path.join(PERSISTENT_DIR, 'cards', filename);
+    const publicPath = path.join(__dirname, '../public/cards', filename);
+    
+    // Check persistent storage first
+    if (fs.existsSync(persistentPath)) {
+      return res.sendFile(persistentPath);
+    }
+    // Fall back to public folder (for placeholder.svg, etc.)
+    if (fs.existsSync(publicPath)) {
+      return res.sendFile(publicPath);
+    }
+    // Not found
+    next();
+  });
+  console.log('Serving card images from persistent storage with public fallback');
+} else {
+  // Development: just serve from public
+  app.use('/cards', express.static(path.join(__dirname, '../public/cards')));
 }
+
+// Serve other static files from public
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Simple session management (in-memory for MVP)
 const sessions = new Map();

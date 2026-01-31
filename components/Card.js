@@ -1,12 +1,17 @@
+import { useState } from 'react';
 import { TIER_NAMES, TIER_COLORS, POSITION_COLORS } from '../lib/api';
 
 export default function Card({ card, onClick, selected, small, showImage = true }) {
+  const [imageError, setImageError] = useState(false);
   const tierColor = TIER_COLORS[card.tier] || TIER_COLORS[1];
   const posColor = POSITION_COLORS[card.position] || '#6B7280';
   const isLegendary = card.tier >= 9;
   
-  // If card has an image_url and we want to show images, display the SVG card
-  if (showImage && card.image_url && !small) {
+  // Check if image should be shown (has valid URL and hasn't errored)
+  const hasValidImage = showImage && card.image_url && !small && !imageError && !card.image_url.includes('placeholder');
+  
+  // If card has an image_url and we want to show images, display the image card
+  if (hasValidImage) {
     return (
       <div
         onClick={onClick}
@@ -25,6 +30,7 @@ export default function Card({ card, onClick, selected, small, showImage = true 
           alt={`${card.player_name || card.player} ${card.season}`}
           className="w-full h-auto"
           style={{ aspectRatio: '512 / 720' }}
+          onError={() => setImageError(true)}
         />
         
         {/* Legendary Glow Animation */}
