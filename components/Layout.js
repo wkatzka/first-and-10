@@ -22,13 +22,14 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
     { href: '/how-to-play', label: 'Help', icon: '📖' },
   ];
   
-  // Mobile bottom nav (5 main items)
+  // Mobile bottom nav (6 main items)
   const mobileNavItems = [
     { href: '/cards', label: 'Cards', icon: '🃏' },
     { href: '/packs', label: 'Packs', icon: '📦' },
     { href: '/roster', label: 'Roster', icon: '📋' },
     { href: '/league', label: 'League', icon: '🏟️', badge: unreadMessages },
     { href: '/leaderboard', label: 'Ranks', icon: '🏆' },
+    { href: '/how-to-play', label: 'Rules', icon: '📖' },
   ];
   
   return (
