@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import Card from '../components/Card';
 import CardModal from '../components/CardModal';
-import PackOpeningAnimation from '../components/PackOpeningAnimation';
+import FoilPackOpening from '../components/FoilPackOpening';
 import { getPackInfo, openPack, openAllPacks, TIER_NAMES } from '../lib/api';
 
 export default function Packs({ user, onLogout, unreadMessages }) {
@@ -58,6 +58,8 @@ export default function Packs({ user, onLogout, unreadMessages }) {
       
       // Store data and show animation
       setPendingPackData(data);
+      setOpenedCards(data.cards);
+      setImagesGenerating(data.imagesGenerating || false);
       setShowPackAnimation(true);
       
     } catch (err) {
@@ -69,28 +71,15 @@ export default function Packs({ user, onLogout, unreadMessages }) {
   
   const handleAnimationComplete = async () => {
     setShowPackAnimation(false);
-    
-    if (!pendingPackData) {
-      setOpening(false);
-      return;
-    }
-    
-    const data = pendingPackData;
     setPendingPackData(null);
     
-    setOpenedCards(data.cards);
+    // Show results view
     setShowResults(true);
-    setImagesGenerating(data.imagesGenerating || false);
+    setRevealIndex(openedCards.length - 1); // Show all cards
     
     // Show AI popup if images are generating
-    if (data.imagesGenerating) {
+    if (imagesGenerating) {
       setShowAiPopup(true);
-    }
-    
-    // Reveal cards one by one
-    for (let i = 0; i < data.cards.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setRevealIndex(i);
     }
     
     // Reload pack info
@@ -139,11 +128,12 @@ export default function Packs({ user, onLogout, unreadMessages }) {
   
   return (
     <>
-      {/* Pack Opening Animation */}
-      <PackOpeningAnimation
+      {/* Foil Pack Opening Animation */}
+      <FoilPackOpening
         isOpen={showPackAnimation}
         onComplete={handleAnimationComplete}
         packType={currentPackType}
+        cards={openedCards}
       />
       
       <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
