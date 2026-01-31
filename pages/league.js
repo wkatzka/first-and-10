@@ -6,6 +6,7 @@ import CardModal from '../components/CardModal';
 import { 
   getAllUsers, 
   getUserCards, 
+  getUserRoster,
   getInbox, 
   getConversation, 
   sendMessage,
@@ -34,6 +35,7 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
   // View cards state
   const [viewingTeamCards, setViewingTeamCards] = useState(null);
   const [teamCards, setTeamCards] = useState([]);
+  const [teamRoster, setTeamRoster] = useState(null);
   const [loadingCards, setLoadingCards] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
   
@@ -151,15 +153,61 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
     setViewingTeamCards(team);
     setLoadingCards(true);
     setTeamCards([]);
+    setTeamRoster(null);
     
     try {
-      const data = await getUserCards(team.id);
-      setTeamCards(data.cards || []);
+      const [cardsData, rosterData] = await Promise.all([
+        getUserCards(team.id),
+        getUserRoster(team.id),
+      ]);
+      setTeamCards(cardsData.cards || []);
+      setTeamRoster(rosterData);
     } catch (err) {
       console.error('Failed to load cards:', err);
     } finally {
       setLoadingCards(false);
     }
+  };
+  
+  // Helper to get roster cards and bench cards
+  const getRosterAndBench = () => {
+    if (!teamRoster || !teamCards.length) {
+      return { rosterCards: {}, benchCards: teamCards };
+    }
+    
+    const rosterCardIds = new Set();
+    const rosterCards = {};
+    
+    // Map roster slots to cards
+    const slots = [
+      { key: 'qb_card_id', label: 'QB', position: 'QB' },
+      { key: 'rb_card_id', label: 'RB', position: 'RB' },
+      { key: 'wr1_card_id', label: 'WR1', position: 'WR' },
+      { key: 'wr2_card_id', label: 'WR2', position: 'WR' },
+      { key: 'te_card_id', label: 'TE', position: 'TE' },
+      { key: 'ol_card_id', label: 'OL', position: 'OL' },
+      { key: 'dl_card_id', label: 'DL', position: 'DL' },
+      { key: 'lb_card_id', label: 'LB', position: 'LB' },
+      { key: 'db1_card_id', label: 'DB1', position: 'DB' },
+      { key: 'db2_card_id', label: 'DB2', position: 'DB' },
+      { key: 'k_card_id', label: 'K', position: 'K' },
+    ];
+    
+    for (const slot of slots) {
+      const cardId = teamRoster.roster?.[slot.key];
+      if (cardId) {
+        const card = teamCards.find(c => c.id === cardId);
+        if (card) {
+          rosterCards[slot.label] = card;
+          rosterCardIds.add(cardId);
+        }
+      }
+    }
+    
+    // Bench = cards not in roster
+    const benchCards = teamCards.filter(c => !rosterCardIds.has(c.id));
+    
+    return { rosterCards, benchCards, slots };
   };
   
   // Group inbox messages by sender
@@ -417,55 +465,119 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
         )}
         
         {/* View Cards Modal */}
-        {viewingTeamCards && (
-          <div 
-            className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
-            onClick={() => setViewingTeamCards(null)}
-          >
+        {viewingTeamCards && (() => {
+          const { rosterCards, benchCards, slots } = getRosterAndBench();
+          const hasRoster = Object.keys(rosterCards).length > 0;
+          
+          return (
             <div 
-              className="bg-gray-800 rounded-xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
+              onClick={() => setViewingTeamCards(null)}
             >
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <h2 className="text-xl font-bold text-white">
-                    {viewingTeamCards.team_name || viewingTeamCards.username}'s Cards
-                  </h2>
-                  <p className="text-sm text-gray-400">
-                    {teamCards.length} cards
-                  </p>
+              <div 
+                className="bg-gray-800 rounded-xl p-4 sm:p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">
+                      {viewingTeamCards.team_name || viewingTeamCards.username}
+                    </h2>
+                    <p className="text-sm text-gray-400">
+                      {teamCards.length} cards total
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setViewingTeamCards(null)}
+                    className="text-gray-400 hover:text-white text-2xl w-10 h-10 flex items-center justify-center"
+                  >
+                    ×
+                  </button>
                 </div>
-                <button
-                  onClick={() => setViewingTeamCards(null)}
-                  className="text-gray-400 hover:text-white text-2xl"
-                >
-                  ×
-                </button>
+                
+                {loadingCards ? (
+                  <div className="text-center text-gray-400 py-8">Loading cards...</div>
+                ) : teamCards.length === 0 ? (
+                  <div className="text-center text-gray-400 py-8">
+                    No cards in collection
+                  </div>
+                ) : (
+                  <>
+                    {/* Active Roster Section */}
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <h3 className="text-lg font-bold text-white">Active Roster</h3>
+                        <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded">
+                          {Object.keys(rosterCards).length}/11
+                        </span>
+                      </div>
+                      
+                      {!hasRoster ? (
+                        <div className="bg-gray-700/50 rounded-lg p-4 text-center text-gray-400 text-sm">
+                          No roster set
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                          {slots?.map(slot => {
+                            const card = rosterCards[slot.label];
+                            return (
+                              <div key={slot.label} className="text-center">
+                                <div className="text-xs font-bold text-gray-400 mb-1">{slot.label}</div>
+                                {card ? (
+                                  <div 
+                                    className="cursor-pointer hover:scale-105 transition-transform"
+                                    onClick={() => setSelectedCard(card)}
+                                  >
+                                    <Card card={card} small />
+                                  </div>
+                                ) : (
+                                  <div className="bg-gray-700/50 rounded-lg aspect-[2.5/3.5] flex items-center justify-center">
+                                    <span className="text-gray-500 text-xs">Empty</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Bench Section */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <h3 className="text-lg font-bold text-white">Bench</h3>
+                        <span className="text-xs bg-gray-600 text-white px-2 py-0.5 rounded">
+                          {benchCards.length} cards
+                        </span>
+                      </div>
+                      
+                      {benchCards.length === 0 ? (
+                        <div className="bg-gray-700/50 rounded-lg p-4 text-center text-gray-400 text-sm">
+                          No bench cards
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                          {benchCards
+                            .sort((a, b) => b.tier - a.tier)
+                            .map(card => (
+                              <div 
+                                key={card.id}
+                                className="cursor-pointer hover:scale-105 transition-transform"
+                                onClick={() => setSelectedCard(card)}
+                              >
+                                <Card card={card} small />
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
-              
-              {loadingCards ? (
-                <div className="text-center text-gray-400 py-8">Loading cards...</div>
-              ) : teamCards.length === 0 ? (
-                <div className="text-center text-gray-400 py-8">
-                  No cards in collection
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {teamCards
-                    .sort((a, b) => b.tier - a.tier)
-                    .map(card => (
-                      <Card 
-                        key={card.id} 
-                        card={card} 
-                        small 
-                        onClick={() => setSelectedCard(card)}
-                      />
-                    ))}
-                </div>
-              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
         
         {/* Card Detail Modal */}
         {selectedCard && (
