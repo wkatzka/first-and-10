@@ -457,36 +457,76 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
 
 // Helper: Check if card needs image regeneration
 function cardNeedsImage(card) {
-  if (!card.image_url) return true;
-  if (card.image_url.includes('placeholder')) return true;
-  if (card.image_pending) return true;
+  if (!card.image_url) {
+    console.log(`Card ${card.id} needs image: no image_url`);
+    return true;
+  }
+  if (card.image_url.includes('placeholder')) {
+    console.log(`Card ${card.id} needs image: has placeholder`);
+    return true;
+  }
+  if (card.image_pending) {
+    console.log(`Card ${card.id} needs image: image_pending is true`);
+    return true;
+  }
   
   // Check if file actually exists
   const fs = require('fs');
   const path = require('path');
   
-  // Get the actual file path
+  // Get the actual file path - check both locations
   const PERSISTENT_DIR = '/var/data';
   const USE_PERSISTENT = fs.existsSync(PERSISTENT_DIR);
-  const IMAGES_DIR = USE_PERSISTENT 
-    ? path.join(PERSISTENT_DIR, 'cards')
-    : path.join(__dirname, '../public/cards');
   
   // Extract filename from URL
   const filename = card.image_url.split('/').pop();
-  const filepath = path.join(IMAGES_DIR, filename);
   
-  return !fs.existsSync(filepath);
+  // Check persistent storage first
+  if (USE_PERSISTENT) {
+    const persistentPath = path.join(PERSISTENT_DIR, 'cards', filename);
+    if (fs.existsSync(persistentPath)) {
+      return false; // File exists in persistent storage
+    }
+  }
+  
+  // Check public folder as fallback
+  const publicPath = path.join(__dirname, '../public/cards', filename);
+  if (fs.existsSync(publicPath)) {
+    return false; // File exists in public folder
+  }
+  
+  console.log(`Card ${card.id} needs image: file not found (${filename})`);
+  return true;
 }
 
 // Helper: Regenerate image for a card in background
 function regenerateCardImage(cardId, card) {
   setImmediate(async () => {
     try {
-      console.log(`Regenerating image for card ${cardId} (${card.player || card.player_name})...`);
-      const imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
-      db.updateCardImage(cardId, imageUrl);
-      console.log(`Card ${cardId} image regenerated: ${imageUrl}`);
+      // Convert database card format to player format expected by image generator
+      const playerData = {
+        player: card.player_name || card.player || 'Unknown',
+        player_name: card.player_name || card.player || 'Unknown',
+        season: card.season,
+        team: card.team,
+        position: card.position,
+        tier: card.tier,
+        composite_score: card.composite_score,
+        // Include raw stat fields if available for proper formatting
+        ...card,
+      };
+      
+      console.log(`Regenerating image for card ${cardId} (${playerData.player}, ${playerData.season})...`);
+      
+      // Force regeneration by not using cache
+      const imageUrl = await cardImageGenerator.generateAICard(playerData);
+      
+      if (imageUrl && !imageUrl.includes('placeholder')) {
+        db.updateCardImage(cardId, imageUrl);
+        console.log(`Card ${cardId} image regenerated successfully: ${imageUrl}`);
+      } else {
+        console.log(`Card ${cardId} regeneration returned placeholder, skipping update`);
+      }
     } catch (err) {
       console.error(`Failed to regenerate image for card ${cardId}:`, err.message);
     }
