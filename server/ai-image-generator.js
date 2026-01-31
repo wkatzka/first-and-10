@@ -6,7 +6,7 @@
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
-const { buildEraBasedPrompt, getStyleSummary, TIER_QUALITIES } = require("./era-tier-prompts.js");
+const { buildPhotorealisticPrompt, getTierConfig, getEraConfig, TIER_BACKGROUNDS } = require("./era-tier-prompts.js");
 
 // OpenAI API configuration
 const OPENAI_API_URL = "https://api.openai.com/v1/images/generations";
@@ -72,11 +72,12 @@ async function generateCardWithAI(player, outputPath, options = {}) {
     throw new Error("OpenAI API key required. Set OPENAI_API_KEY environment variable or pass apiKey option.");
   }
 
-  // Build the era-based prompt
-  const prompt = buildEraBasedPrompt(player);
-  const style = getStyleSummary(player);
+  // Build the photorealistic prompt
+  const prompt = buildPhotorealisticPrompt(player);
+  const tierConfig = getTierConfig(player.tier || 5);
+  const eraConfig = getEraConfig(player.season || 2020);
 
-  console.log(`Generating AI image for ${player.name} (${style.styleSummary})...`);
+  console.log(`Generating AI image for ${player.name} (Tier ${player.tier}: ${tierConfig.name}, ${eraConfig.name})...`);
 
   const enforce = ocrMode === "enforce";
   const audit = ocrMode === "audit";
@@ -230,21 +231,24 @@ function downloadImage(url, outputPath) {
  * Generate metadata for an AI-generated card
  */
 function generateAICardMetadata(tokenId, player, imageUrl, generationInfo = {}) {
-  const tierConfig = TIER_QUALITIES[player.tier] || TIER_QUALITIES[5];
-  const style = getStyleSummary(player);
+  const tierConfig = getTierConfig(player.tier || 5);
+  const eraConfig = getEraConfig(player.season || 2020);
 
   const attributes = [
     { trait_type: "Player", value: player.name ?? "Unknown" },
     { trait_type: "Season", value: Number(player.season) },
-    { trait_type: "Era", value: style.era },
-    { trait_type: "Era Years", value: style.eraYears },
+    { trait_type: "Era", value: eraConfig.name },
     { trait_type: "Team", value: player.team ?? "—" },
     { trait_type: "Position", value: player.position ?? "—" },
     { trait_type: "Tier", value: player.tier },
     { trait_type: "Tier Name", value: tierConfig.name },
-    { trait_type: "Style", value: style.styleSummary },
-    { trait_type: "Art Style", value: "AI Generated" },
+    { trait_type: "Art Style", value: "AI Generated Photorealistic" },
   ];
+
+  // Add HOF flag if applicable
+  if (player.isHOF || player.tier === 11) {
+    attributes.push({ trait_type: "Hall of Fame", value: "Yes" });
+  }
 
   // Add score if available
   if (player.score != null) {
@@ -266,15 +270,15 @@ function generateAICardMetadata(tokenId, player, imageUrl, generationInfo = {}) 
   }
 
   return {
-    name: `${player.season} ${player.name} (${style.styleSummary})`,
-    description: `${player.name} · ${player.season} season · ${player.team} · ${style.styleSummary} · AI-generated artwork`,
+    name: `${player.season} ${player.name} (${tierConfig.name})`,
+    description: `${player.name} · ${player.season} season · ${player.team} · ${tierConfig.name} · ${eraConfig.name} · AI-generated photorealistic artwork`,
     image: imageUrl,
     attributes,
     properties: {
       tier: player.tier,
       tierName: tierConfig.name,
-      era: style.era,
-      eraYears: style.eraYears,
+      era: eraConfig.name,
+      isHOF: player.isHOF || player.tier === 11,
       score: player.score,
       generatedWith: "DALL-E 3",
     },

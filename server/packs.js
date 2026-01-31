@@ -10,7 +10,9 @@ const { isCardMinted, mintCard, getAvailabilityStats } = require('./minting-ledg
 
 // Load normalized players
 const PLAYERS_PATH = path.join(__dirname, './game-engine/data/normalized_players.json');
+const HOF_PATH = path.join(__dirname, './game-engine/data/hof_players.json');
 let allPlayers = null;
+let hofSet = null; // Set of "player_season" keys for HOF lookup
 let playersByTier = {};
 let playersByPosition = {};
 
@@ -34,6 +36,17 @@ function loadPlayers() {
   const raw = fs.readFileSync(PLAYERS_PATH, 'utf-8');
   const rawPlayers = JSON.parse(raw);
   
+  // Load Hall of Fame list
+  try {
+    const hofRaw = fs.readFileSync(HOF_PATH, 'utf-8');
+    const hofPlayers = JSON.parse(hofRaw);
+    hofSet = new Set(hofPlayers.map(p => `${p.player}_${p.season}`));
+    console.log(`Loaded ${hofSet.size} Hall of Fame players`);
+  } catch (err) {
+    console.log('No HOF list found, skipping HOF tier');
+    hofSet = new Set();
+  }
+  
   // Normalize player data - map pos_group to position
   // AND filter to primary category for each position to avoid duplicate records
   const normalized = rawPlayers.map(p => ({
@@ -43,7 +56,7 @@ function loadPlayers() {
   
   // Filter to keep only primary category for each position
   // This prevents a QB from having both "passing" and "rushing_receiving" records
-  allPlayers = normalized.filter(p => {
+  const filtered = normalized.filter(p => {
     const primaryCat = PRIMARY_CATEGORY[p.position];
     // If no primary category defined, accept all
     if (!primaryCat) return true;
@@ -53,11 +66,20 @@ function loadPlayers() {
     return true;
   });
   
+  // Mark Hall of Fame players as tier 11
+  allPlayers = filtered.map(p => {
+    const key = `${p.player}_${p.season}`;
+    if (hofSet.has(key)) {
+      return { ...p, tier: 11, isHOF: true };
+    }
+    return p;
+  });
+  
   console.log(`Loaded ${allPlayers.length} players (filtered from ${normalized.length} records)`);
   
-  // Index by tier
+  // Index by tier (1-10 regular, 11 = Hall of Fame)
   playersByTier = {};
-  for (let i = 1; i <= 10; i++) {
+  for (let i = 1; i <= 11; i++) {
     playersByTier[i] = [];
   }
   
@@ -95,6 +117,7 @@ function loadPlayers() {
 // Tier weights for pack opening (lower tiers more common)
 // These are relative weights, not percentages
 const TIER_WEIGHTS = {
+  11: 0.5,    // Hall of Fame - ultra rare (only ~332 exist)
   10: 1,      // Legendary - very rare
   9: 3,       // Epic
   8: 7,       // Ultra Rare
@@ -117,7 +140,8 @@ function pickRandomTier() {
   const roll = Math.random() * TOTAL_WEIGHT;
   let cumulative = 0;
   
-  for (let tier = 1; tier <= 10; tier++) {
+  // Start from highest tier (11 = HOF) down to 1
+  for (let tier = 11; tier >= 1; tier--) {
     cumulative += TIER_WEIGHTS[tier];
     if (roll < cumulative) {
       return tier;

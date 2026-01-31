@@ -1,287 +1,232 @@
 /**
- * Era-based tier prompts for AI image generation.
- * Combines historical era aesthetics with tier quality levels.
- * 
- * 6 Eras × 10 Tiers = 60 unique style combinations
+ * Era-Tier Photorealistic Prompt System
+ * ======================================
+ * Generates DALL-E prompts for NFL trading cards with:
+ * - Era-specific equipment and visual styles
+ * - Position-specific poses
+ * - Tier-specific backgrounds
  */
 
-// Era definitions with aesthetic styles - SECONDARY visual element (clearly recognizable art direction)
+// =============================================================================
+// CORE PHOTOREALISM RULES
+// =============================================================================
+
+const CORE_RULES = `Photorealistic, cinematic sports photography, studio-lit portrait, male American football player, athletic build, intense expression, trading card format, subject fills entire frame edge-to-edge, no text, no logos, no NFL branding, no team names, shot on medium format camera, shallow depth of field, 85mm lens, dramatic rim lighting, high production value, commercial photography quality`;
+
+// =============================================================================
+// ERA-SPECIFIC EQUIPMENT & STYLING
+// =============================================================================
+
 const ERAS = {
   "1920-1939": {
-    name: "Golden Age",
-    aesthetic:
-      "Art deco poster illustration, ornamental corners, sunburst rays, engraved/inked linework, aged paper grain, vignette.",
+    name: "Leather Era",
+    equipment: "soft leather helmet with no facemask, exposed face, canvas or wool jersey with horizontal stripes, minimal padding, broad shoulders visible through jersey, high-waisted canvas pants with belt, high-top leather cleats",
+    style: "sepia-tinted photography with warm golden highlights, Art Deco geometric patterns, sunburst rays, stepped forms, gold leaf accents",
+    palette: "gold, black, cream, burgundy, bronze",
   },
   "1940-1959": {
-    name: "Post-War Classic",
-    aesthetic:
-      "Mid-century print look: screen-printed shapes, thick outlines, halftone dots, paper stock texture, simple (non-branded) badge shapes, diagram motifs.",
+    name: "Post-War Era",
+    equipment: "early plastic shell helmet, single-bar facemask or no mask, thick wool jersey with felt numbers, bulky leather shoulder pads visible under jersey, high-top black leather cleats",
+    style: "propaganda poster aesthetic, bold saturated colors, pin-up art influence, heroic poses, military stencil influence, riveted metal textures",
+    palette: "army green, navy blue, rust red, cream, sepia",
   },
-  "1960-1979": {
-    name: "Retro Era",
-    aesthetic:
-      "Psychedelic/wavy shapes, bold geometry, film grain, soft-focus analog feel, retro poster energy.",
+  "1960-1977": {
+    name: "Psychedelic Era",
+    equipment: "Riddell-style suspension helmet, two-bar facemask, fitted polyester jersey with screen-printed numbers, longer hair visible below helmet, lower-cut cleats, white tape on ankles",
+    style: "psychedelic swirls, tie-dye patterns, lava lamp fluidity, organic flowing shapes, wavy distortion effects, Woodstock energy, peace era optimism",
+    palette: "burnt orange, avocado green, mustard yellow, deep purple, brown",
   },
-  "1980-1999": {
-    name: "Classic Card Era",
-    aesthetic:
-      "Loud neon geometry, airbrushed gradients, starbursts, chrome-ish panels, lens flares, halftone/dot-matrix texture, subtle scanlines/VHS artifacts.",
+  "1978-1993": {
+    name: "Synthwave Era",
+    equipment: "full-cage facemask, polycarbonate helmet shell, tinted visor Oakley style, massive shoulder pads, eye black, wristbands, towel hanging from waist, mesh jersey tight-fitting",
+    style: "hair metal chrome, Tron grid lines, Miami Vice gradients, neon tube lighting, laser effects, smoke machines, excessive over-the-top aggressive",
+    palette: "hot pink, electric cyan, neon green, chrome silver, black",
   },
-  "2000-2019": {
-    name: "Modern Era",
-    aesthetic:
-      "Clean sharp angles, carbon-fiber texture, tasteful lens flare, high clarity, subtle grunge overlays.",
+  "1994-2003": {
+    name: "Y2K Era",
+    equipment: "Riddell Revolution helmet, streamlined shell, carbon fiber facemask, form-fitting jersey with stretch fabric, integrated pads, sleeker silhouette",
+    style: "Matrix digital rain, tribal tattoo patterns, liquid chrome surfaces, morphing metal, early CGI aesthetic, chrome bubble effects",
+    palette: "silver, electric blue, lime green, black, brushed metal",
+  },
+  "2004-2010": {
+    name: "Millennium Era",
+    equipment: "Riddell Revolution style helmet, custom visor, form-fitting jersey, modern shoulder pads, visible undershirt at collar",
+    style: "clean minimalism, premium material feel, gradient meshes, social media aesthetic, flat design with subtle depth",
+    palette: "premium black, subtle gradients, accent neons, white, silver",
+  },
+  "2011-2019": {
+    name: "High Tech Era",
+    equipment: "Speedflex or Vicis-style helmet matte finish, compression undershirt visible at collar, Nike or Under Armour style jersey with moisture-wicking texture, custom visor with anti-glare coating",
+    style: "clean minimalism, app-inspired UI elements, gradient meshes, premium material feel, social media aesthetic, flat design with subtle depth",
+    palette: "premium black, subtle gradients, accent neons, white",
   },
   "2020+": {
-    name: "Contemporary",
-    aesthetic:
-      "Ultra-clean cinematic lighting, crisp DOF, modern abstract shapes, tasteful glitch accents, premium collectible vibe.",
+    name: "Hypermodern Era",
+    equipment: "cutting-edge helmet with integrated sensors, futuristic vents, iridescent visor, seamless jersey construction, engineered mesh zones, next-gen cleats with carbon fiber plates",
+    style: "holographic overlays, AR/VR elements, glitch effects, volumetric lighting, NFT visual language, digital artifacts",
+    palette: "iridescent shifting colors, void black, electric accents",
   },
 };
 
-// Tier quality levels - PRIMARY visual element (dominant)
-const TIER_QUALITIES = {
+// =============================================================================
+// POSITION-SPECIFIC POSES
+// =============================================================================
+
+const POSITION_POSES = {
+  QB: "quarterback in mid-throw motion, arm cocked back, football gripped at ear level, eyes scanning downfield, athletic throwing stance, weight transferring from back foot to front foot",
+  RB: "running back with stiff arm extended, football tucked against chest, explosive cutting motion, low center of gravity, powerful leg drive, churning legs",
+  WR: "wide receiver leaping with arms fully extended overhead, fingertips reaching for spectacular catch, body stretched in athletic extension, eyes locked on incoming ball",
+  TE: "tight end catching football over the middle, strong hands securing ball against body, muscular build, bracing for contact, shoulders squared",
+  OL: "offensive lineman in pass protection stance, hands up ready to engage, wide base, massive powerful build, anchored blocking position, knees bent",
+  DL: "defensive end exploding off the edge in pass rush, arm extended in swim move, low pad level, explosive athletic stance, bent at waist",
+  LB: "linebacker in explosive tackling form, arms wrapping for tackle, athletic muscular build, attacking downhill, intense expression",
+  DB: "cornerback leaping for interception, high-pointing the football, athletic body control in air, eyes locked on ball, lean quick build",
+  K: "kicker in follow-through position, leg fully extended upward, plant foot grounded, arms out for balance, eyes following ball flight",
+  P: "punter mid-kick, leg swinging through full extension, ball just leaving foot, arm extended for balance",
+};
+
+// =============================================================================
+// TIER-SPECIFIC BACKGROUNDS
+// =============================================================================
+
+const TIER_BACKGROUNDS = {
+  11: {
+    name: "Hall of Fame",
+    background: "standing before massive deep space observatory backdrop, Hubble telescope nebula image behind, cosmic purple and blue rim lighting, distant galaxies visible, supernova explosion in background, swirling cosmic clouds",
+    lighting: "cosmic blue and purple rim lighting, ethereal glow",
+    intensity: "transcendent, legendary, cosmic, eternal",
+  },
   10: {
     name: "Legendary",
-    primaryEffect:
-      "VERY SPARKLY TEXTURED GOLD — Ultra-luxury gold leaf + glitter foil, deep embossed texture (micro-hammered + brushed), heavy specular highlights, star-like sparkles, bloom glow, shimmering gold dust; slight random grain/emboss variation per card.",
-    visualDominance:
-      "DOMINANT LAYER: the *entire card* is coated in premium textured gold foil. Gold must be the first thing you notice at a glance.",
+    background: "stadium fireworks exploding behind, night sky filled with pyrotechnics, sparks and embers falling around player, firework light trails",
+    lighting: "face lit by warm firework glow, dramatic rim lighting from explosions",
+    intensity: "explosive, triumphant, celebratory, powerful",
   },
   9: {
     name: "Epic",
-    primaryEffect:
-      "RAINBOW OIL SHEEN — Iridescent oil-slick film with smooth color-shift bands (cyan→magenta→gold→green), pearlescent interference, prismatic refractor streaks; swirl/flow varies per card.",
-    visualDominance:
-      "DOMINANT LAYER: the card surface shows an obvious rainbow oil-sheen refractor effect. It must read as Tier 9 immediately.",
+    background: "standing before wall of iridescent holographic panels, oil-on-water rainbow patterns swirling, soap bubble macro textures, prismatic light refracting, abalone shell iridescence, shifting colors from pink to cyan to gold",
+    lighting: "prismatic rainbow light refracting across player, iridescent rim lighting",
+    intensity: "spectacular, otherworldly, mesmerizing",
   },
   8: {
     name: "Ultra Rare",
-    primaryEffect:
-      "SHATTERED GLASS — Dramatic cracked crystal overlay, shards + spiderweb fractures, bright shard edges, internal caustics + refracted beams; shard pattern varies each mint.",
-    visualDominance:
-      "DOMINANT LAYER: shattered glass and refraction effects dominate the card design.",
+    background: "violent thunderstorm backdrop, multiple lightning bolts forking across dramatic storm clouds, rain-soaked jersey, flash-frozen rain droplets suspended in air",
+    lighting: "dramatic studio flash mixed with natural lightning, storm illumination",
+    intensity: "powerful, electric, dramatic, raw",
   },
   7: {
     name: "Very Rare",
-    primaryEffect:
-      "LIQUID SILVER CHROME — Mirror-like molten silver (mercury) with fluid ripples, rolling highlights, strong chrome streaks; optional ultra-faint rainbow only in highlights.",
-    visualDominance:
-      "DOMINANT LAYER: liquid silver chrome finish is the main surface treatment.",
+    background: "surrounded by explosion of gold flakes and gold dust particles suspended in air, stacked gold bullion and gold nuggets visible, pyrite crystal formations, geometric gold patterns",
+    lighting: "warm tungsten studio lights, golden spotlight, rich amber glow",
+    intensity: "prestigious, valuable, gleaming",
   },
   6: {
     name: "Rare",
-    primaryEffect:
-      "WORN BRONZE (LOWER-TIER) — Scuffed/oxidized bronze, uneven patina, scratches, dull hotspots, grime in corners, rubbed edges, blotchy discoloration; low sparkle, low reflectivity.",
-    visualDominance:
-      "DOMINANT LAYER: bronze is obvious but intentionally worn/aged. Must feel clearly weaker than Tier 7.",
+    background: "breaking through massive glass panel, high-speed photography capturing tempered glass fragments suspended mid-shatter, light refracting through flying shards, breakaway moment",
+    lighting: "dramatic studio lighting catching reflections in glass shards",
+    intensity: "explosive, dynamic, breakthrough",
   },
   5: {
     name: "Uncommon+",
-    primaryEffect:
-      "BRUSHED METALLIC — Satin brushed aluminum/steel grain, directional streaks, subtle reflections, light edge highlights; premium but restrained.",
-    visualDominance:
-      "DOMINANT LAYER: brushed metallic grain is clearly visible, but not overly shiny.",
+    background: "polished chrome circuit board sculpture backdrop, reflective chrome surfaces with etched circuit patterns, LED trace lighting embedded in chrome panels, mirror-finish metal creating infinite reflections",
+    lighting: "cool blue accent lighting, chrome reflections",
+    intensity: "technical, modern, sleek",
   },
   4: {
     name: "Uncommon",
-    primaryEffect:
-      "DULL/ANTIQUE BRONZE — Muted bronze tint, chalky patina, low-contrast reflections; flatter/cheaper than Tier 6.",
-    visualDominance:
-      "DOMINANT LAYER: dull bronze tone and patina are the main finish.",
+    background: "brushed stainless steel backdrop, industrial metal panels, visible brush grain pattern, welded steel seams, factory aesthetic",
+    lighting: "cool neutral studio lighting",
+    intensity: "solid, industrial, dependable",
   },
   3: {
     name: "Common+",
-    primaryEffect:
-      "PEWTER FRAME — Simple gray pewter border, slight cast texture, minimal reflectivity; mostly matte and concentrated on the frame.",
-    visualDominance:
-      "DOMINANT LAYER: pewter effect is primarily visible on edges and frame areas.",
+    background: "brushed bronze metal backdrop with subtle oxidation patina, matte bronze finish, not highly reflective, aged metal texture",
+    lighting: "warm amber fill lighting",
+    intensity: "warm, simple, honest",
   },
   2: {
     name: "Common",
-    primaryEffect:
-      "BASIC FOIL ACCENT — Mostly matte print with tiny silver foil accents (thin corners/lines only).",
-    visualDominance:
-      "DOMINANT LAYER: mostly matte/printed look; foil is subtle and limited to small accents.",
+    background: "matte painted seamless backdrop, solid neutral color background, professional studio setup, no texture or pattern",
+    lighting: "soft even studio lighting",
+    intensity: "clean, simple, unremarkable",
   },
   1: {
     name: "Basic",
-    primaryEffect:
-      "WOOD FINISH — Natural wood grain, matte/non-reflective, slight wear/print imperfections; grain varies per card.",
-    visualDominance:
-      "DOMINANT LAYER: wood texture is clearly visible across the whole card (no metal).",
+    background: "plain wooden backdrop, raw plywood panels, visible wood grain, unfinished lumber, utilitarian warehouse setting",
+    lighting: "basic overhead lighting like a warehouse",
+    intensity: "plain, basic, simple",
   },
 };
 
-/**
- * Determine which era a season falls into
- */
-function getEra(season) {
-  const year = parseInt(season);
-  
-  if (year >= 1920 && year < 1940) return "1920-1939";
-  if (year >= 1940 && year < 1960) return "1940-1959";
-  if (year >= 1960 && year < 1980) return "1960-1979";
-  if (year >= 1980 && year < 2000) return "1980-1999";
-  if (year >= 2000 && year < 2020) return "2000-2019";
-  if (year >= 2020) return "2020+";
-  
-  // Default to modern for any edge cases
-  return "2000-2019";
-}
+// =============================================================================
+// PROMPT BUILDER
+// =============================================================================
 
 /**
- * Build a complete prompt combining era aesthetic with tier quality
+ * Build a complete photorealistic DALL-E prompt
+ * @param {Object} card - Card data with player, position, tier, season/era
+ * @returns {string} - Complete DALL-E prompt
  */
-function buildEraBasedPrompt(player) {
-  const tier = player.tier || 5;
-  const era = getEra(player.season);
+function buildPhotorealisticPrompt(card) {
+  const position = card.position || card.pos_group || 'QB';
+  const tier = card.tier || 5;
+  const season = card.season || 2020;
   
-  const eraConfig = ERAS[era];
-  const tierConfig = TIER_QUALITIES[tier];
-  const teamColors = getTeamColors(player.team);
-  const positionContext = getPositionContext(player.position);
+  // Determine era from season
+  let era;
+  if (season < 1940) era = "1920-1939";
+  else if (season < 1960) era = "1940-1959";
+  else if (season < 1978) era = "1960-1977";
+  else if (season < 1994) era = "1978-1993";
+  else if (season < 2004) era = "1994-2003";
+  else if (season < 2011) era = "2004-2010";
+  else if (season < 2020) era = "2011-2019";
+  else era = "2020+";
   
-  // Build the main prompt - TIER EFFECT IS PRIMARY (finish), ERA IS SECONDARY but clearly recognizable (art direction)
-  const prompt = `Professional NFL trading card artwork for a ${player.position} player.
-
-PRIMARY VISUAL - TIER ${tier} (${tierConfig.name}) FINISH:
-${tierConfig.primaryEffect}
-${tierConfig.visualDominance}
-
-SECONDARY - ERA ART DIRECTION (${eraConfig.name}, ${era}):
-${eraConfig.aesthetic}
-
-Player Details:
-- Dynamic ${positionContext} pose
-- Team colors: ${teamColors}
-
-CRITICAL REQUIREMENTS:
-1. TIER EFFECT IS DOMINANT - the ${tierConfig.name} finish must be the most prominent visual element
-2. ERA IS RECOGNIZABLE - the ${eraConfig.name} art style should be clearly visible but not overpower the tier finish
-3. FULL BLEED / EDGE-TO-EDGE - artwork fills the ENTIRE image with NO borders, NO frames, NO margins
-4. NO TEXT of any kind - no words, names, numbers, letters, labels, or logos
-5. Trading card proportions (portrait orientation)
-
-The image must fill edge-to-edge with no borders. A viewer should immediately recognize this as Tier ${tier} (${tierConfig.name}).`;
-
+  const eraConfig = ERAS[era] || ERAS["2020+"];
+  const tierConfig = TIER_BACKGROUNDS[tier] || TIER_BACKGROUNDS[5];
+  const pose = POSITION_POSES[position] || POSITION_POSES.QB;
+  
+  // Build the prompt
+  const prompt = `${CORE_RULES}, ${pose}, wearing ${eraConfig.equipment}, ${tierConfig.background}, ${tierConfig.lighting}, ${eraConfig.style}, color palette of ${eraConfig.palette}, ${tierConfig.intensity} energy, trading card fills entire frame edge to edge`;
+  
   return prompt;
 }
 
 /**
- * Get team colors for prompt context
+ * Get tier configuration
  */
-function getTeamColors(teamAbbr) {
-  const colors = {
-    ARI: "cardinal red and white",
-    ATL: "red and black",
-    BAL: "purple and black with gold accents",
-    BUF: "royal blue and red",
-    CAR: "carolina blue and black",
-    CHI: "navy blue and orange",
-    CIN: "orange and black with white stripes",
-    CLE: "brown and orange",
-    DAL: "navy blue and silver",
-    DEN: "orange and navy blue",
-    DET: "honolulu blue and silver",
-    GB: "green and gold",
-    HOU: "deep steel blue and battle red",
-    IND: "royal blue and white",
-    JAX: "teal and gold",
-    KC: "red and gold",
-    LAC: "powder blue and gold",
-    LAR: "royal blue and gold",
-    LV: "silver and black",
-    MIA: "aqua and orange",
-    MIN: "purple and gold",
-    NE: "navy blue, red, and silver",
-    NO: "black and gold",
-    NYG: "royal blue and red",
-    NYJ: "green and white",
-    PHI: "midnight green and silver",
-    PIT: "black and gold",
-    SEA: "navy blue and neon green",
-    SF: "scarlet red and gold",
-    TB: "red and pewter",
-    TEN: "navy blue and titan blue with red",
-    WAS: "burgundy and gold",
-  };
-  return colors[teamAbbr] || "team colors";
+function getTierConfig(tier) {
+  return TIER_BACKGROUNDS[tier] || TIER_BACKGROUNDS[5];
 }
 
 /**
- * Get full team name from abbreviation
+ * Get era configuration
  */
-function getFullTeamName(teamAbbr) {
-  const names = {
-    ARI: "Arizona Cardinals", ATL: "Atlanta Falcons", BAL: "Baltimore Ravens",
-    BUF: "Buffalo Bills", CAR: "Carolina Panthers", CHI: "Chicago Bears",
-    CIN: "Cincinnati Bengals", CLE: "Cleveland Browns", DAL: "Dallas Cowboys",
-    DEN: "Denver Broncos", DET: "Detroit Lions", GB: "Green Bay Packers",
-    HOU: "Houston Texans", IND: "Indianapolis Colts", JAX: "Jacksonville Jaguars",
-    KC: "Kansas City Chiefs", LAC: "Los Angeles Chargers", LAR: "Los Angeles Rams",
-    LV: "Las Vegas Raiders", MIA: "Miami Dolphins", MIN: "Minnesota Vikings",
-    NE: "New England Patriots", NO: "New Orleans Saints", NYG: "New York Giants",
-    NYJ: "New York Jets", PHI: "Philadelphia Eagles", PIT: "Pittsburgh Steelers",
-    SEA: "Seattle Seahawks", SF: "San Francisco 49ers", TB: "Tampa Bay Buccaneers",
-    TEN: "Tennessee Titans", WAS: "Washington Commanders",
-  };
-  return names[teamAbbr] || teamAbbr;
-}
-
-/**
- * Get position-specific pose context
- */
-function getPositionContext(position) {
-  const contexts = {
-    QB: "quarterback throwing",
-    RB: "running back rushing with ball",
-    WR: "wide receiver catching",
-    TE: "tight end receiving",
-    OL: "offensive lineman blocking",
-    OT: "offensive tackle in stance",
-    OG: "offensive guard blocking",
-    C: "center snapping",
-    DL: "defensive lineman rushing",
-    DE: "defensive end pass rushing",
-    DT: "defensive tackle in action",
-    LB: "linebacker tackling",
-    CB: "cornerback in coverage",
-    S: "safety defending",
-    SS: "strong safety hitting",
-    FS: "free safety intercepting",
-    K: "kicker following through on kick",
-    P: "punter kicking",
-    LS: "long snapper",
-  };
-  return contexts[position] || "football action";
-}
-
-/**
- * Get a summary of the style for display purposes
- */
-function getStyleSummary(player) {
-  const tier = player.tier || 5;
-  const era = getEra(player.season);
-  const eraConfig = ERAS[era];
-  const tierConfig = TIER_QUALITIES[tier];
+function getEraConfig(season) {
+  let era;
+  if (season < 1940) era = "1920-1939";
+  else if (season < 1960) era = "1940-1959";
+  else if (season < 1978) era = "1960-1977";
+  else if (season < 1994) era = "1978-1993";
+  else if (season < 2004) era = "1994-2003";
+  else if (season < 2011) era = "2004-2010";
+  else if (season < 2020) era = "2011-2019";
+  else era = "2020+";
   
-  return {
-    era: eraConfig.name,
-    eraYears: era,
-    tier: tierConfig.name,
-    tierNumber: tier,
-    styleSummary: `${eraConfig.name} × ${tierConfig.name}`,
-  };
+  return ERAS[era];
 }
+
+// =============================================================================
+// EXPORTS
+// =============================================================================
 
 module.exports = {
+  buildPhotorealisticPrompt,
+  getTierConfig,
+  getEraConfig,
   ERAS,
-  TIER_QUALITIES,
-  getEra,
-  buildEraBasedPrompt,
-  getStyleSummary,
-  getTeamColors,
-  getFullTeamName,
-  getPositionContext,
+  TIER_BACKGROUNDS,
+  POSITION_POSES,
+  CORE_RULES,
 };
