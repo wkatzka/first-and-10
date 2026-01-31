@@ -8,8 +8,12 @@ import { TIER_NAMES, TIER_COLORS, POSITION_COLORS } from '../lib/api';
  */
 export default function CardModal({ card, onClose }) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const [imageError, setImageError] = useState(false);
   
   if (!card) return null;
+  
+  // Check if we should show the image
+  const hasValidImage = card.image_url && !imageError && !card.image_url.includes('placeholder');
   
   const tierColor = TIER_COLORS[card.tier] || TIER_COLORS[1];
   const posColor = POSITION_COLORS[card.position] || '#6B7280';
@@ -102,11 +106,12 @@ export default function CardModal({ card, onClose }) {
               boxShadow: isLegendary ? `0 0 40px ${tierColor}` : '0 10px 40px rgba(0,0,0,0.5)',
             }}
           >
-            {card.image_url ? (
+            {hasValidImage ? (
               <img 
                 src={card.image_url} 
                 alt={`${card.player_name || card.player}`}
                 className="w-full h-full object-cover"
+                onError={() => setImageError(true)}
               />
             ) : (
               /* Fallback front design */

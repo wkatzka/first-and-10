@@ -255,11 +255,18 @@ function buildTieredCardSVG(card, options = {}) {
   const tierName = escape(config.name);
   const badgeText = config.badge;
 
-  // Photo placeholder or embedded image
+  // Photo placeholder or embedded image - show position icon when no photo
+  const positionEmoji = {
+    'QB': '🏈', 'RB': '🏃', 'WR': '🎯', 'TE': '🤲', 'OL': '🛡️',
+    'DL': '💪', 'LB': '🦅', 'DB': '🔒', 'K': '🦶'
+  }[card.position] || '🏈';
+  
   const photoSection = photoUrl
     ? `<image x="${width / 2 - 80}" y="100" width="160" height="200" href="${escape(photoUrl)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#photoClip)"/>`
-    : `<rect x="${width / 2 - 80}" y="100" width="160" height="200" fill="#333" rx="8"/>
-       <text x="${width / 2}" y="210" text-anchor="middle" fill="#666" font-family="system-ui, sans-serif" font-size="14">PHOTO</text>`;
+    : `<rect x="${width / 2 - 80}" y="100" width="160" height="200" fill="#222" rx="8"/>
+       <circle cx="${width / 2}" cy="180" r="50" fill="${config.gradient[0]}"/>
+       <text x="${width / 2}" y="195" text-anchor="middle" font-size="40">${positionEmoji}</text>
+       <text x="${width / 2}" y="240" text-anchor="middle" fill="${config.gradient[0]}" font-family="system-ui, sans-serif" font-size="16" font-weight="bold">${card.position}</text>`;
 
   // Build stat text elements
   const statsStartY = 380;
@@ -333,7 +340,7 @@ function buildTieredCardSVG(card, options = {}) {
   <rect x="60" y="${height - 50}" width="${width - 120}" height="3" fill="url(#borderGrad)" rx="2"/>
   
   <!-- Card number placeholder -->
-  <text x="${width / 2}" y="${height - 25}" text-anchor="middle" fill="#555" font-family="system-ui, sans-serif" font-size="12">NFT LEAGUE · PLAYER CARD</text>
+  <text x="${width / 2}" y="${height - 25}" text-anchor="middle" fill="#555" font-family="system-ui, sans-serif" font-size="12">FIRST & 10 · PLAYER CARD</text>
 </svg>`;
 }
 
