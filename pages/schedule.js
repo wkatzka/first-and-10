@@ -232,41 +232,134 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                   </button>
                 </div>
                 
-                {/* Practice Result */}
+                {/* Practice Result - Post Game Report */}
                 {practiceResult && (
-                  <div className="bg-gray-800 rounded-xl p-6">
-                    <div className="text-center mb-4">
-                      <div className="text-sm text-gray-400 mb-2">PRACTICE RESULT</div>
-                      <div className="text-4xl font-bold">
-                        <span className={practiceResult.yourScore > practiceResult.opponentScore ? 'text-green-400' : 'text-white'}>
+                  <div className="bg-gray-800 rounded-xl overflow-hidden">
+                    {/* Header with Score */}
+                    <div className={`p-6 text-center ${
+                      practiceResult.winner === 'you' ? 'bg-green-900/50' : 
+                      practiceResult.winner === 'opponent' ? 'bg-red-900/50' : 'bg-yellow-900/50'
+                    }`}>
+                      <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Practice Game</div>
+                      <div className="text-lg font-medium text-white mb-2">
+                        {practiceResult.yourTeam || 'You'} vs {practiceResult.opponentTeam || 'Opponent'}
+                      </div>
+                      <div className="text-5xl font-bold mb-2">
+                        <span className={practiceResult.winner === 'you' ? 'text-green-400' : 'text-white'}>
                           {practiceResult.yourScore}
                         </span>
-                        <span className="text-gray-500 mx-3">-</span>
-                        <span className={practiceResult.opponentScore > practiceResult.yourScore ? 'text-green-400' : 'text-white'}>
+                        <span className="text-gray-500 mx-4">-</span>
+                        <span className={practiceResult.winner === 'opponent' ? 'text-red-400' : 'text-white'}>
                           {practiceResult.opponentScore}
                         </span>
                       </div>
-                      <div className="text-lg mt-2">
-                        {practiceResult.yourScore > practiceResult.opponentScore ? (
-                          <span className="text-green-400">You Win! 🎉</span>
-                        ) : practiceResult.yourScore < practiceResult.opponentScore ? (
-                          <span className="text-red-400">You Lose 😔</span>
+                      <div className="text-xl font-bold">
+                        {practiceResult.winner === 'you' ? (
+                          <span className="text-green-400">VICTORY! 🏆</span>
+                        ) : practiceResult.winner === 'opponent' ? (
+                          <span className="text-red-400">DEFEAT 😔</span>
                         ) : (
-                          <span className="text-yellow-400">Tie Game</span>
+                          <span className="text-yellow-400">TIE GAME</span>
                         )}
                       </div>
                     </div>
                     
-                    <div className="text-xs text-gray-500 text-center">
-                      vs {selectedOpponent?.team_name || selectedOpponent?.username}
-                    </div>
+                    {/* Team Stats */}
+                    {practiceResult.stats && (practiceResult.stats.you || practiceResult.stats.opponent) && (
+                      <div className="p-4 border-b border-gray-700">
+                        <div className="text-sm font-bold text-white mb-3 text-center">TEAM STATS</div>
+                        <div className="grid grid-cols-3 gap-2 text-sm">
+                          <div className="text-right text-blue-400 font-medium">
+                            {practiceResult.stats.you?.passingYards || 0}
+                          </div>
+                          <div className="text-center text-gray-400">Pass Yds</div>
+                          <div className="text-left text-red-400 font-medium">
+                            {practiceResult.stats.opponent?.passingYards || 0}
+                          </div>
+                          
+                          <div className="text-right text-blue-400 font-medium">
+                            {practiceResult.stats.you?.rushingYards || 0}
+                          </div>
+                          <div className="text-center text-gray-400">Rush Yds</div>
+                          <div className="text-left text-red-400 font-medium">
+                            {practiceResult.stats.opponent?.rushingYards || 0}
+                          </div>
+                          
+                          <div className="text-right text-blue-400 font-medium">
+                            {practiceResult.stats.you?.totalYards || 0}
+                          </div>
+                          <div className="text-center text-gray-400">Total Yds</div>
+                          <div className="text-left text-red-400 font-medium">
+                            {practiceResult.stats.opponent?.totalYards || 0}
+                          </div>
+                          
+                          <div className="text-right text-blue-400 font-medium">
+                            {(practiceResult.stats.you?.interceptions || 0) + (practiceResult.stats.you?.fumbles || 0)}
+                          </div>
+                          <div className="text-center text-gray-400">Turnovers</div>
+                          <div className="text-left text-red-400 font-medium">
+                            {(practiceResult.stats.opponent?.interceptions || 0) + (practiceResult.stats.opponent?.fumbles || 0)}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     
-                    <button
-                      onClick={() => setPracticeResult(null)}
-                      className="w-full mt-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
-                    >
-                      Run Another Practice
-                    </button>
+                    {/* Significant Plays */}
+                    {practiceResult.significantPlays && practiceResult.significantPlays.length > 0 && (
+                      <div className="p-4">
+                        <div className="text-sm font-bold text-white mb-3">KEY PLAYS</div>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {practiceResult.significantPlays.map((play, idx) => (
+                            <div 
+                              key={idx}
+                              className={`text-sm p-2 rounded ${
+                                play.team === 'you' 
+                                  ? play.type === 'touchdown' ? 'bg-green-900/40 border-l-2 border-green-500'
+                                  : play.type === 'big_play' ? 'bg-blue-900/40 border-l-2 border-blue-500'
+                                  : 'bg-gray-700/50'
+                                  : play.type === 'touchdown' ? 'bg-red-900/40 border-l-2 border-red-500'
+                                  : play.type === 'interception' || play.type === 'fumble' 
+                                    ? 'bg-orange-900/40 border-l-2 border-orange-500'
+                                  : 'bg-gray-700/50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs">
+                                  {play.type === 'touchdown' && '🏈'}
+                                  {play.type === 'field_goal' && '🥅'}
+                                  {play.type === 'interception' && '🔄'}
+                                  {play.type === 'fumble' && '💥'}
+                                  {play.type === 'sack' && '💪'}
+                                  {play.type === 'big_play' && '⚡'}
+                                </span>
+                                <span className={`text-xs font-medium ${play.team === 'you' ? 'text-blue-400' : 'text-red-400'}`}>
+                                  {play.team === 'you' ? 'YOU' : 'OPP'}
+                                </span>
+                                {play.quarter && <span className="text-xs text-gray-500">Q{play.quarter}</span>}
+                              </div>
+                              <div className="text-gray-300">{play.description}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* No significant plays message */}
+                    {(!practiceResult.significantPlays || practiceResult.significantPlays.length === 0) && (
+                      <div className="p-4 text-center text-gray-500 text-sm">
+                        No major highlights in this game
+                      </div>
+                    )}
+                    
+                    {/* Play Again Button */}
+                    <div className="p-4 border-t border-gray-700">
+                      <button
+                        onClick={() => setPracticeResult(null)}
+                        className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-500 transition-colors"
+                      >
+                        Play Again
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

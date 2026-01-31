@@ -111,24 +111,44 @@ function simulateGameFromDB(homeFullRoster, awayFullRoster) {
   
   const result = simulateGame(homeRoster, awayRoster);
   
+  // Process plays to identify touchdowns and scoring plays
+  const processedPlays = [];
+  for (let i = 0; i < result.plays.length; i++) {
+    const play = result.plays[i];
+    const nextPlay = result.plays[i + 1];
+    
+    // Mark touchdown if next play is an extra point
+    if (nextPlay && nextPlay.type === 'extra_point') {
+      processedPlays.push({
+        ...play,
+        touchdown: true,
+        description: play.description + ' TOUCHDOWN!',
+      });
+    } else {
+      processedPlays.push(play);
+    }
+  }
+  
   // Extract key plays for summary
-  const keyPlays = result.plays.filter(p => 
-    p.result?.touchdown || 
-    p.result?.fieldGoal || 
-    p.result?.interception || 
-    p.result?.fumble ||
-    p.result?.sack
+  const keyPlays = processedPlays.filter(p => 
+    p.touchdown ||
+    p.type === 'field_goal' ||
+    p.result === 'interception' || 
+    p.result === 'fumble' ||
+    p.result === 'sack' ||
+    (p.yards && p.yards >= 20)
   );
   
   return {
     homeScore: result.homeScore,
     awayScore: result.awayScore,
     winner: result.winner,
-    plays: result.plays,
-    stats: result.stats,
+    plays: processedPlays,
+    homeStats: result.homeStats,
+    awayStats: result.awayStats,
     summary: {
-      totalPlays: result.plays.length,
-      keyPlays: keyPlays.slice(0, 10),
+      totalPlays: processedPlays.length,
+      keyPlays: keyPlays.slice(0, 15),
       quarters: result.quarterScores || [
         { home: 0, away: 0 },
         { home: 0, away: 0 },

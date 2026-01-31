@@ -745,7 +745,7 @@ app.post('/api/games/practice', authMiddleware, (req, res) => {
       return res.status(404).json({ error: 'Opponent not found' });
     }
     
-    // Get both rosters
+    // Get both rosters (full roster format that game engine expects)
     const myRoster = db.getFullRoster(req.user.id);
     const opponentRoster = db.getFullRoster(opponent_id);
     
@@ -757,16 +757,100 @@ app.post('/api/games/practice', authMiddleware, (req, res) => {
       return res.status(400).json({ error: 'Opponent has no roster set' });
     }
     
-    // Run simulation using game engine
-    const result = gameEngine.simulateGame(myRoster.cards, opponentRoster.cards);
+    // Run simulation using game engine (home = you, away = opponent)
+    const result = gameEngine.simulateGameFromDB(myRoster, opponentRoster);
     
-    // Return result WITHOUT recording it (practice only)
+    // Extract significant plays for post-game report
+    const significantPlays = [];
+    if (result.plays) {
+      for (const play of result.plays) {
+        // Skip extra points and kickoffs for key plays display
+        if (play.type === 'extra_point' || play.type === 'kickoff') continue;
+        
+        // Touchdowns (marked by game-bridge)
+        if (play.touchdown) {
+          significantPlays.push({
+            type: 'touchdown',
+            quarter: play.quarter,
+            time: play.time,
+            team: play.possession === 'home' ? 'you' : 'opponent',
+            description: play.description,
+          });
+          continue;
+        }
+        // Field Goals
+        if (play.type === 'field_goal' && play.result === 'good') {
+          significantPlays.push({
+            type: 'field_goal',
+            quarter: play.quarter,
+            time: play.time,
+            team: play.possession === 'home' ? 'you' : 'opponent',
+            description: play.description,
+          });
+          continue;
+        }
+        // Interceptions
+        if (play.result === 'interception' || play.turnoverType === 'interception') {
+          significantPlays.push({
+            type: 'interception',
+            quarter: play.quarter,
+            time: play.time,
+            team: play.possession === 'home' ? 'opponent' : 'you', // Defense gets it
+            description: play.description,
+          });
+          continue;
+        }
+        // Fumbles
+        if (play.result === 'fumble' || play.turnoverType === 'fumble') {
+          significantPlays.push({
+            type: 'fumble',
+            quarter: play.quarter,
+            time: play.time,
+            team: play.possession === 'home' ? 'opponent' : 'you', // Defense recovers
+            description: play.description,
+          });
+          continue;
+        }
+        // Sacks
+        if (play.result === 'sack') {
+          significantPlays.push({
+            type: 'sack',
+            quarter: play.quarter,
+            time: play.time,
+            team: play.possession === 'home' ? 'opponent' : 'you', // Defense gets sack
+            description: play.description,
+          });
+          continue;
+        }
+        // Big plays (20+ yards)
+        if (play.yards && play.yards >= 20) {
+          significantPlays.push({
+            type: 'big_play',
+            quarter: play.quarter,
+            time: play.time,
+            team: play.possession === 'home' ? 'you' : 'opponent',
+            description: play.description,
+            yards: play.yards,
+          });
+        }
+      }
+    }
+    
+    // Return detailed result for post-game report
     res.json({
       yourScore: result.homeScore,
       opponentScore: result.awayScore,
       winner: result.homeScore > result.awayScore ? 'you' : 
               result.awayScore > result.homeScore ? 'opponent' : 'tie',
       isPractice: true,
+      yourTeam: req.user.team_name || req.user.username,
+      opponentTeam: opponent.team_name || opponent.username,
+      stats: {
+        you: result.homeStats || result.stats?.home || {},
+        opponent: result.awayStats || result.stats?.away || {},
+      },
+      significantPlays: significantPlays.slice(0, 15), // Limit to top 15 plays
+      summary: result.summary,
     });
   } catch (err) {
     console.error('Practice simulation error:', err);
