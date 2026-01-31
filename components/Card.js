@@ -48,6 +48,71 @@ export default function Card({ card, onClick, selected, small, showImage = true 
   }
   
   // Fallback to simple card layout (for small cards or if no image)
+  if (small) {
+    // Compact uniform card for grids
+    return (
+      <div
+        onClick={onClick}
+        className={`
+          relative rounded-lg overflow-hidden cursor-pointer
+          transition-all duration-200 active:scale-95
+          ${selected ? 'ring-4 ring-green-400' : ''}
+          w-full aspect-[3/4]
+        `}
+        style={{
+          border: `2px solid ${tierColor}`,
+          boxShadow: isLegendary ? `0 0 15px ${tierColor}` : 'none',
+        }}
+      >
+        {/* Card Background */}
+        <div 
+          className="absolute inset-0 opacity-20"
+          style={{ backgroundColor: tierColor }}
+        />
+        
+        {/* Card Content - Fixed layout */}
+        <div className="relative h-full p-2 flex flex-col">
+          {/* Top row: Position + Tier */}
+          <div className="flex justify-between items-start">
+            <div 
+              className="px-1.5 py-0.5 rounded text-[10px] font-bold text-white"
+              style={{ backgroundColor: posColor }}
+            >
+              {card.position}
+            </div>
+            <div 
+              className="px-1.5 py-0.5 rounded text-[10px] font-bold"
+              style={{ backgroundColor: tierColor, color: card.tier >= 9 ? '#000' : '#fff' }}
+            >
+              T{card.tier}
+            </div>
+          </div>
+          
+          {/* Player Name - truncated */}
+          <div className="flex-1 flex items-center justify-center py-1">
+            <h3 className="text-xs font-bold text-white text-center leading-tight line-clamp-2">
+              {card.player_name || card.player}
+            </h3>
+          </div>
+          
+          {/* Bottom: Season & Team */}
+          <div className="text-[10px] text-gray-400 text-center truncate">
+            {card.season} · {card.team || ''}
+          </div>
+        </div>
+        
+        {/* Legendary Glow */}
+        {card.tier === 10 && (
+          <div 
+            className="absolute inset-0 pointer-events-none animate-pulse"
+            style={{ boxShadow: `inset 0 0 20px ${tierColor}`, opacity: 0.3 }}
+          />
+        )}
+      </div>
+    );
+  }
+  
+  // Full size card
   return (
     <div
       onClick={onClick}
@@ -55,7 +120,7 @@ export default function Card({ card, onClick, selected, small, showImage = true 
         relative rounded-lg overflow-hidden cursor-pointer
         transition-all duration-200 active:scale-95
         ${selected ? 'ring-4 ring-green-400' : ''}
-        ${small ? 'w-32' : 'w-48'}
+        w-48
       `}
       style={{
         border: `${card.tier >= 9 ? 3 : 2}px solid ${tierColor}`,
@@ -69,10 +134,10 @@ export default function Card({ card, onClick, selected, small, showImage = true 
       />
       
       {/* Card Content */}
-      <div className={`relative ${small ? 'p-2' : 'p-3'}`}>
+      <div className="relative p-3">
         {/* Tier Badge */}
         <div 
-          className={`absolute top-1 right-1 px-1.5 py-0.5 rounded text-xs font-bold ${small ? 'text-[10px]' : ''}`}
+          className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-xs font-bold"
           style={{ backgroundColor: tierColor, color: card.tier >= 9 ? '#000' : '#fff' }}
         >
           T{card.tier}
@@ -80,24 +145,24 @@ export default function Card({ card, onClick, selected, small, showImage = true 
         
         {/* Position Badge */}
         <div 
-          className={`inline-block px-2 py-0.5 rounded text-white font-bold ${small ? 'text-xs' : 'text-sm'}`}
+          className="inline-block px-2 py-0.5 rounded text-white font-bold text-sm"
           style={{ backgroundColor: posColor }}
         >
           {card.position}
         </div>
         
         {/* Player Name */}
-        <h3 className={`font-bold mt-2 ${small ? 'text-sm' : 'text-lg'} text-white leading-tight`}>
+        <h3 className="font-bold mt-2 text-lg text-white leading-tight">
           {card.player_name || card.player}
         </h3>
         
         {/* Season & Team */}
-        <p className={`text-gray-400 ${small ? 'text-xs' : 'text-sm'}`}>
+        <p className="text-gray-400 text-sm">
           {card.season} {card.team && `• ${card.team}`}
         </p>
         
         {/* Score */}
-        {!small && card.composite_score && (
+        {card.composite_score && (
           <div className="mt-2 flex items-center gap-2">
             <span className="text-xs text-gray-500">OVR</span>
             <span 
@@ -110,14 +175,12 @@ export default function Card({ card, onClick, selected, small, showImage = true 
         )}
         
         {/* Tier Name */}
-        {!small && (
-          <div 
-            className="mt-2 text-center text-xs font-semibold uppercase tracking-wider"
-            style={{ color: tierColor }}
-          >
-            {TIER_NAMES[card.tier]}
-          </div>
-        )}
+        <div 
+          className="mt-2 text-center text-xs font-semibold uppercase tracking-wider"
+          style={{ color: tierColor }}
+        >
+          {TIER_NAMES[card.tier]}
+        </div>
       </div>
       
       {/* Legendary Glow Animation */}
