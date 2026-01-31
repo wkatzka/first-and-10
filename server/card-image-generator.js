@@ -9,8 +9,16 @@ const path = require('path');
 const { generateCardWithAI } = require('./ai-image-generator');
 const { buildTieredCardSVG, getTierConfig } = require('./nft-generator/tier-templates');
 
+// Use persistent storage if available (Render), otherwise local public folder
+const PERSISTENT_DIR = '/var/data';
+const USE_PERSISTENT = fs.existsSync(PERSISTENT_DIR);
+
 // Directory to store generated card images
-const IMAGES_DIR = path.join(__dirname, '../public/cards');
+const IMAGES_DIR = USE_PERSISTENT 
+  ? path.join(PERSISTENT_DIR, 'cards')
+  : path.join(__dirname, '../public/cards');
+
+console.log(`Card images directory: ${IMAGES_DIR} (persistent: ${USE_PERSISTENT})`);
 
 // Ensure images directory exists
 if (!fs.existsSync(IMAGES_DIR)) {

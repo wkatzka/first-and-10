@@ -45,6 +45,13 @@ app.use(cors({
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Serve card images from persistent storage if available
+const PERSISTENT_DIR = '/var/data';
+if (require('fs').existsSync(PERSISTENT_DIR)) {
+  app.use('/cards', express.static(path.join(PERSISTENT_DIR, 'cards')));
+  console.log('Serving card images from persistent storage: /var/data/cards');
+}
+
 // Simple session management (in-memory for MVP)
 const sessions = new Map();
 
