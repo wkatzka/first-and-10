@@ -1261,7 +1261,7 @@ app.get('/api/admin/debug-images', (req, res) => {
 // ADMIN: Regenerate missing images
 // =============================================================================
 
-app.post('/api/admin/regenerate-images', authMiddleware, (req, res) => {
+app.post('/api/admin/regenerate-images', (req, res) => {
   if (!AI_ENABLED) {
     return res.status(400).json({ error: 'AI image generation not enabled (no OPENAI_API_KEY)' });
   }
