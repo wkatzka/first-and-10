@@ -14,6 +14,20 @@ let allPlayers = null;
 let playersByTier = {};
 let playersByPosition = {};
 
+// Primary category for each position - use the most relevant stat category
+const PRIMARY_CATEGORY = {
+  'QB': 'passing',
+  'RB': 'rushing_receiving',
+  'WR': 'rushing_receiving',
+  'TE': 'rushing_receiving',
+  'OL': null,  // OL typically don't have stats, accept any
+  'DL': 'defense',
+  'LB': 'defense',
+  'DB': 'defense',
+  'K': 'kicking',
+  'P': 'punting',
+};
+
 function loadPlayers() {
   if (allPlayers) return allPlayers;
   
@@ -21,10 +35,25 @@ function loadPlayers() {
   const rawPlayers = JSON.parse(raw);
   
   // Normalize player data - map pos_group to position
-  allPlayers = rawPlayers.map(p => ({
+  // AND filter to primary category for each position to avoid duplicate records
+  const normalized = rawPlayers.map(p => ({
     ...p,
-    position: p.pos_group || p.pos || 'Unknown',  // Use pos_group as canonical position
+    position: p.pos_group || p.pos || 'Unknown',
   }));
+  
+  // Filter to keep only primary category for each position
+  // This prevents a QB from having both "passing" and "rushing_receiving" records
+  allPlayers = normalized.filter(p => {
+    const primaryCat = PRIMARY_CATEGORY[p.position];
+    // If no primary category defined, accept all
+    if (!primaryCat) return true;
+    // If player has a category, it must match the primary
+    if (p.category) return p.category === primaryCat;
+    // If no category field, accept
+    return true;
+  });
+  
+  console.log(`Loaded ${allPlayers.length} players (filtered from ${normalized.length} records)`);
   
   // Index by tier
   playersByTier = {};
