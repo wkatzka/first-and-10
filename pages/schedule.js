@@ -16,6 +16,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
   const [selectedOpponent, setSelectedOpponent] = useState(null);
   const [simulating, setSimulating] = useState(false);
   const [practiceResult, setPracticeResult] = useState(null);
+  const [practiceError, setPracticeError] = useState(null);
   
   useEffect(() => {
     if (!user) {
@@ -57,12 +58,14 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
     
     setSimulating(true);
     setPracticeResult(null);
+    setPracticeError(null);
     
     try {
       const result = await simulatePractice(selectedOpponent.id);
       setPracticeResult(result);
     } catch (err) {
-      alert(err.message || 'Failed to run practice simulation');
+      console.error('Practice sim error:', err);
+      setPracticeError(err.message || 'Failed to run practice simulation');
     } finally {
       setSimulating(false);
     }
@@ -210,6 +213,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                         const team = teams.find(t => t.id === parseInt(e.target.value));
                         setSelectedOpponent(team);
                         setPracticeResult(null);
+                        setPracticeError(null);
                       }}
                       className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
                     >
@@ -230,6 +234,14 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                   >
                     {simulating ? 'Simulating...' : '🏈 Run Practice Game'}
                   </button>
+                  
+                  {/* Error Message */}
+                  {practiceError && (
+                    <div className="mt-3 p-3 bg-red-900/50 border border-red-600 rounded-lg text-red-300 text-sm">
+                      <div className="font-bold mb-1">Can't run practice</div>
+                      {practiceError}
+                    </div>
+                  )}
                 </div>
                 
                 {/* Practice Result - Post Game Report */}
