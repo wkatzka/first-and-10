@@ -34,7 +34,10 @@ function loadDb() {
     if (fs.existsSync(DB_PATH)) {
       const data = fs.readFileSync(DB_PATH, 'utf-8');
       console.log('Loaded database from:', DB_PATH);
-      return JSON.parse(data);
+      const db = JSON.parse(data);
+      // Run migrations
+      runMigrations(db);
+      return db;
     }
     
     // If using persistent disk but no data yet, copy from repo
@@ -51,6 +54,41 @@ function loadDb() {
     console.error('Failed to load database:', err);
   }
   return { ...DEFAULT_DB };
+}
+
+// Run one-time migrations
+function runMigrations(db) {
+  let changed = false;
+  
+  // Migration: Upgrade max_packs from 8 to 13 (add 5 bonus packs)
+  const NEW_MAX_PACKS = 13;
+  const OLD_MAX_PACKS = 8;
+  
+  if (db.users && db.users.length > 0) {
+    for (const user of db.users) {
+      if (user.max_packs === OLD_MAX_PACKS) {
+        user.max_packs = NEW_MAX_PACKS;
+        console.log(`Migration: Upgraded ${user.username} max_packs from ${OLD_MAX_PACKS} to ${NEW_MAX_PACKS}`);
+        changed = true;
+      }
+    }
+  }
+  
+  // Also update preregistered users
+  if (db.preregistered && db.preregistered.length > 0) {
+    for (const pre of db.preregistered) {
+      if (pre.max_packs === OLD_MAX_PACKS) {
+        pre.max_packs = NEW_MAX_PACKS;
+        console.log(`Migration: Upgraded preregistered ${pre.username} max_packs to ${NEW_MAX_PACKS}`);
+        changed = true;
+      }
+    }
+  }
+  
+  if (changed) {
+    saveDb(db);
+    console.log('Migrations complete, database saved.');
+  }
 }
 
 // Save database
@@ -180,7 +218,7 @@ function createUser(username, password, teamName = null) {
     team_name: teamName || `${username}'s Team`,
     created_at: new Date().toISOString(),
     packs_opened: 0,
-    max_packs: 8,
+    max_packs: 13, // 3 starter + 10 bonus packs
   };
   
   db.users.push(user);
