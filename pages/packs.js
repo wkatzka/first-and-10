@@ -181,9 +181,9 @@ export default function Packs({ user, onLogout, unreadMessages }) {
                 <div className="text-xl font-bold text-white">{Math.min(packInfo.packsOpened, 3)} / 3</div>
                 <div className="text-xs text-gray-500">Guaranteed positions</div>
               </div>
-              <div className={`p-3 rounded-lg ${packInfo.packsOpened >= 3 && packInfo.packsOpened < 8 ? 'bg-purple-900/30 border border-purple-600/30' : 'bg-gray-700'}`}>
+              <div className={`p-3 rounded-lg ${packInfo.packsOpened >= 3 && packInfo.packsOpened < 13 ? 'bg-purple-900/30 border border-purple-600/30' : 'bg-gray-700'}`}>
                 <div className="text-sm text-gray-400">Bonus Packs</div>
-                <div className="text-xl font-bold text-white">{Math.max(0, packInfo.packsOpened - 3)} / 5</div>
+                <div className="text-xl font-bold text-white">{Math.max(0, packInfo.packsOpened - 3)} / 10</div>
                 <div className="text-xs text-gray-500">Random players</div>
               </div>
             </div>

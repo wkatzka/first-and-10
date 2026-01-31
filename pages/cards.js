@@ -12,7 +12,7 @@ export default function Cards({ user, onLogout, unreadMessages }) {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
-  const [sortBy, setSortBy] = useState('tier');
+  const [sortBy, setSortBy] = useState('recent');
   const [selectedCard, setSelectedCard] = useState(null);
   
   useEffect(() => {
@@ -38,6 +38,7 @@ export default function Cards({ user, onLogout, unreadMessages }) {
   const filteredCards = cards
     .filter(c => filter === 'ALL' || c.position === filter)
     .sort((a, b) => {
+      if (sortBy === 'recent') return b.id - a.id; // Higher ID = more recently minted
       if (sortBy === 'tier') return b.tier - a.tier;
       if (sortBy === 'score') return (b.composite_score || 0) - (a.composite_score || 0);
       if (sortBy === 'season') return b.season - a.season;
@@ -84,7 +85,7 @@ export default function Cards({ user, onLogout, unreadMessages }) {
           <div className="bg-gray-800 rounded-lg p-4">
             <h3 className="text-sm text-gray-400 mb-2">Tier Distribution</h3>
             <div className="flex flex-wrap gap-2">
-              {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(tier => (
+              {[11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(tier => (
                 <div 
                   key={tier}
                   className={`px-3 py-1 rounded text-sm ${stats.byTier[tier] ? 'text-white' : 'text-gray-600'}`}
@@ -125,6 +126,7 @@ export default function Cards({ user, onLogout, unreadMessages }) {
             onChange={(e) => setSortBy(e.target.value)}
             className="px-3 py-1.5 bg-gray-700 text-white rounded text-sm"
           >
+            <option value="recent">Recently Minted</option>
             <option value="tier">Sort by Tier</option>
             <option value="score">Sort by Score</option>
             <option value="season">Sort by Season</option>
