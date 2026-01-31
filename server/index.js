@@ -1177,6 +1177,35 @@ app.post('/api/messages/send', authMiddleware, (req, res) => {
 // ADMIN: Debug card images
 // =============================================================================
 
+// Admin: Update user's max packs
+app.post('/api/admin/add-packs', (req, res) => {
+  try {
+    const { username, packs_to_add } = req.body;
+    
+    if (!username || !packs_to_add) {
+      return res.status(400).json({ error: 'Missing username or packs_to_add' });
+    }
+    
+    const user = db.getUserByUsername(username);
+    if (!user) {
+      return res.status(404).json({ error: `User "${username}" not found` });
+    }
+    
+    const newMax = user.max_packs + parseInt(packs_to_add);
+    db.updateUserMaxPacks(user.id, newMax);
+    
+    res.json({ 
+      success: true,
+      username,
+      old_max: user.max_packs,
+      new_max: newMax,
+      packs_remaining: newMax - user.packs_opened,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Debug endpoint to see card image status (no auth for easy debugging)
 app.get('/api/admin/debug-images', (req, res) => {
   const fs = require('fs');
