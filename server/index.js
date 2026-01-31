@@ -485,45 +485,52 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
 
 // Helper: Check if card needs image regeneration
 function cardNeedsImage(card) {
+  // No image URL at all
   if (!card.image_url) {
     console.log(`Card ${card.id} needs image: no image_url`);
     return true;
   }
+  
+  // Has placeholder image
   if (card.image_url.includes('placeholder')) {
     console.log(`Card ${card.id} needs image: has placeholder`);
     return true;
   }
+  
+  // SVG = fallback, needs AI regeneration to get PNG
+  if (card.image_url.endsWith('.svg')) {
+    console.log(`Card ${card.id} needs image: has SVG fallback, needs AI PNG`);
+    return true;
+  }
+  
+  // Marked as pending
   if (card.image_pending) {
     console.log(`Card ${card.id} needs image: image_pending is true`);
     return true;
   }
   
-  // Check if file actually exists
+  // Check if PNG file actually exists
   const fs = require('fs');
   const path = require('path');
-  
-  // Get the actual file path - check both locations
   const PERSISTENT_DIR = '/var/data';
   const USE_PERSISTENT = fs.existsSync(PERSISTENT_DIR);
-  
-  // Extract filename from URL
   const filename = card.image_url.split('/').pop();
   
   // Check persistent storage first
   if (USE_PERSISTENT) {
     const persistentPath = path.join(PERSISTENT_DIR, 'cards', filename);
     if (fs.existsSync(persistentPath)) {
-      return false; // File exists in persistent storage
+      return false; // PNG exists
     }
   }
   
   // Check public folder as fallback
   const publicPath = path.join(__dirname, '../public/cards', filename);
   if (fs.existsSync(publicPath)) {
-    return false; // File exists in public folder
+    return false; // PNG exists
   }
   
-  console.log(`Card ${card.id} needs image: file not found (${filename})`);
+  console.log(`Card ${card.id} needs image: PNG file not found (${filename})`);
   return true;
 }
 
