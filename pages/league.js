@@ -172,7 +172,7 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
   // Helper to get roster cards and bench cards
   const getRosterAndBench = () => {
     if (!teamRoster || !teamCards.length) {
-      return { rosterCards: {}, benchCards: teamCards };
+      return { rosterCards: {}, benchCards: teamCards, slots: [] };
     }
     
     const rosterCardIds = new Set();
@@ -193,10 +193,15 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
       { key: 'k_card_id', label: 'K', position: 'K' },
     ];
     
+    // teamRoster structure: { user: {...}, roster: { roster: {...}, cards: {...} } }
+    const rosterData = teamRoster?.roster?.roster || {};
+    const rosterCardsData = teamRoster?.roster?.cards || {};
+    
     for (const slot of slots) {
-      const cardId = teamRoster.roster?.[slot.key];
+      const cardId = rosterData[slot.key];
       if (cardId) {
-        const card = teamCards.find(c => c.id === cardId);
+        // First try to get from roster's cards object, then from teamCards
+        const card = rosterCardsData[slot.key] || teamCards.find(c => c.id === cardId);
         if (card) {
           rosterCards[slot.label] = card;
           rosterCardIds.add(cardId);
