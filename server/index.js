@@ -1139,6 +1139,61 @@ app.post('/api/messages/send', authMiddleware, (req, res) => {
 });
 
 // =============================================================================
+// ADMIN: Debug card images
+// =============================================================================
+
+// Debug endpoint to see card image status
+app.get('/api/admin/debug-images', authMiddleware, (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  
+  const PERSISTENT_DIR = '/var/data';
+  const USE_PERSISTENT = fs.existsSync(PERSISTENT_DIR);
+  
+  const allUsers = db.getAllUsers();
+  const results = [];
+  
+  for (const user of allUsers) {
+    const cards = db.getUserCards(user.id);
+    for (const card of cards) {
+      const filename = card.image_url ? card.image_url.split('/').pop() : null;
+      
+      let fileStatus = 'no_url';
+      if (filename) {
+        const persistentPath = path.join(PERSISTENT_DIR, 'cards', filename);
+        const publicPath = path.join(__dirname, '../public/cards', filename);
+        
+        if (USE_PERSISTENT && fs.existsSync(persistentPath)) {
+          fileStatus = 'exists_persistent';
+        } else if (fs.existsSync(publicPath)) {
+          fileStatus = 'exists_public';
+        } else {
+          fileStatus = 'file_missing';
+        }
+      }
+      
+      results.push({
+        id: card.id,
+        player: card.player_name,
+        season: card.season,
+        image_url: card.image_url,
+        image_pending: card.image_pending,
+        file_status: fileStatus,
+        needs_regen: cardNeedsImage(card),
+      });
+    }
+  }
+  
+  res.json({
+    persistent_storage: USE_PERSISTENT,
+    persistent_dir: PERSISTENT_DIR,
+    total_cards: results.length,
+    missing: results.filter(r => r.file_status === 'file_missing' || r.file_status === 'no_url').length,
+    cards: results,
+  });
+});
+
+// =============================================================================
 // ADMIN: Regenerate missing images
 // =============================================================================
 
