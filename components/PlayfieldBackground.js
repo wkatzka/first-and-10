@@ -9,8 +9,10 @@ const COLORS = {
 
 const pxPerYard = 18; // tune for density
 const fieldCycleYards = 100; // endzone to endzone
-const loopMs = 10_000; // 10 second scroll loop
+const loopMs = 20_000; // 20 second scroll loop (slower)
 const yardsPerTick = 5;
+const BG_DIM = 0.62; // overall background dim (lower = dimmer)
+const SCROLL_DIR = 1; // 1 = bottom->up, -1 = top->down
 
 function mod(n, m) {
   return ((n % m) + m) % m;
@@ -378,7 +380,7 @@ export default function PlayfieldBackground() {
       const fadeT = (dt - endTime) / play.fadeOut;
       const fade = fadeT <= 0 ? 1 : Math.max(0, 1 - fadeT);
 
-      const alpha = fade;
+      const alpha = fade * BG_DIM;
 
       // convert field-space y to screen-space y (scrolling up)
       const toScreen = (p) => ({ x: p.x, y: p.y - scrollPx });
@@ -466,6 +468,21 @@ export default function PlayfieldBackground() {
       ctx.fillStyle = COLORS.field;
       ctx.fillRect(0, 0, w, h);
 
+      const measureGlyphWidth = (text, heightPx) => {
+        const { ready, map } = glyphsRef.current;
+        const chars = String(text).split("");
+        const gap = Math.max(2, Math.round(heightPx * 0.08));
+        if (ready) {
+          const glyphs = chars.map((ch) => map.get(ch) || null);
+          if (glyphs.some((g) => !g)) return null;
+          const widths = glyphs.map((g) => (g.width / Math.max(1, g.height)) * heightPx);
+          return widths.reduce((s, ww) => s + ww, 0) + gap * (glyphs.length - 1);
+        }
+        // reasonable fallback if glyphs not ready
+        const approxChar = heightPx * 0.62;
+        return chars.length * approxChar + gap * (chars.length - 1);
+      };
+
       // draw TWO cycles stacked to avoid any seam
       for (const cycleOffset of [0, fieldHeightPx]) {
         const baseScroll = mod(scrollPx, fieldHeightPx) - cycleOffset;
@@ -475,19 +492,67 @@ export default function PlayfieldBackground() {
         ctx.globalCompositeOperation = "lighter";
         ctx.strokeStyle = COLORS.icy;
         ctx.shadowColor = COLORS.icy;
-        ctx.shadowBlur = 8;
+        ctx.shadowBlur = 6;
         ctx.lineWidth = 2;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
+        ctx.globalAlpha = 0.55 * BG_DIM;
 
         for (const yard of ticks) {
           const yPx = yard * pxPerYard - baseScroll;
 
-          // yard line
-          ctx.beginPath();
-          ctx.moveTo(20, yPx);
-          ctx.lineTo(w - 20, yPx);
-          ctx.stroke();
+          const yardInCycle = yard; // 0..100 in this local cycle
+          const label = yardLabel(yardInCycle === 100 ? 0 : yardInCycle); // treat 100 as 0 seam
+
+          // yard line (cut around labels so lines don't slice through numbers/text)
+          const xStart = 20;
+          const xEnd = w - 20;
+          const segments = [];
+          let cutouts = [];
+
+          // sideline label cutouts
+          if (label !== null) {
+            const labelStr = String(label);
+            const textH = 48;
+            const labelW = measureGlyphWidth(labelStr, textH) || 60;
+            const pad = 16;
+            const leftCx = 45;
+            const rightCx = w - 45;
+            cutouts.push([leftCx - labelW / 2 - pad, leftCx + labelW / 2 + pad]);
+            cutouts.push([rightCx - labelW / 2 - pad, rightCx + labelW / 2 + pad]);
+          }
+
+          // endzone center text cutout (only one endzone)
+          const isEndzone = yardInCycle === 5;
+          if (isEndzone) {
+            ctx.save();
+            ctx.font = `64px F10Varsity, system-ui, sans-serif`;
+            const m = ctx.measureText("FIRST & 10");
+            ctx.restore();
+            const pad = 26;
+            cutouts.push([w / 2 - m.width / 2 - pad, w / 2 + m.width / 2 + pad]);
+          }
+
+          // Normalize cutouts into drawable segments
+          cutouts = cutouts
+            .map(([a, b]) => [Math.max(xStart, a), Math.min(xEnd, b)])
+            .filter(([a, b]) => b > a)
+            .sort((a, b) => a[0] - b[0]);
+
+          let cursor = xStart;
+          for (const [a, b] of cutouts) {
+            if (a > cursor) segments.push([cursor, a]);
+            cursor = Math.max(cursor, b);
+          }
+          if (cursor < xEnd) segments.push([cursor, xEnd]);
+
+          for (const [sx, ex] of segments) {
+            if (ex - sx < 6) continue;
+            ctx.beginPath();
+            ctx.moveTo(sx, yPx);
+            ctx.lineTo(ex, yPx);
+            ctx.stroke();
+          }
 
           // side hashes (simple)
           for (let i = 0; i < 12; i++) {
@@ -499,10 +564,6 @@ export default function PlayfieldBackground() {
             ctx.lineTo(w - 10, yy);
             ctx.stroke();
           }
-
-          // labels (SAME on both sides)
-          const yardInCycle = yard; // 0..100 in this local cycle
-          const label = yardLabel(yardInCycle === 100 ? 0 : yardInCycle); // treat 100 as 0 seam
 
           if (label !== null) {
             ctx.save();
@@ -526,7 +587,7 @@ export default function PlayfieldBackground() {
           }
 
           // Endzone text at 5 and 95
-          if (yardInCycle === 5 || yardInCycle === 95) {
+          if (yardInCycle === 5) {
             ctx.save();
             ctx.fillStyle = COLORS.icyBright;
             ctx.shadowColor = COLORS.icy;
@@ -555,6 +616,23 @@ export default function PlayfieldBackground() {
         }
       }
       ctx.restore();
+
+      // dim overlay + vignette to keep UI legible
+      ctx.save();
+      ctx.globalCompositeOperation = "multiply";
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+
+      ctx.save();
+      const g = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.2, w / 2, h / 2, Math.max(w, h) * 0.85);
+      g.addColorStop(0, "rgba(0,0,0,0.12)");
+      g.addColorStop(1, "rgba(0,0,0,0.58)");
+      ctx.fillStyle = g;
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
     };
 
     const frame = (now) => {
@@ -563,7 +641,7 @@ export default function PlayfieldBackground() {
 
       // Scroll: 0..fieldHeightPx over loopMs
       const t = (now - startTimeRef.current) % loopMs;
-      const scrollPx = (t / loopMs) * fieldHeightPx;
+      const scrollPx = SCROLL_DIR * (t / loopMs) * fieldHeightPx;
 
       // Draw field
       drawField(w, h, scrollPx);
