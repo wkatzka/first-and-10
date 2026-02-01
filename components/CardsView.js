@@ -62,8 +62,8 @@ export default function CardsView({ user }) {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">My Cards</h1>
-          <p className="text-gray-400">{cards.length} cards in collection</p>
+          <h1 className="text-3xl f10-title text-white">My Cards</h1>
+          <p className="f10-subtitle">{cards.length} cards in collection</p>
         </div>
 
         {cards.length === 0 && !loading && (
@@ -78,7 +78,7 @@ export default function CardsView({ user }) {
 
       {/* Tier Distribution */}
       {cards.length > 0 && (
-        <div className="bg-gray-800 rounded-lg p-4">
+        <div className="f10-panel p-4">
           <h3 className="text-sm text-gray-400 mb-2">Tier Distribution</h3>
           <div className="flex flex-wrap gap-2">
             {[11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(tier => (
@@ -120,7 +120,7 @@ export default function CardsView({ user }) {
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
-          className="px-3 py-1.5 bg-gray-700 text-white rounded text-sm"
+          className="px-3 py-1.5 f10-input text-white rounded text-sm"
         >
           <option value="recent">Recently Minted</option>
           <option value="tier">Sort by Tier</option>

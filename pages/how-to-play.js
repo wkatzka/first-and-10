@@ -5,11 +5,11 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-white mb-6 text-center">How to Play</h1>
+        <h1 className="text-3xl f10-title text-white mb-6 text-center">How to Play</h1>
         
         {/* Quick Start */}
-        <section className="bg-gray-800 rounded-xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-yellow-400 mb-4">Quick Start</h2>
+        <section className="f10-panel p-6 mb-6">
+          <h2 className="text-xl f10-title mb-4" style={{ color: 'var(--nav-yellow)' }}>Quick Start</h2>
           <ol className="space-y-3 text-gray-300">
             <li className="flex gap-3">
               <span className="text-yellow-400 font-bold">1.</span>
@@ -27,31 +27,31 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
         </section>
         
         {/* Card Tiers */}
-        <section className="bg-gray-800 rounded-xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-purple-400 mb-4">Card Tiers</h2>
-          <p className="text-gray-400 mb-4">Higher tier = better stats = more points in games</p>
+        <section className="f10-panel p-6 mb-6">
+          <h2 className="text-xl f10-title mb-4" style={{ color: 'var(--nav-purple)' }}>Card Tiers</h2>
+          <p className="f10-subtitle mb-4">Higher tier = better stats = more points in games</p>
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="flex justify-between p-2 bg-gray-700/50 rounded">
+            <div className="flex justify-between p-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
               <span style={{color: '#EAB308'}}>★ Legendary</span>
               <span className="text-gray-400">Top 3%</span>
             </div>
-            <div className="flex justify-between p-2 bg-gray-700/50 rounded">
+            <div className="flex justify-between p-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
               <span style={{color: '#F97316'}}>★ Epic</span>
               <span className="text-gray-400">Top 5%</span>
             </div>
-            <div className="flex justify-between p-2 bg-gray-700/50 rounded">
+            <div className="flex justify-between p-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
               <span style={{color: '#EC4899'}}>Ultra Rare</span>
               <span className="text-gray-400">Top 10%</span>
             </div>
-            <div className="flex justify-between p-2 bg-gray-700/50 rounded">
+            <div className="flex justify-between p-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
               <span style={{color: '#A855F7'}}>Very Rare</span>
               <span className="text-gray-400">Top 15%</span>
             </div>
-            <div className="flex justify-between p-2 bg-gray-700/50 rounded">
+            <div className="flex justify-between p-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
               <span style={{color: '#8B5CF6'}}>Rare</span>
               <span className="text-gray-400">Top 25%</span>
             </div>
-            <div className="flex justify-between p-2 bg-gray-700/50 rounded">
+            <div className="flex justify-between p-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
               <span className="text-gray-400">Common</span>
               <span className="text-gray-400">Rest</span>
             </div>
@@ -59,8 +59,8 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
         </section>
         
         {/* Roster Strategy */}
-        <section className="bg-gray-800 rounded-xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-blue-400 mb-4">Roster Strategy</h2>
+        <section className="f10-panel p-6 mb-6">
+          <h2 className="text-xl f10-title mb-4" style={{ color: 'var(--nav-cyan)' }}>Roster Strategy</h2>
           <div className="space-y-4 text-gray-300">
             <div>
               <h3 className="text-white font-semibold mb-1">11 Starting Positions</h3>
@@ -82,8 +82,8 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
         </section>
         
         {/* Game Simulation */}
-        <section className="bg-gray-800 rounded-xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-green-400 mb-4">How Games Work</h2>
+        <section className="f10-panel p-6 mb-6">
+          <h2 className="text-xl f10-title mb-4" style={{ color: 'var(--nav-green)' }}>How Games Work</h2>
           <div className="space-y-3 text-gray-300 text-sm">
             <p>Games simulate a full football match using your roster's stats:</p>
             <ul className="space-y-2 ml-4">
@@ -96,9 +96,9 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
         </section>
 
         {/* Engine Impact Glossary */}
-        <section className="bg-gray-800 rounded-xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-cyan-300 mb-4">Engine Impact (What the Bars Mean)</h2>
-          <p className="text-gray-400 text-sm mb-4">
+        <section className="f10-panel p-6 mb-6">
+          <h2 className="text-xl f10-title mb-4" style={{ color: 'var(--nav-cyan)' }}>Engine Impact (What the Bars Mean)</h2>
+          <p className="f10-subtitle text-sm mb-4">
             On the back of cards, <strong className="text-white">Engine Impact</strong> shows how that player grades
             versus other players from the same era and position (0–100). Higher is better.
           </p>
@@ -153,7 +153,7 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
               </ul>
             </div>
 
-            <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-gray-400">
+            <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400">
               <strong className="text-white">Note:</strong> When a specific historical stat is missing, the engine estimates
               that trait using the player’s other available stats versus era peers (so strong “partial” stat profiles can still rate strong).
             </div>
@@ -161,10 +161,10 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
         </section>
         
         {/* Schedule */}
-        <section className="bg-gray-800 rounded-xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-orange-400 mb-4">Game Schedule</h2>
+        <section className="f10-panel p-6 mb-6">
+          <h2 className="text-xl f10-title mb-4" style={{ color: 'var(--nav-yellow)' }}>Game Schedule</h2>
           <div className="space-y-3 text-gray-300">
-            <div className="flex items-center gap-3 p-3 bg-orange-900/30 rounded-lg border border-orange-600/30">
+            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,230,0,0.08)', border: '1px solid rgba(255,230,0,0.18)' }}>
               <span className="text-2xl">📅</span>
               <div>
                 <p className="font-semibold text-white">Games: Monday – Sunday</p>
@@ -178,8 +178,8 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
         </section>
         
         {/* Unique Cards */}
-        <section className="bg-gray-800 rounded-xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-pink-400 mb-4">Unique Cards (1-of-1)</h2>
+        <section className="f10-panel p-6 mb-6">
+          <h2 className="text-xl f10-title mb-4" style={{ color: 'var(--nav-pink)' }}>Unique Cards (1-of-1)</h2>
           <div className="space-y-3 text-gray-300">
             <p>Every card in First & 10 is <strong className="text-white">completely unique</strong>.</p>
             <p className="text-sm text-gray-400">
@@ -190,8 +190,8 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
         </section>
         
         {/* Tips */}
-        <section className="bg-gradient-to-r from-blue-900/50 to-purple-900/50 rounded-xl p-6 mb-6 border border-blue-500/30">
-          <h2 className="text-xl font-bold text-white mb-4">Pro Tips</h2>
+        <section className="f10-panel p-6 mb-6" style={{ borderColor: 'rgba(168,85,247,0.22)' }}>
+          <h2 className="text-xl f10-title text-white mb-4">Pro Tips</h2>
           <ul className="space-y-2 text-gray-300 text-sm">
             <li>✓ Open all your packs first to see what you have</li>
             <li>✓ Use Auto-Fill to quickly set your best roster</li>

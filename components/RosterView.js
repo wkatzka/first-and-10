@@ -120,8 +120,8 @@ export default function RosterView({ user }) {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">My Roster</h1>
-          <p className="text-gray-400">
+          <h1 className="text-3xl f10-title text-white">My Roster</h1>
+          <p className="f10-subtitle">
             {filledSlots}/11 starters | Power: {rosterPower}
           </p>
         </div>
@@ -129,7 +129,8 @@ export default function RosterView({ user }) {
         <button
           onClick={handleAutoFill}
           disabled={saving || cards.length === 0}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="px-4 py-2 text-white rounded-xl transition-colors disabled:opacity-50"
+          style={{ background: 'rgba(0,229,255,0.16)', border: '1px solid rgba(0,229,255,0.22)' }}
         >
           Auto-Fill Best Cards
         </button>
@@ -141,8 +142,8 @@ export default function RosterView({ user }) {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Roster Sections */}
           {ROSTER_LAYOUT.map(({ section, slots }) => (
-            <div key={section} className="bg-gray-800 rounded-xl p-4">
-              <h3 className="text-lg font-bold text-white mb-4">{section}</h3>
+            <div key={section} className="f10-panel p-4">
+              <h3 className="text-lg f10-title text-white mb-4">{section}</h3>
 
               <div className="grid grid-cols-4 gap-2">
                 {slots.map(slot => {
@@ -184,11 +185,11 @@ export default function RosterView({ user }) {
           onClick={() => setSelectedSlot(null)}
         >
           <div
-            className="bg-gray-800 rounded-xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto"
+            className="f10-panel p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-white">
+              <h3 className="text-xl f10-title text-white">
                 Select {selectedSlot.position} for {selectedSlot.label}
               </h3>
               <button
@@ -204,7 +205,8 @@ export default function RosterView({ user }) {
               <button
                 onClick={() => handleCardSelect(null)}
                 disabled={saving}
-                className="w-full mb-4 py-2 bg-red-600/30 text-red-400 rounded-lg hover:bg-red-600/50 transition-colors"
+                className="w-full mb-4 py-2 text-red-200 rounded-xl transition-colors"
+                style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.22)' }}
               >
                 Remove Card from Slot
               </button>

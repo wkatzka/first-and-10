@@ -4,6 +4,14 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
+        {/* Fonts */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&display=swap"
+          rel="stylesheet"
+        />
+
         {/* PWA Primary Meta Tags */}
         <meta name="application-name" content="First & 10" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
