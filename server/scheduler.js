@@ -19,8 +19,29 @@ const SCHEDULE_PATH = path.join(DATA_DIR, 'schedule.json');
 // Game times in EST (24-hour format)
 const GAME_TIMES = [19, 21]; // 7 PM and 9 PM EST
 
-// Required roster positions (11 total)
-const REQUIRED_POSITIONS = ['QB', 'RB', 'WR1', 'WR2', 'TE', 'OL', 'DL', 'LB', 'DB1', 'DB2', 'K'];
+// Required roster slots (11 total) as stored in DB rosters
+const REQUIRED_SLOT_KEYS = [
+  'qb_card_id', 'rb_card_id',
+  'wr1_card_id', 'wr2_card_id', 'te_card_id',
+  'ol_card_id', 'dl_card_id', 'lb_card_id',
+  'db1_card_id', 'db2_card_id',
+  'k_card_id',
+];
+
+function pairKey(a, b) {
+  const x = Number(a);
+  const y = Number(b);
+  return x < y ? `${x}-${y}` : `${y}-${x}`;
+}
+
+function shuffleCopy(arr) {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
 
 /**
  * Check if a user has a full roster (all 11 positions filled)
@@ -29,10 +50,18 @@ const REQUIRED_POSITIONS = ['QB', 'RB', 'WR1', 'WR2', 'TE', 'OL', 'DL', 'LB', 'D
  */
 function hasFullRoster(userId) {
   const roster = db.getFullRoster(userId);
-  if (!roster || !roster.cards) return false;
-  
-  const filledPositions = Object.keys(roster.cards);
-  return REQUIRED_POSITIONS.every(pos => filledPositions.includes(pos));
+  if (!roster || !roster.roster || !roster.cards) return false;
+
+  // `db.getFullRoster()` returns `cards` keyed by slot IDs (e.g. `qb_card_id`),
+  // not position labels. Validate that each required slot has a valid card.
+  for (const key of REQUIRED_SLOT_KEYS) {
+    const cardId = roster.roster[key];
+    const card = roster.cards[key];
+    if (!cardId || !card) return false;
+    // Safety: ignore any stale roster pointers
+    if (card.user_id !== userId) return false;
+  }
+  return true;
 }
 
 /**
@@ -138,52 +167,100 @@ function generateDailySchedule(date, users) {
     return games;
   }
   
-  // For small groups, we may need to have some users play same opponent twice
-  // or have "bye" games against CPU
-  
+  // Track same-day opponents to avoid rematches across the two daily games.
+  // Goal: each team plays TWO different opponents per day when possible.
+  const opponentsByUser = new Map(userIds.map(id => [id, new Set()]));
+  const usedPairsToday = new Set();
+
   const dateStr = formatDate(date);
   
   // Generate pairings for each time slot
   for (const hour of GAME_TIMES) {
-    const usedUsers = new Set();
+    const usedUsersThisSlot = new Set();
     const slotGames = [];
-    
-    // Shuffle users for this slot
-    const shuffled = [...userIds].sort(() => Math.random() - 0.5);
-    
-    // Pair up users
-    for (let i = 0; i < shuffled.length - 1; i += 2) {
-      if (!usedUsers.has(shuffled[i]) && !usedUsers.has(shuffled[i + 1])) {
+    const shuffled = shuffleCopy(userIds);
+
+    // Greedy matching: prefer opponents you haven't played yet today
+    for (let i = 0; i < shuffled.length; i++) {
+      const a = shuffled[i];
+      if (usedUsersThisSlot.has(a)) continue;
+
+      // Find best available opponent
+      let chosenIdx = -1;
+      for (let j = i + 1; j < shuffled.length; j++) {
+        const b = shuffled[j];
+        if (usedUsersThisSlot.has(b)) continue;
+        const alreadyOpp = opponentsByUser.get(a)?.has(b) || opponentsByUser.get(b)?.has(a);
+        const alreadyPair = usedPairsToday.has(pairKey(a, b));
+        if (!alreadyOpp && !alreadyPair) {
+          chosenIdx = j;
+          break;
+        }
+      }
+
+      // Relax constraint if needed (small leagues)
+      if (chosenIdx === -1) {
+        for (let j = i + 1; j < shuffled.length; j++) {
+          const b = shuffled[j];
+          if (usedUsersThisSlot.has(b)) continue;
+          const alreadyOpp = opponentsByUser.get(a)?.has(b) || opponentsByUser.get(b)?.has(a);
+          if (!alreadyOpp) {
+            chosenIdx = j;
+            break;
+          }
+        }
+      }
+
+      // Last resort: allow rematch
+      if (chosenIdx === -1) {
+        for (let j = i + 1; j < shuffled.length; j++) {
+          const b = shuffled[j];
+          if (usedUsersThisSlot.has(b)) continue;
+          chosenIdx = j;
+          break;
+        }
+      }
+
+      if (chosenIdx === -1) {
+        // No opponent left => bye
         slotGames.push({
-          id: `${dateStr}_${hour}_${shuffled[i]}_${shuffled[i + 1]}`,
+          id: `${dateStr}_${hour}_${a}_bye`,
           date: dateStr,
           time: hour,
           timeDisplay: hour === 19 ? '7:00 PM EST' : '9:00 PM EST',
-          homeUserId: shuffled[i],
-          awayUserId: shuffled[i + 1],
-          status: 'scheduled',
+          homeUserId: a,
+          awayUserId: null,
+          status: 'bye',
           result: null,
         });
-        usedUsers.add(shuffled[i]);
-        usedUsers.add(shuffled[i + 1]);
+        usedUsersThisSlot.add(a);
+        continue;
       }
-    }
-    
-    // If odd number of users, last user gets a "bye" or plays CPU
-    if (shuffled.length % 2 === 1) {
-      const byeUser = shuffled[shuffled.length - 1];
+
+      const b = shuffled[chosenIdx];
+      usedUsersThisSlot.add(a);
+      usedUsersThisSlot.add(b);
+
+      // Randomize home/away
+      const homeUserId = Math.random() < 0.5 ? a : b;
+      const awayUserId = homeUserId === a ? b : a;
+
       slotGames.push({
-        id: `${dateStr}_${hour}_${byeUser}_bye`,
+        id: `${dateStr}_${hour}_${homeUserId}_${awayUserId}`,
         date: dateStr,
         time: hour,
         timeDisplay: hour === 19 ? '7:00 PM EST' : '9:00 PM EST',
-        homeUserId: byeUser,
-        awayUserId: null, // Bye game
-        status: 'bye',
+        homeUserId,
+        awayUserId,
+        status: 'scheduled',
         result: null,
       });
+
+      opponentsByUser.get(a)?.add(b);
+      opponentsByUser.get(b)?.add(a);
+      usedPairsToday.add(pairKey(a, b));
     }
-    
+
     games.push(...slotGames);
   }
   
