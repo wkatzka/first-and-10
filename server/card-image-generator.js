@@ -142,7 +142,11 @@ async function generateAICard(player) {
   } catch (err) {
     console.error(`[AI-GEN] FAILED for ${cardData.name}: ${err.message}`);
     console.error(`[AI-GEN] Full error:`, err);
-    // Fallback to SVG
+    // IMPORTANT: When AI is enabled, never fall back to SVG.
+    // Keep placeholders/pending and retry later via the rate-limited queue.
+    if (AI_ENABLED) {
+      throw err;
+    }
     return generateSVGCard(player);
   }
 }

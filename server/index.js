@@ -16,6 +16,7 @@ const scheduler = require('./scheduler');
 const cardImageGenerator = require('./card-image-generator');
 const pressConference = require('./press-conference');
 const messages = require('./messages');
+const imageRegenQueue = require('./image-regen-queue');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -276,6 +277,132 @@ app.get('/api/admin/users', adminAuth, (req, res) => {
   }))});
 });
 
+// Admin: Card counts & image health per user
+app.get('/api/admin/user-card-stats', adminAuth, (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  const PERSISTENT_DIR = '/var/data';
+  const USE_PERSISTENT = fs.existsSync(PERSISTENT_DIR);
+  const publicCardsDir = path.join(__dirname, '../public/cards');
+  const persistentCardsDir = path.join(PERSISTENT_DIR, 'cards');
+  
+  function fileStatusForUrl(imageUrl) {
+    if (!imageUrl) return 'no_url';
+    const filename = imageUrl.split('/').pop();
+    if (!filename) return 'no_url';
+    if (USE_PERSISTENT) {
+      const p = path.join(persistentCardsDir, filename);
+      if (fs.existsSync(p)) return 'exists_persistent';
+    }
+    const pub = path.join(publicCardsDir, filename);
+    if (fs.existsSync(pub)) return 'exists_public';
+    return 'file_missing';
+  }
+  
+  // Same logic as cardNeedsImage, but without noisy logs
+  function needsRegen(card) {
+    const u = card.image_url || '';
+    if (!u) return true;
+    if (u.includes('placeholder')) return true;
+    if (u.endsWith('.svg')) return true;
+    if (card.image_pending) return true;
+    // If it's a png, ensure the file exists
+    if (u.endsWith('.png')) {
+      return fileStatusForUrl(u) === 'file_missing';
+    }
+    return false;
+  }
+  
+  const users = db.getAllUsers();
+  const results = users.map(u => {
+    const cards = db.getUserCards(u.id);
+    const stats = {
+      user_id: u.id,
+      username: u.username,
+      team_name: u.team_name,
+      packs_opened: u.packs_opened,
+      max_packs: u.max_packs,
+      card_count: cards.length,
+      image: {
+        png: 0,
+        svg: 0,
+        placeholder: 0,
+        no_url: 0,
+        pending_true: 0,
+        file_missing: 0,
+        needs_regen: 0,
+      },
+    };
+    
+    for (const c of cards) {
+      const url = c.image_url || '';
+      if (!url) stats.image.no_url++;
+      if (url.endsWith('.png')) stats.image.png++;
+      if (url.endsWith('.svg')) stats.image.svg++;
+      if (url.includes('placeholder')) stats.image.placeholder++;
+      if (c.image_pending) stats.image.pending_true++;
+      if (fileStatusForUrl(url) === 'file_missing') stats.image.file_missing++;
+      if (needsRegen(c)) stats.image.needs_regen++;
+    }
+    
+    return stats;
+  });
+  
+  res.json({
+    persistent_storage: USE_PERSISTENT,
+    users: results,
+  });
+});
+
+// Admin: Compensate a user for missing mints by adding bonus packs
+// If pack opens were counted but fewer than 5 cards were saved, this restores fairness
+app.post('/api/admin/compensate-missing-packs', adminAuth, (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) {
+      return res.status(400).json({ error: 'Missing username' });
+    }
+    
+    const user = db.getUserByUsername(username);
+    if (!user) {
+      return res.status(404).json({ error: `User "${username}" not found` });
+    }
+    
+    const actualCards = db.getUserCards(user.id).length;
+    const expectedCards = (user.packs_opened || 0) * 5;
+    const missingCards = Math.max(0, expectedCards - actualCards);
+    
+    if (missingCards === 0) {
+      return res.json({
+        success: true,
+        username,
+        expectedCards,
+        actualCards,
+        missingCards,
+        packsAdded: 0,
+        newMaxPacks: user.max_packs,
+      });
+    }
+    
+    const packsToAdd = Math.ceil(missingCards / 5);
+    const newMax = (user.max_packs || 0) + packsToAdd;
+    db.updateUserMaxPacks(user.id, newMax);
+    
+    res.json({
+      success: true,
+      username,
+      expectedCards,
+      actualCards,
+      missingCards,
+      packsAdded: packsToAdd,
+      newMaxPacks: newMax,
+      packsRemaining: newMax - (user.packs_opened || 0),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // =============================================================================
 // PACK ROUTES
 // =============================================================================
@@ -298,6 +425,11 @@ app.get('/api/packs/info', authMiddleware, (req, res) => {
 // Check if AI image generation is enabled
 const AI_ENABLED = !!process.env.OPENAI_API_KEY;
 
+// Start rate-limited image regen queue (prevents OpenAI IPM bursts)
+if (AI_ENABLED) {
+  imageRegenQueue.start({ db, cardImageGenerator });
+}
+
 // Open a pack
 app.post('/api/packs/open', authMiddleware, async (req, res) => {
   try {
@@ -309,7 +441,8 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
     
     // Determine pack type
     const isStarterPack = user.packs_opened < 3; // First 3 are starter packs
-    const cards = isStarterPack ? packs.openStarterPack(user.packs_opened) : packs.openPack();
+    const packNum = user.packs_opened; // 0-based
+    const cards = isStarterPack ? packs.openStarterPack(packNum) : packs.openPack();
     
     if (cards.length === 0) {
       return res.status(400).json({ error: 'No cards available to mint' });
@@ -318,18 +451,39 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
     // Save cards to database AND mint them (mark as taken)
     const savedCards = [];
     const cardsToGenerateImages = [];
+    const desiredCount = 5;
+    const desiredPositions = cards.slice(0, desiredCount).map(c => c.position);
     
-    for (const card of cards) {
-      // Mint the card (mark as taken in ledger)
-      try {
-        mintingLedger.mintCard(card, req.user.id);
-      } catch (mintErr) {
-        console.error('Mint error (skipping):', mintErr.message);
-        continue; // Skip if already minted somehow
+    for (let i = 0; i < desiredCount; i++) {
+      const preferredPosition = desiredPositions[i] || null;
+      let mintedCard = null;
+      
+      // Try the originally selected card first, then retry with replacements
+      for (let attempt = 0; attempt < 200; attempt++) {
+        const candidate = attempt === 0
+          ? cards[i]
+          : (preferredPosition
+              ? (packs.pickRandomPlayerFromPosition(preferredPosition) || packs.pickAnyAvailablePlayer())
+              : packs.pickAnyAvailablePlayer());
+        
+        if (!candidate) break;
+        
+        try {
+          mintingLedger.mintCard(candidate, req.user.id);
+          mintedCard = { ...candidate };
+          break;
+        } catch (mintErr) {
+          // Collision/race: try another card instead of skipping
+          continue;
+        }
+      }
+      
+      if (!mintedCard) {
+        return res.status(500).json({ error: 'Could not mint a full pack. Please try again.' });
       }
       
       // Get formatted stats for card back
-      card.stats = cardImageGenerator.getFormattedStats(card);
+      mintedCard.stats = cardImageGenerator.getFormattedStats(mintedCard);
       
       // Use placeholder image initially if AI is enabled
       // For SVG (non-AI), generate immediately since it's fast
@@ -342,14 +496,14 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
         imagePending = true;
       } else {
         // SVG is instant, generate now
-        imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
+        imageUrl = await cardImageGenerator.getOrGenerateCardImage(mintedCard);
       }
       
-      card.image_url = imageUrl;
-      card.image_pending = imagePending;
+      mintedCard.image_url = imageUrl;
+      mintedCard.image_pending = imagePending;
       
-      const cardId = db.addCard(req.user.id, card);
-      const savedCard = { id: cardId, ...card, image_url: imageUrl, image_pending: imagePending };
+      const cardId = db.addCard(req.user.id, mintedCard);
+      const savedCard = { id: cardId, ...mintedCard, image_url: imageUrl, image_pending: imagePending };
       savedCards.push(savedCard);
       
       if (imagePending) {
@@ -357,7 +511,7 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
       }
     }
     
-    // Increment packs opened
+    // Increment packs opened ONLY after minting full pack
     db.incrementPacksOpened(req.user.id);
     
     // Generate AI images in background (don't wait)
@@ -405,37 +559,50 @@ app.post('/api/packs/open-single', authMiddleware, async (req, res) => {
     
     const savedCards = [];
     const cardsToGenerateImages = [];
-    
-    for (const card of cards) {
+
+    const preferredPosition = cards[0]?.position || null;
+    let mintedCard = null;
+    for (let attempt = 0; attempt < 200; attempt++) {
+      const candidate = attempt === 0
+        ? cards[0]
+        : (preferredPosition
+            ? (packs.pickRandomPlayerFromPosition(preferredPosition) || packs.pickAnyAvailablePlayer())
+            : packs.pickAnyAvailablePlayer());
+      if (!candidate) break;
       try {
-        mintingLedger.mintCard(card, req.user.id);
-      } catch (mintErr) {
-        console.error('Mint error (skipping):', mintErr.message);
+        mintingLedger.mintCard(candidate, req.user.id);
+        mintedCard = { ...candidate };
+        break;
+      } catch (e) {
         continue;
       }
+    }
+    
+    if (!mintedCard) {
+      return res.status(500).json({ error: 'Could not mint a single-card pack. Please try again.' });
+    }
       
-      card.stats = cardImageGenerator.getFormattedStats(card);
+    mintedCard.stats = cardImageGenerator.getFormattedStats(mintedCard);
       
-      let imageUrl;
-      let imagePending = false;
+    let imageUrl;
+    let imagePending = false;
       
-      if (AI_ENABLED) {
-        imageUrl = '/cards/placeholder.svg';
-        imagePending = true;
-      } else {
-        imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
-      }
+    if (AI_ENABLED) {
+      imageUrl = '/cards/placeholder.svg';
+      imagePending = true;
+    } else {
+      imageUrl = await cardImageGenerator.getOrGenerateCardImage(mintedCard);
+    }
       
-      card.image_url = imageUrl;
-      card.image_pending = imagePending;
+    mintedCard.image_url = imageUrl;
+    mintedCard.image_pending = imagePending;
       
-      const cardId = db.addCard(req.user.id, card);
-      const savedCard = { id: cardId, ...card, image_url: imageUrl, image_pending: imagePending };
-      savedCards.push(savedCard);
+    const cardId = db.addCard(req.user.id, mintedCard);
+    const savedCard = { id: cardId, ...mintedCard, image_url: imageUrl, image_pending: imagePending };
+    savedCards.push(savedCard);
       
-      if (imagePending) {
-        cardsToGenerateImages.push({ cardId, card: savedCard });
-      }
+    if (imagePending) {
+      cardsToGenerateImages.push({ cardId, card: savedCard });
     }
     
     db.incrementPacksOpened(req.user.id);
@@ -484,18 +651,36 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
       const currentPackNum = user.packs_opened + i;
       const isStarterPack = currentPackNum < 3;
       const cards = isStarterPack ? packs.openStarterPack(currentPackNum) : packs.openPack();
+      const desiredCount = 5;
+      const desiredPositions = cards.slice(0, desiredCount).map(c => c.position);
+      let mintedThisPack = 0;
       
-      for (const card of cards) {
-        // Mint the card (mark as taken in ledger)
-        try {
-          mintingLedger.mintCard(card, req.user.id);
-        } catch (mintErr) {
-          console.error('Mint error (skipping):', mintErr.message);
-          continue;
+      for (let slot = 0; slot < desiredCount; slot++) {
+        const preferredPosition = desiredPositions[slot] || null;
+        let mintedCard = null;
+        
+        for (let attempt = 0; attempt < 200; attempt++) {
+          const candidate = attempt === 0
+            ? cards[slot]
+            : (preferredPosition
+                ? (packs.pickRandomPlayerFromPosition(preferredPosition) || packs.pickAnyAvailablePlayer())
+                : packs.pickAnyAvailablePlayer());
+          if (!candidate) break;
+          try {
+            mintingLedger.mintCard(candidate, req.user.id);
+            mintedCard = { ...candidate };
+            break;
+          } catch (e) {
+            continue;
+          }
+        }
+        
+        if (!mintedCard) {
+          return res.status(500).json({ error: 'Could not mint all packs due to mint collisions. Please try again.' });
         }
         
         // Get formatted stats for card back
-        card.stats = cardImageGenerator.getFormattedStats(card);
+        mintedCard.stats = cardImageGenerator.getFormattedStats(mintedCard);
         
         // Use placeholder image initially if AI is enabled
         let imageUrl;
@@ -505,29 +690,34 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
           imageUrl = '/cards/placeholder.svg';
           imagePending = true;
         } else {
-          imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
+          imageUrl = await cardImageGenerator.getOrGenerateCardImage(mintedCard);
         }
         
-        card.image_url = imageUrl;
-        card.image_pending = imagePending;
+        mintedCard.image_url = imageUrl;
+        mintedCard.image_pending = imagePending;
         
-        const cardId = db.addCard(req.user.id, card);
+        const cardId = db.addCard(req.user.id, mintedCard);
         const savedCard = { 
           id: cardId, 
-          ...card,
+          ...mintedCard,
           image_url: imageUrl,
           image_pending: imagePending,
           packNumber: currentPackNum + 1,
           packType: isStarterPack ? 'starter' : 'bonus'
         };
         allCards.push(savedCard);
+        mintedThisPack += 1;
         
         if (imagePending) {
           cardsToGenerateImages.push({ cardId, card: savedCard });
         }
       }
       
-      db.incrementPacksOpened(req.user.id);
+      if (mintedThisPack === desiredCount) {
+        db.incrementPacksOpened(req.user.id);
+      } else {
+        return res.status(500).json({ error: 'Failed to mint a full pack during open-all. Please try again.' });
+      }
     }
     
     // Generate AI images in background (don't wait)
@@ -566,25 +756,21 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
 function cardNeedsImage(card) {
   // No image URL at all
   if (!card.image_url) {
-    console.log(`Card ${card.id} needs image: no image_url`);
     return true;
   }
   
   // Has placeholder image
   if (card.image_url.includes('placeholder')) {
-    console.log(`Card ${card.id} needs image: has placeholder`);
     return true;
   }
   
   // SVG = fallback, needs AI regeneration to get PNG
   if (card.image_url.endsWith('.svg')) {
-    console.log(`Card ${card.id} needs image: has SVG fallback, needs AI PNG`);
     return true;
   }
   
   // Marked as pending
   if (card.image_pending) {
-    console.log(`Card ${card.id} needs image: image_pending is true`);
     return true;
   }
   
@@ -609,45 +795,13 @@ function cardNeedsImage(card) {
     return false; // PNG exists
   }
   
-  console.log(`Card ${card.id} needs image: PNG file not found (${filename})`);
   return true;
 }
 
-// Helper: Regenerate image for a card in background
-function regenerateCardImage(cardId, card) {
-  setImmediate(async () => {
-    try {
-      // Convert database card format to player format expected by image generator
-      const playerData = {
-        player: card.player_name || card.player || 'Unknown',
-        player_name: card.player_name || card.player || 'Unknown',
-        season: card.season,
-        team: card.team,
-        position: card.position,
-        tier: card.tier,
-        composite_score: card.composite_score,
-        // Include raw stat fields if available for proper formatting
-        ...card,
-      };
-      
-      console.log(`[REGEN] Starting for card ${cardId}: ${playerData.player} (${playerData.season})`);
-      
-      // Force regeneration by not using cache
-      const imageUrl = await cardImageGenerator.generateAICard(playerData);
-      
-      console.log(`[REGEN] Card ${cardId} returned: ${imageUrl}`);
-      
-      // Only update if we got a PNG (not SVG fallback)
-      if (imageUrl && imageUrl.endsWith('.png')) {
-        db.updateCardImage(cardId, imageUrl);
-        console.log(`[REGEN] Card ${cardId} SUCCESS - updated to PNG`);
-      } else {
-        console.log(`[REGEN] Card ${cardId} FAILED - got SVG fallback, not updating`);
-      }
-    } catch (err) {
-      console.error(`[REGEN] Card ${cardId} ERROR:`, err.message);
-    }
-  });
+// Helper: Enqueue image regeneration (rate-limited)
+function enqueueCardImageRegen(card) {
+  if (!AI_ENABLED) return false;
+  return imageRegenQueue.enqueue(card.id, card, 'api_request');
 }
 
 // Get all user's cards
@@ -658,7 +812,7 @@ app.get('/api/cards', authMiddleware, (req, res) => {
   if (AI_ENABLED) {
     for (const card of cards) {
       if (cardNeedsImage(card)) {
-        regenerateCardImage(card.id, card);
+        enqueueCardImageRegen(card);
       }
     }
   }
@@ -719,7 +873,7 @@ app.get('/api/users/:userId/cards', authMiddleware, (req, res) => {
   if (AI_ENABLED) {
     for (const card of cards) {
       if (cardNeedsImage(card)) {
-        regenerateCardImage(card.id, card);
+        enqueueCardImageRegen(card);
       }
     }
   }
@@ -1518,12 +1672,13 @@ app.post('/api/admin/regenerate-images', (req, res) => {
   
   // Trigger regeneration for all missing images
   for (const card of cardsToRegenerate) {
-    regenerateCardImage(card.id, card);
+    enqueueCardImageRegen(card);
   }
   
   res.json({ 
     message: `Regenerating images for ${cardsToRegenerate.length} cards`,
     cards: cardsToRegenerate.map(c => ({ id: c.id, player: c.player || c.player_name })),
+    queue: imageRegenQueue.getStats(),
   });
 });
 
