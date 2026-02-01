@@ -165,8 +165,8 @@ export default function Packs({ user, onLogout, unreadMessages }) {
         <div className="space-y-8">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-2">Open Packs</h1>
-          <p className="text-gray-400">
+          <h1 className="text-3xl f10-title text-white mb-2">Open Packs</h1>
+          <p className="f10-subtitle">
             {packInfo && packInfo.packsRemaining > 0
               ? `You have ${packInfo.packsRemaining} packs remaining`
               : 'No packs remaining'}
@@ -175,7 +175,7 @@ export default function Packs({ user, onLogout, unreadMessages }) {
         
         {/* Pack Status */}
         {!loading && packInfo && (
-          <div className="max-w-md mx-auto bg-gray-800 rounded-xl p-6">
+          <div className="max-w-md mx-auto f10-panel p-6">
             <div className="flex justify-between items-center mb-4">
               <span className="text-gray-400">Packs Opened</span>
               <span className="text-white font-bold">{packInfo.packsOpened} / {packInfo.maxPacks}</span>
@@ -191,12 +191,12 @@ export default function Packs({ user, onLogout, unreadMessages }) {
             
             {/* Pack Types */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className={`p-3 rounded-lg ${packInfo.packsOpened < 3 ? 'bg-green-900/30 border border-green-600/30' : 'bg-gray-700'}`}>
+              <div className={`p-3 rounded-xl ${packInfo.packsOpened < 3 ? '' : ''}`} style={packInfo.packsOpened < 3 ? { background: 'rgba(0,255,127,0.10)', border: '1px solid rgba(0,255,127,0.18)' } : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
                 <div className="text-sm text-gray-400">Starter Packs</div>
                 <div className="text-xl font-bold text-white">{Math.min(packInfo.packsOpened, 3)} / 3</div>
                 <div className="text-xs text-gray-500">Guaranteed positions</div>
               </div>
-              <div className={`p-3 rounded-lg ${packInfo.packsOpened >= 3 && packInfo.packsOpened < 13 ? 'bg-purple-900/30 border border-purple-600/30' : 'bg-gray-700'}`}>
+              <div className={`p-3 rounded-xl ${packInfo.packsOpened >= 3 && packInfo.packsOpened < 13 ? '' : ''}`} style={packInfo.packsOpened >= 3 && packInfo.packsOpened < 13 ? { background: 'rgba(168,85,247,0.10)', border: '1px solid rgba(168,85,247,0.18)' } : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
                 <div className="text-sm text-gray-400">Bonus Packs</div>
                 <div className="text-xl font-bold text-white">{Math.max(0, packInfo.packsOpened - 3)} / 10</div>
                 <div className="text-xs text-gray-500">Random players</div>
@@ -218,7 +218,8 @@ export default function Packs({ user, onLogout, unreadMessages }) {
                   <button
                     onClick={handleOpenSinglePack}
                     disabled={opening}
-                    className="w-full py-3 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50"
+                    className="w-full py-3 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
                   >
                     Open 1-Card Test Pack
                   </button>
@@ -228,7 +229,8 @@ export default function Packs({ user, onLogout, unreadMessages }) {
                   <button
                     onClick={handleOpenAll}
                     disabled={opening}
-                    className="w-full py-3 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50"
+                    className="w-full py-3 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
                   >
                     Open All ({packInfo.packsRemaining} packs)
                   </button>
@@ -239,7 +241,8 @@ export default function Packs({ user, onLogout, unreadMessages }) {
                 <p className="text-gray-400 mb-4">You've opened all your packs!</p>
                 <button
                   onClick={() => router.push('/cards')}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-6 py-2 text-white rounded-xl transition-colors"
+                  style={{ background: 'rgba(0,229,255,0.16)', border: '1px solid rgba(0,229,255,0.22)' }}
                 >
                   View Your Cards
                 </button>
@@ -247,7 +250,7 @@ export default function Packs({ user, onLogout, unreadMessages }) {
             )}
             
             {/* Tier Rates */}
-            <div className="mt-6 pt-4 border-t border-gray-700">
+            <div className="mt-6 pt-4 border-t border-white/10">
               <div className="text-xs text-gray-500 mb-2">Drop Rates</div>
               <div className="grid grid-cols-5 gap-1 text-xs">
                 {[10, 9, 8, 7, 6].map(tier => (
@@ -324,9 +327,9 @@ export default function Packs({ user, onLogout, unreadMessages }) {
         {/* AI Image Generation Popup */}
         {showAiPopup && (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 rounded-2xl p-6 max-w-md w-full text-center shadow-2xl border border-blue-500/30">
+            <div className="f10-panel p-6 max-w-md w-full text-center shadow-2xl" style={{ borderColor: 'rgba(0,229,255,0.22)' }}>
               <div className="text-5xl mb-4 animate-pulse">🎨</div>
-              <h2 className="text-2xl font-bold text-white mb-3">
+              <h2 className="text-2xl f10-title text-white mb-3">
                 AI is generating unique card artwork!
               </h2>
               <p className="text-gray-300 mb-2">
@@ -337,7 +340,8 @@ export default function Packs({ user, onLogout, unreadMessages }) {
               </p>
               <button
                 onClick={() => setShowAiPopup(false)}
-                className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors text-lg"
+                className="px-8 py-3 text-white font-semibold rounded-xl transition-colors text-lg"
+                style={{ background: 'rgba(0,229,255,0.16)', border: '1px solid rgba(0,229,255,0.22)' }}
               >
                 OK
               </button>

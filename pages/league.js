@@ -244,8 +244,8 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-2">League</h1>
-          <p className="text-gray-400">View teams, cards, and send messages</p>
+          <h1 className="text-3xl f10-title text-white mb-2">League</h1>
+          <p className="f10-subtitle">View teams, cards, and send messages</p>
         </div>
         
         {/* Messages Toggle */}
@@ -269,8 +269,8 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
         
         {/* Messages Section */}
         {showMessages && (
-          <div className="bg-gray-800 rounded-xl p-4">
-            <h2 className="text-xl font-bold text-white mb-4">Messages</h2>
+          <div className="f10-panel p-4">
+            <h2 className="text-xl f10-title text-white mb-4">Messages</h2>
             
             {loadingInbox ? (
               <p className="text-gray-400 text-center py-4">Loading messages...</p>
@@ -282,7 +282,7 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
                   <div
                     key={sender.from_user_id}
                     onClick={() => openConversation({ id: sender.from_user_id, username: sender.from_username, team_name: sender.from_team_name })}
-                    className="bg-gray-700 rounded-lg p-3 cursor-pointer hover:bg-gray-600 transition-colors"
+                    className="f10-panel-soft rounded-xl p-3 cursor-pointer transition-colors"
                   >
                     <div className="flex justify-between items-start">
                       <div>
@@ -326,7 +326,7 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
               return (
                 <div
                   key={team.id}
-                  className={`bg-gray-800 rounded-xl p-4 ${isMe ? 'ring-2 ring-blue-500' : ''}`}
+                  className={`f10-panel p-4 ${isMe ? 'ring-2 ring-white/20' : ''}`}
                 >
                   <div className="flex items-center gap-4">
                     {/* Rank Badge */}
@@ -366,17 +366,19 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
                   
                   {/* Action Buttons - only for other teams */}
                   {!isMe && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-gray-700">
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-white/10">
                       <button
                         onClick={() => viewTeamCards(team)}
                         disabled={team.card_count === 0}
-                        className="flex-1 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        className="flex-1 py-2 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
                       >
                         View Cards
                       </button>
                       <button
                         onClick={() => openConversation(team)}
-                        className="flex-1 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors text-sm"
+                        className="flex-1 py-2 text-white rounded-xl transition-colors text-sm"
+                        style={{ background: 'rgba(0,229,255,0.16)', border: '1px solid rgba(0,229,255,0.22)' }}
                       >
                         Message
                       </button>
@@ -395,13 +397,13 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
             onClick={() => setSelectedTeam(null)}
           >
             <div 
-              className="flex-1 flex flex-col max-w-lg w-full mx-auto bg-gray-800 sm:my-8 sm:rounded-xl"
+              className="flex-1 flex flex-col max-w-lg w-full mx-auto f10-panel sm:my-8 sm:rounded-3xl"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="flex justify-between items-center p-4 border-b border-gray-700 safe-area-pt">
+              <div className="flex justify-between items-center p-4 border-b border-white/10 safe-area-pt">
                 <div>
-                  <h2 className="font-bold text-white text-lg">{selectedTeam.team_name || selectedTeam.username}</h2>
+                  <h2 className="f10-title text-white text-lg">{selectedTeam.team_name || selectedTeam.username}</h2>
                   <p className="text-xs text-gray-400">{selectedTeam.username}</p>
                 </div>
                 <button
@@ -442,7 +444,7 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
               </div>
               
               {/* Input */}
-              <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700 safe-area-pb">
+              <form onSubmit={handleSendMessage} className="p-4 border-t border-white/10 safe-area-pb">
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -454,12 +456,13 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
                     autoComplete="off"
                     autoCapitalize="sentences"
                     enterKeyHint="send"
-                    className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white text-base placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    className="flex-1 f10-input px-4 py-3 text-white text-base placeholder-gray-400 focus:outline-none"
                   />
                   <button
                     type="submit"
                     disabled={!newMessage.trim() || sendingMessage}
-                    className="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                    className="px-5 py-3 text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                    style={{ background: 'rgba(0,229,255,0.16)', border: '1px solid rgba(0,229,255,0.22)' }}
                   >
                     {sendingMessage ? '...' : 'Send'}
                   </button>
@@ -480,13 +483,13 @@ export default function League({ user, onLogout, unreadMessages, onMessageRead }
               onClick={() => setViewingTeamCards(null)}
             >
               <div 
-                className="bg-gray-800 rounded-xl p-4 sm:p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+                className="f10-panel p-4 sm:p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Header */}
                 <div className="flex justify-between items-center mb-4">
                   <div>
-                    <h2 className="text-xl font-bold text-white">
+                    <h2 className="text-xl f10-title text-white">
                       {viewingTeamCards.team_name || viewingTeamCards.username}
                     </h2>
                     <p className="text-sm text-gray-400">

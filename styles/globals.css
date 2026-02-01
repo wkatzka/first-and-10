@@ -30,6 +30,9 @@
   --nav-green: #00ff7f;
   --nav-bg-primary: #080a0e;
   --nav-bg-card: #0d1015;
+
+  /* Display font (matches nav tiles) */
+  --f10-display-font: 'Rajdhani', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Prevent pull-to-refresh on mobile */
@@ -52,6 +55,11 @@ body {
   padding-bottom: var(--safe-area-bottom);
   padding-left: var(--safe-area-left);
   padding-right: var(--safe-area-right);
+}
+
+/* Use Rajdhani for headings to match tile feel */
+h1, h2, h3, .f10-display {
+  font-family: var(--f10-display-font);
 }
 
 /* ========================================
@@ -100,6 +108,7 @@ body {
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.42);
   white-space: nowrap; /* keep “My Team” on one line */
+  font-family: var(--f10-display-font);
 }
 
 .f10-nav-icon {
@@ -169,6 +178,54 @@ body {
   -webkit-text-stroke: 1px var(--nav-green);
   -webkit-text-fill-color: transparent;
   text-shadow: 0 0 18px rgba(0, 255, 127, 0.4);
+}
+
+/* ========================================
+   Tile-style panels (match bottom tiles)
+======================================== */
+.f10-panel {
+  background: rgba(13, 16, 21, 0.78);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  box-shadow: 0 16px 44px rgba(0,0,0,0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.f10-panel-soft {
+  background: rgba(13, 16, 21, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.f10-panel-border {
+  border-color: rgba(255, 255, 255, 0.10);
+}
+
+.f10-title {
+  font-family: var(--f10-display-font);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.f10-subtitle {
+  color: rgba(255,255,255,0.55);
+}
+
+.f10-segment {
+  background: rgba(0,0,0,0.28);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 18px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.f10-input {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px;
 }
 
 

@@ -95,7 +95,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
     return (
       <div
         key={game.id}
-        className={`bg-gray-800 rounded-lg p-4 ${isMyGame ? 'ring-2 ring-blue-500' : ''}`}
+        className={`f10-panel p-4 ${isMyGame ? 'ring-2 ring-white/20' : ''}`}
       >
         {showDate && (
           <div className="text-xs text-gray-500 mb-2">{game.date}</div>
@@ -149,18 +149,18 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-2">Game Schedule</h1>
-          <p className="text-gray-400">
+          <h1 className="text-3xl f10-title text-white mb-2">Game Schedule</h1>
+          <p className="f10-subtitle">
             Games auto-play at 7:00 PM & 9:00 PM EST daily
           </p>
         </div>
         
         {/* Info Box */}
-        <div className="max-w-2xl mx-auto bg-blue-900/30 border border-blue-600/30 rounded-lg p-4">
+        <div className="max-w-2xl mx-auto f10-panel p-4" style={{ borderColor: 'rgba(0,229,255,0.25)' }}>
           <div className="flex items-start gap-3">
             <span className="text-2xl">📅</span>
             <div>
-              <div className="text-blue-400 font-semibold">Auto-Compete Mode</div>
+              <div className="font-semibold" style={{ color: 'var(--nav-cyan)' }}>Auto-Compete Mode</div>
               <div className="text-sm text-gray-300">
                 Your roster plays automatically at scheduled times. 
                 Make sure your best lineup is set before game time!
@@ -170,16 +170,17 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
         </div>
         
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-gray-700 overflow-x-auto">
+        <div className="flex gap-1 border-b border-white/10 overflow-x-auto">
           {['practice', 'today', 'tomorrow', 'my-games'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-3 py-2 font-medium transition-colors whitespace-nowrap text-sm ${
                 activeTab === tab
-                  ? 'text-white border-b-2 border-blue-500'
+                  ? 'text-white border-b-2'
                   : 'text-gray-400 hover:text-white'
               }`}
+              style={activeTab === tab ? { borderColor: 'rgba(255,255,255,0.18)' } : undefined}
             >
               {tab === 'practice' && '🏈 Practice'}
               {tab === 'today' && "Today"}
@@ -196,9 +197,9 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
           <div className="space-y-4">
             {activeTab === 'practice' && (
               <div className="max-w-md mx-auto space-y-4">
-                <div className="bg-gray-800 rounded-xl p-6">
-                  <h2 className="text-xl font-bold text-white mb-2">Practice Simulation</h2>
-                  <p className="text-gray-400 text-sm mb-4">
+                <div className="f10-panel p-6">
+                  <h2 className="text-xl f10-title text-white mb-2">Practice Simulation</h2>
+                  <p className="f10-subtitle text-sm mb-4">
                     Test your roster against another team. Practice games don't affect standings.
                   </p>
                   
@@ -215,7 +216,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                         setPracticeResult(null);
                         setPracticeError(null);
                       }}
-                      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+                      className="w-full f10-input px-4 py-3 text-white focus:outline-none"
                     >
                       <option value="">Choose a team...</option>
                       {teams.map(team => (
@@ -230,7 +231,8 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                   <button
                     onClick={runPracticeSim}
                     disabled={!selectedOpponent || simulating}
-                    className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-3 text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ backgroundColor: 'rgba(0,255,127,0.22)', border: '1px solid rgba(0,255,127,0.28)' }}
                   >
                     {simulating ? 'Simulating...' : '🏈 Run Practice Game'}
                   </button>
@@ -246,7 +248,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                 
                 {/* Practice Result - Post Game Report */}
                 {practiceResult && (
-                  <div className="bg-gray-800 rounded-xl overflow-hidden">
+                  <div className="f10-panel overflow-hidden">
                     {/* Header with Score */}
                     <div className={`p-6 text-center ${
                       practiceResult.winner === 'you' ? 'bg-green-900/50' : 

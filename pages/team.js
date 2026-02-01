@@ -37,7 +37,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       {/* Segmented control */}
       <div className="mb-5">
-        <div className="inline-flex rounded-xl bg-gray-800/80 border border-white/10 p-1">
+        <div className="inline-flex f10-segment p-1">
           <button
             onClick={() => setAndPersistTab('roster')}
             className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${

@@ -28,10 +28,10 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
   };
   
   const getRankStyle = (rank) => {
-    if (rank === 1) return 'bg-yellow-500/20 border-yellow-500';
-    if (rank === 2) return 'bg-gray-400/20 border-gray-400';
-    if (rank === 3) return 'bg-orange-600/20 border-orange-600';
-    return 'bg-gray-800 border-gray-700';
+    if (rank === 1) return 'border-yellow-500/40';
+    if (rank === 2) return 'border-gray-300/30';
+    if (rank === 3) return 'border-orange-500/40';
+    return 'border-white/10';
   };
   
   const getRankIcon = (rank) => {
@@ -48,8 +48,8 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-2">Leaderboard</h1>
-          <p className="text-gray-400">Top players ranked by wins</p>
+          <h1 className="text-3xl f10-title text-white mb-2">Leaderboard</h1>
+          <p className="f10-subtitle">Top players ranked by wins</p>
         </div>
         
         {loading ? (
@@ -80,8 +80,8 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
               return (
                 <div
                   key={entry.id}
-                  className={`grid grid-cols-12 gap-2 px-4 py-3 rounded-lg border ${getRankStyle(rank)} ${
-                    isCurrentUser ? 'ring-2 ring-blue-500' : ''
+                  className={`grid grid-cols-12 gap-2 px-4 py-3 rounded-2xl border f10-panel-soft ${getRankStyle(rank)} ${
+                    isCurrentUser ? 'ring-2 ring-white/20' : ''
                   }`}
                 >
                   <div className="col-span-1 flex items-center">
@@ -123,19 +123,19 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
         {/* Stats Cards */}
         {leaderboard.length > 0 && (
           <div className="max-w-2xl mx-auto grid grid-cols-3 gap-4 mt-8">
-            <div className="bg-gray-800 rounded-lg p-4 text-center">
+            <div className="f10-panel p-4 text-center">
               <div className="text-3xl font-bold text-yellow-400">
                 {leaderboard[0]?.username || '-'}
               </div>
               <div className="text-sm text-gray-400">Top Player</div>
             </div>
-            <div className="bg-gray-800 rounded-lg p-4 text-center">
+            <div className="f10-panel p-4 text-center">
               <div className="text-3xl font-bold text-white">
                 {leaderboard.reduce((sum, e) => sum + e.total_games, 0)}
               </div>
               <div className="text-sm text-gray-400">Total Games</div>
             </div>
-            <div className="bg-gray-800 rounded-lg p-4 text-center">
+            <div className="f10-panel p-4 text-center">
               <div className="text-3xl font-bold text-blue-400">
                 {leaderboard.length}
               </div>

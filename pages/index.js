@@ -87,19 +87,19 @@ export default function Home({ user, onLogin }) {
         {/* Logo */}
         <div className="text-center mb-6 sm:mb-8">
           <div className="text-5xl sm:text-6xl mb-3 sm:mb-4">🏈</div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">First & 10</h1>
-          <p className="text-gray-400 text-sm sm:text-base">Build your dream team. Compete head-to-head.</p>
+          <h1 className="text-3xl sm:text-4xl f10-title text-white mb-2">First & 10</h1>
+          <p className="f10-subtitle text-sm sm:text-base">Build your dream team. Compete head-to-head.</p>
         </div>
         
         {/* Auth Card */}
-        <div className="bg-gray-800 rounded-xl p-6 shadow-2xl">
+        <div className="f10-panel p-6 shadow-2xl">
           
           {/* Step 1: Enter Username */}
           {step === 'username' && (
             <form onSubmit={handleCheckUsername}>
               <div className="text-center mb-6">
-                <h2 className="text-xl font-bold text-white">Enter Your Username</h2>
-                <p className="text-sm text-gray-400 mt-1">Invite-only beta</p>
+                <h2 className="text-xl f10-title text-white">Enter Your Username</h2>
+                <p className="text-sm f10-subtitle mt-1">Invite-only beta</p>
               </div>
               
               <div className="space-y-4">
@@ -109,7 +109,7 @@ export default function Home({ user, onLogin }) {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+                    className="w-full px-4 py-3 f10-input text-white focus:outline-none text-lg"
                     placeholder="Enter your username"
                     autoFocus
                     required
@@ -123,7 +123,8 @@ export default function Home({ user, onLogin }) {
                 <button
                   type="submit"
                   disabled={loading || !username.trim()}
-                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  className="w-full py-3.5 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
+                  style={{ background: 'rgba(0,229,255,0.16)', border: '1px solid rgba(0,229,255,0.22)' }}
                 >
                   {loading ? 'Checking...' : 'Continue'}
                 </button>
@@ -135,7 +136,7 @@ export default function Home({ user, onLogin }) {
           {step === 'password' && (
             <form onSubmit={handleLogin}>
               <div className="text-center mb-6">
-                <h2 className="text-xl font-bold text-white">Welcome back, {username}!</h2>
+                <h2 className="text-xl f10-title text-white">Welcome back, {username}!</h2>
                 {message && <p className="text-sm text-green-400 mt-1">{message}</p>}
               </div>
               
@@ -146,7 +147,7 @@ export default function Home({ user, onLogin }) {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 f10-input text-white focus:outline-none"
                     placeholder="Enter your password"
                     autoFocus
                     required
@@ -160,7 +161,8 @@ export default function Home({ user, onLogin }) {
                 <button
                   type="submit"
                   disabled={loading || !password}
-                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  className="w-full py-3.5 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
+                  style={{ background: 'rgba(0,229,255,0.16)', border: '1px solid rgba(0,229,255,0.22)' }}
                 >
                   {loading ? 'Logging in...' : 'Login'}
                 </button>
@@ -180,7 +182,7 @@ export default function Home({ user, onLogin }) {
           {step === 'newuser' && (
             <form onSubmit={handleLogin}>
               <div className="text-center mb-6">
-                <h2 className="text-xl font-bold text-white">Welcome, {username}!</h2>
+                <h2 className="text-xl f10-title text-white">Welcome, {username}!</h2>
                 {message && <p className="text-sm text-green-400 mt-1">{message}</p>}
               </div>
               
@@ -191,7 +193,7 @@ export default function Home({ user, onLogin }) {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 f10-input text-white focus:outline-none"
                     placeholder="Choose a password"
                     autoFocus
                     required
@@ -205,7 +207,7 @@ export default function Home({ user, onLogin }) {
                     type="text"
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
-                    className="w-full px-4 py-3 bg-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-3 f10-input text-white focus:outline-none"
                     placeholder="Name your team"
                     maxLength={30}
                   />
@@ -219,7 +221,8 @@ export default function Home({ user, onLogin }) {
                 <button
                   type="submit"
                   disabled={loading || !password || password.length < 4}
-                  className="w-full py-3.5 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold rounded-lg transition-colors disabled:opacity-50"
+                  className="w-full py-3.5 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
+                  style={{ background: 'rgba(0,255,127,0.18)', border: '1px solid rgba(0,255,127,0.22)' }}
                 >
                   {loading ? 'Creating account...' : 'Start Playing!'}
                 </button>
@@ -234,8 +237,8 @@ export default function Home({ user, onLogin }) {
               </div>
               
               {/* Bonus Info */}
-              <div className="mt-6 p-4 bg-gradient-to-r from-yellow-900/30 to-orange-900/30 rounded-lg border border-yellow-600/30">
-                <div className="text-yellow-400 font-semibold mb-1">
+              <div className="mt-6 p-4 rounded-2xl" style={{ background: 'rgba(255,230,0,0.08)', border: '1px solid rgba(255,230,0,0.18)' }}>
+                <div className="font-semibold mb-1" style={{ color: 'var(--nav-yellow)' }}>
                   Your Welcome Bonus!
                 </div>
                 <div className="text-sm text-gray-300">
@@ -273,7 +276,8 @@ export default function Home({ user, onLogin }) {
         <div className="mt-6 text-center">
           <Link 
             href="/how-to-play"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-colors border border-gray-600"
+            className="inline-flex items-center gap-2 px-6 py-3 text-white rounded-2xl transition-colors"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
           >
             <span>📖</span>
             <span>How to Play</span>
