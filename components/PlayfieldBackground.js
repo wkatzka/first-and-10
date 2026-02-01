@@ -368,6 +368,14 @@ export default function PlayfieldBackground() {
           }
         }
 
+        // IMPORTANT:
+        // The standalone 0 glyph has textured haze and can create a "floating 0"
+        // look when composing "10/20/30..." if its trimmed bounds are too wide.
+        // Prefer using the clean letter "O" as "0" for sideline numbers.
+        if (map.has("O")) {
+          map.set("0", map.get("O"));
+        }
+
         glyphsRef.current = { ready: map.size >= 10, map };
       } catch (e) {
         // ignore; use fallback fillText
@@ -381,7 +389,9 @@ export default function PlayfieldBackground() {
 
       const chars = String(text).split("");
       // Tight spacing so digits like "10" read as a single number.
-      const gap = Math.max(0, Math.round(heightPx * 0.015));
+      // Numeric labels should be nearly flush; words can breathe a bit.
+      const isNumeric = /^[0-9]+$/.test(String(text));
+      const gap = isNumeric ? 0 : Math.max(0, Math.round(heightPx * 0.015));
 
       const glyphRuns = chars.map((ch) => {
         if (ch === " ") return { ch, canvas: null, w: heightPx * 0.28 };
