@@ -59,6 +59,10 @@ function loadDb() {
 // Run one-time migrations
 function runMigrations(db) {
   let changed = false;
+  if (!db.migrations || typeof db.migrations !== 'object') {
+    db.migrations = {};
+    changed = true;
+  }
   
   // Migration: Upgrade max_packs from 8 to 13 (add 5 bonus packs)
   const NEW_MAX_PACKS = 13;
@@ -84,11 +88,69 @@ function runMigrations(db) {
       }
     }
   }
+
+  // Migration: backfill engine traits onto existing cards (idempotent)
+  if (!db.migrations.card_traits_v1) {
+    const traitsChanged = backfillCardTraitsV1(db);
+    if (traitsChanged) changed = true;
+  }
   
   if (changed) {
     saveDb(db);
     console.log('Migrations complete, database saved.');
   }
+}
+
+function backfillCardTraitsV1(db) {
+  if (db.migrations?.card_traits_v1) return false;
+  if (!Array.isArray(db.cards) || db.cards.length === 0) {
+    db.migrations.card_traits_v1 = true;
+    return true;
+  }
+
+  let { buildEngineForCard } = { buildEngineForCard: null };
+  try {
+    ({ buildEngineForCard } = require('./game-engine/player-traits'));
+  } catch (e) {
+    console.error('Traits migration: failed to load trait engine:', e?.message || e);
+    return false;
+  }
+
+  let updated = 0;
+  let skipped = 0;
+
+  for (const card of db.cards) {
+    // Idempotent: only write if missing or older
+    const currentV = Number(card.engine_v || 0);
+    if (currentV >= 1 && card.engine_traits && card.engine_percentiles) {
+      skipped++;
+      continue;
+    }
+
+    const engine = buildEngineForCard({
+      player_name: card.player_name,
+      season: card.season,
+      position: card.position,
+      tier: card.tier,
+      composite_score: card.composite_score,
+    });
+
+    if (!engine) {
+      skipped++;
+      continue;
+    }
+
+    card.engine_v = engine.engine_v;
+    card.engine_era = engine.engine_era;
+    card.engine_percentiles = engine.engine_percentiles;
+    card.engine_traits = engine.engine_traits;
+    card.engine_inferred = engine.engine_inferred;
+    updated++;
+  }
+
+  db.migrations.card_traits_v1 = true;
+  console.log(`Traits migration: updated ${updated} cards (skipped ${skipped})`);
+  return updated > 0 || true;
 }
 
 // Save database
@@ -309,6 +371,29 @@ function incrementPacksOpened(userId) {
 
 function addCard(userId, playerData) {
   const db = getDb();
+
+  // Ensure newly minted cards also get engine traits (same schema as migration)
+  try {
+    if (!playerData.engine_traits || !playerData.engine_percentiles || Number(playerData.engine_v || 0) < 1) {
+      const { buildEngineForCard } = require('./game-engine/player-traits');
+      const engine = buildEngineForCard({
+        player_name: playerData.player || playerData.player_name,
+        season: playerData.season,
+        position: playerData.position,
+        tier: playerData.tier,
+        composite_score: playerData.composite_score,
+      });
+      if (engine) {
+        playerData.engine_v = engine.engine_v;
+        playerData.engine_era = engine.engine_era;
+        playerData.engine_percentiles = engine.engine_percentiles;
+        playerData.engine_traits = engine.engine_traits;
+        playerData.engine_inferred = engine.engine_inferred;
+      }
+    }
+  } catch (e) {
+    // Non-fatal: minting should still succeed even if traits can't be computed
+  }
   
   const card = {
     id: db.nextCardId++,
@@ -322,6 +407,11 @@ function addCard(userId, playerData) {
     composite_score: playerData.composite_score,
     stats: playerData.stats || {},
     image_url: playerData.image_url || null,
+    engine_v: playerData.engine_v || null,
+    engine_era: playerData.engine_era || null,
+    engine_percentiles: playerData.engine_percentiles || null,
+    engine_traits: playerData.engine_traits || null,
+    engine_inferred: playerData.engine_inferred || null,
     created_at: new Date().toISOString(),
   };
   
