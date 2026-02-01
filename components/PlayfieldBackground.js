@@ -9,7 +9,7 @@ const COLORS = {
 
 const pxPerYard = 18; // tune for density
 const fieldCycleYards = 100; // endzone to endzone
-const loopMs = 20_000; // 20 second scroll loop (slower)
+const loopMs = 30_000; // 30 second scroll loop (slower)
 const yardsPerTick = 5;
 const BG_DIM = 0.62; // overall background dim (lower = dimmer)
 const SCROLL_DIR = 1; // 1 = bottom->up, -1 = top->down
@@ -112,6 +112,7 @@ export default function PlayfieldBackground() {
     const loadImage = (src) =>
       new Promise((resolve, reject) => {
         const img = new Image();
+        img.crossOrigin = "anonymous";
         img.onload = () => resolve(img);
         img.onerror = reject;
         img.src = src;
@@ -195,22 +196,88 @@ export default function PlayfieldBackground() {
       return out;
     };
 
-    const sliceRow = (img, y0, y1, x0, x1, count) => {
+    const segmentGlyphs = (rowCanvas, expectedMin = 1) => {
+      // Split glyphs by scanning vertical alpha projection.
+      const rctx = rowCanvas.getContext("2d");
+      if (!rctx) return [];
+      const img = rctx.getImageData(0, 0, rowCanvas.width, rowCanvas.height);
+      const { data, width, height } = img;
+      const colHas = new Array(width).fill(0);
+      for (let x = 0; x < width; x++) {
+        let s = 0;
+        for (let y = 0; y < height; y++) {
+          const a = data[(y * width + x) * 4 + 3];
+          if (a > 10) s++;
+        }
+        colHas[x] = s;
+      }
+
+      const ranges = [];
+      const gapMin = 5;
+      let inRun = false;
+      let runStart = 0;
+      let emptyCount = 0;
+      for (let x = 0; x < width; x++) {
+        const has = colHas[x] > 0;
+        if (has) {
+          if (!inRun) {
+            inRun = true;
+            runStart = x;
+          }
+          emptyCount = 0;
+        } else if (inRun) {
+          emptyCount++;
+          if (emptyCount >= gapMin) {
+            const end = x - emptyCount;
+            if (end - runStart > 6) ranges.push([runStart, end]);
+            inRun = false;
+            emptyCount = 0;
+          }
+        }
+      }
+      if (inRun) {
+        const end = width - 1;
+        if (end - runStart > 6) ranges.push([runStart, end]);
+      }
+
+      if (ranges.length < expectedMin) return [];
+
       const out = [];
-      const rowH = Math.max(1, Math.floor(y1 - y0));
-      const rowW = Math.max(1, Math.floor(x1 - x0));
-      const cellW = rowW / count;
-      for (let i = 0; i < count; i++) {
+      for (const [sx0, sx1] of ranges) {
         const c = document.createElement("canvas");
-        c.width = Math.max(1, Math.floor(cellW));
-        c.height = rowH;
+        c.width = Math.max(1, sx1 - sx0 + 1);
+        c.height = rowCanvas.height;
         const cctx = c.getContext("2d");
         if (!cctx) continue;
-        const sx = x0 + i * cellW;
-        cctx.drawImage(img, sx, y0, cellW, rowH, 0, 0, c.width, c.height);
-        out.push(trimCanvas(chromaKeyToAlpha(c)));
+        cctx.drawImage(rowCanvas, sx0, 0, c.width, c.height, 0, 0, c.width, c.height);
+        out.push(trimCanvas(c));
       }
       return out;
+    };
+
+    const cropRow = (img, y0, y1, x0, x1) => {
+      const c = document.createElement("canvas");
+      const rowH = Math.max(1, Math.floor(y1 - y0));
+      const rowW = Math.max(1, Math.floor(x1 - x0));
+      c.width = rowW;
+      c.height = rowH;
+      const cctx = c.getContext("2d");
+      if (!cctx) return c;
+      cctx.drawImage(img, x0, y0, rowW, rowH, 0, 0, rowW, rowH);
+      return chromaKeyToAlpha(c);
+    };
+
+    const synthesizeFfromE = (eCanvas) => {
+      // Create F by removing the bottom bar of E.
+      const c = document.createElement("canvas");
+      c.width = eCanvas.width;
+      c.height = eCanvas.height;
+      const cctx = c.getContext("2d");
+      if (!cctx) return eCanvas;
+      cctx.drawImage(eCanvas, 0, 0);
+      const cutY = Math.floor(c.height * 0.72);
+      cctx.clearRect(0, cutY, c.width, c.height - cutY);
+      return trimCanvas(c);
     };
 
     const warmGlyphCache = async () => {
@@ -226,13 +293,35 @@ export default function PlayfieldBackground() {
 
         // Digits 1-9 live on the bottom row of the sheet.
         // These bounds are tuned for the provided 1024x682 sheet.
-        const y0 = sheetImg.height * 0.735;
-        const y1 = sheetImg.height * 0.93;
-        const x0 = sheetImg.width * 0.20;
-        const x1 = sheetImg.width * 0.86;
-        const digits = sliceRow(sheetImg, y0, y1, x0, x1, 9);
-        for (let i = 0; i < digits.length; i++) {
-          map.set(String(i + 1), digits[i]);
+        {
+          const y0 = sheetImg.height * 0.72;
+          const y1 = sheetImg.height * 0.93;
+          const x0 = sheetImg.width * 0.16;
+          const x1 = sheetImg.width * 0.90;
+          const row = cropRow(sheetImg, y0, y1, x0, x1);
+          const digits = segmentGlyphs(row, 7); // should be 9
+          // If segmentation fails, fall back to equal slices
+          const finalDigits =
+            digits.length >= 9
+              ? digits.slice(0, 9)
+              : (() => {
+                  const out = [];
+                  const cellW = row.width / 9;
+                  for (let i = 0; i < 9; i++) {
+                    const c = document.createElement("canvas");
+                    c.width = Math.max(1, Math.floor(cellW));
+                    c.height = row.height;
+                    const cctx = c.getContext("2d");
+                    if (!cctx) continue;
+                    cctx.drawImage(row, i * cellW, 0, cellW, row.height, 0, 0, c.width, c.height);
+                    out.push(trimCanvas(c));
+                  }
+                  return out;
+                })();
+
+          for (let i = 0; i < finalDigits.length; i++) {
+            map.set(String(i + 1), finalDigits[i]);
+          }
         }
 
         // 0 image is full-frame on dark background; key it and trim.
@@ -248,6 +337,35 @@ export default function PlayfieldBackground() {
           }
         }
 
+        // Letters for FIELD text (best-effort from the provided sheet)
+        // We only need: F I R S T & (and space). Sheet lacks F and &, so we synthesize:
+        // - F from E
+        // - & drawn with fallback stroke if missing
+        {
+          const rows = [
+            // row1: ABCDEEGHIJKL
+            { y0: 0.10, y1: 0.28, x0: 0.08, x1: 0.92, order: ["A","B","C","D","E","E","G","H","I","J","K","L"] },
+            // row2: IJKLMMNOQR
+            { y0: 0.32, y1: 0.50, x0: 0.10, x1: 0.90, order: ["I","J","K","L","M","M","N","O","Q","R"] },
+            // row3: OPRSTUWXYZ
+            { y0: 0.54, y1: 0.71, x0: 0.12, x1: 0.92, order: ["O","P","R","S","T","U","W","X","Y","Z"] },
+          ];
+
+          for (const r of rows) {
+            const row = cropRow(sheetImg, sheetImg.height * r.y0, sheetImg.height * r.y1, sheetImg.width * r.x0, sheetImg.width * r.x1);
+            const glyphs = segmentGlyphs(row, Math.min(5, r.order.length));
+            const usable = glyphs.length >= r.order.length ? glyphs.slice(0, r.order.length) : glyphs;
+            for (let i = 0; i < usable.length && i < r.order.length; i++) {
+              const ch = r.order[i];
+              if (!map.has(ch)) map.set(ch, usable[i]);
+            }
+          }
+
+          if (map.has("E") && !map.has("F")) {
+            map.set("F", synthesizeFfromE(map.get("E")));
+          }
+        }
+
         glyphsRef.current = { ready: map.size >= 10, map };
       } catch (e) {
         // ignore; use fallback fillText
@@ -260,15 +378,20 @@ export default function PlayfieldBackground() {
       if (!ready) return false;
 
       const chars = String(text).split("");
-      const gap = Math.max(2, Math.round(heightPx * 0.08));
-      const glyphs = chars
-        .map((ch) => map.get(ch) || null)
-        .filter(Boolean);
+      const gap = Math.max(1, Math.round(heightPx * 0.05));
 
-      if (glyphs.length !== chars.length) return false;
+      const glyphRuns = chars.map((ch) => {
+        if (ch === " ") return { ch, canvas: null, w: heightPx * 0.28 };
+        const g = map.get(ch) || null;
+        if (!g) return null;
+        const w = (g.width / Math.max(1, g.height)) * heightPx;
+        return { ch, canvas: g, w };
+      });
 
-      const widths = glyphs.map((g) => (g.width / Math.max(1, g.height)) * heightPx);
-      const totalW = widths.reduce((s, w) => s + w, 0) + gap * (glyphs.length - 1);
+      if (glyphRuns.some((r) => r === null)) return false;
+
+      const totalW =
+        glyphRuns.reduce((s, r) => s + r.w, 0) + gap * (glyphRuns.length - 1);
 
       let startX = x;
       if (align === "center") startX = x - totalW / 2;
@@ -278,11 +401,10 @@ export default function PlayfieldBackground() {
       ctx.imageSmoothingEnabled = true;
       ctx.globalCompositeOperation = "lighter";
       let cx = startX;
-      for (let i = 0; i < glyphs.length; i++) {
-        const g = glyphs[i];
-        const w = widths[i];
-        ctx.drawImage(g, cx, y - heightPx / 2, w, heightPx);
-        cx += w + gap;
+      for (let i = 0; i < glyphRuns.length; i++) {
+        const r = glyphRuns[i];
+        if (r.canvas) ctx.drawImage(r.canvas, cx, y - heightPx / 2, r.w, heightPx);
+        cx += r.w + gap;
       }
       ctx.restore();
 
@@ -471,12 +593,19 @@ export default function PlayfieldBackground() {
       const measureGlyphWidth = (text, heightPx) => {
         const { ready, map } = glyphsRef.current;
         const chars = String(text).split("");
-        const gap = Math.max(2, Math.round(heightPx * 0.08));
+        const gap = Math.max(1, Math.round(heightPx * 0.05));
         if (ready) {
-          const glyphs = chars.map((ch) => map.get(ch) || null);
-          if (glyphs.some((g) => !g)) return null;
-          const widths = glyphs.map((g) => (g.width / Math.max(1, g.height)) * heightPx);
-          return widths.reduce((s, ww) => s + ww, 0) + gap * (glyphs.length - 1);
+          const widths = [];
+          for (const ch of chars) {
+            if (ch === " ") {
+              widths.push(heightPx * 0.28);
+              continue;
+            }
+            const g = map.get(ch) || null;
+            if (!g) return null;
+            widths.push((g.width / Math.max(1, g.height)) * heightPx);
+          }
+          return widths.reduce((s, ww) => s + ww, 0) + gap * (widths.length - 1);
         }
         // reasonable fallback if glyphs not ready
         const approxChar = heightPx * 0.62;
@@ -485,6 +614,7 @@ export default function PlayfieldBackground() {
 
       // draw TWO cycles stacked to avoid any seam
       for (const cycleOffset of [0, fieldHeightPx]) {
+        const isPrimaryCycle = cycleOffset === 0;
         const baseScroll = mod(scrollPx, fieldHeightPx) - cycleOffset;
 
         // yard lines + hashes + numbers
@@ -523,7 +653,7 @@ export default function PlayfieldBackground() {
           }
 
           // endzone center text cutout (only one endzone)
-          const isEndzone = yardInCycle === 5;
+          const isEndzone = isPrimaryCycle && yardInCycle === 5;
           if (isEndzone) {
             ctx.save();
             ctx.font = `64px F10Varsity, system-ui, sans-serif`;
@@ -579,15 +709,20 @@ export default function PlayfieldBackground() {
             if (!okR) ctx.fillText(String(label), w - 45, yPx);
 
             if (yardInCycle === 50) {
-              ctx.font = `92px F10Varsity, system-ui, sans-serif`;
-              ctx.shadowBlur = 16;
-              ctx.fillText("F10", w / 2, yPx + 70);
+              if (isPrimaryCycle) {
+                const okMid = drawGlyphText("F10", w / 2, yPx + 70, 92, "center");
+                if (!okMid) {
+                  ctx.font = `92px F10Varsity, system-ui, sans-serif`;
+                  ctx.shadowBlur = 16;
+                  ctx.fillText("F10", w / 2, yPx + 70);
+                }
+              }
             }
             ctx.restore();
           }
 
           // Endzone text at 5 and 95
-          if (yardInCycle === 5) {
+          if (isPrimaryCycle && yardInCycle === 5) {
             ctx.save();
             ctx.fillStyle = COLORS.icyBright;
             ctx.shadowColor = COLORS.icy;
@@ -595,7 +730,8 @@ export default function PlayfieldBackground() {
             ctx.font = `64px F10Varsity, system-ui, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText("FIRST & 10", w / 2, yPx);
+            const ok = drawGlyphText("FIRST & 10", w / 2, yPx, 64, "center");
+            if (!ok) ctx.fillText("FIRST & 10", w / 2, yPx);
             ctx.restore();
           }
         }
