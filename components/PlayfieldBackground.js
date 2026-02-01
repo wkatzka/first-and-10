@@ -158,7 +158,7 @@ export default function PlayfieldBackground() {
       return c;
     };
 
-    const trimCanvas = (c) => {
+    const trimCanvas = (c, alphaMin = 16) => {
       const cctx = c.getContext("2d");
       if (!cctx) return c;
       const img = cctx.getImageData(0, 0, c.width, c.height);
@@ -168,7 +168,7 @@ export default function PlayfieldBackground() {
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           const a = data[(y * width + x) * 4 + 3];
-          if (a > 8) {
+          if (a > alphaMin) {
             if (x < minX) minX = x;
             if (y < minY) minY = y;
             if (x > maxX) maxX = x;
@@ -332,7 +332,9 @@ export default function PlayfieldBackground() {
           const cctx = c.getContext("2d");
           if (cctx) {
             cctx.drawImage(zeroImg, 0, 0);
-            const zero = trimCanvas(chromaKeyToAlpha(c, 40));
+            // Trim "0" aggressively so it doesn't look like an extra floating glyph
+            // due to faint background haze around the art.
+            const zero = trimCanvas(chromaKeyToAlpha(c, 28), 90);
             map.set("0", zero);
           }
         }
@@ -378,7 +380,8 @@ export default function PlayfieldBackground() {
       if (!ready) return false;
 
       const chars = String(text).split("");
-      const gap = Math.max(1, Math.round(heightPx * 0.05));
+      // Tight spacing so digits like "10" read as a single number.
+      const gap = Math.max(0, Math.round(heightPx * 0.015));
 
       const glyphRuns = chars.map((ch) => {
         if (ch === " ") return { ch, canvas: null, w: heightPx * 0.28 };
@@ -593,7 +596,7 @@ export default function PlayfieldBackground() {
       const measureGlyphWidth = (text, heightPx) => {
         const { ready, map } = glyphsRef.current;
         const chars = String(text).split("");
-        const gap = Math.max(1, Math.round(heightPx * 0.05));
+        const gap = Math.max(0, Math.round(heightPx * 0.015));
         if (ready) {
           const widths = [];
           for (const ch of chars) {
@@ -646,8 +649,8 @@ export default function PlayfieldBackground() {
             const textH = 48;
             const labelW = measureGlyphWidth(labelStr, textH) || 60;
             const pad = 16;
-            const leftCx = 45;
-            const rightCx = w - 45;
+            const leftCx = 40;
+            const rightCx = w - 40;
             cutouts.push([leftCx - labelW / 2 - pad, leftCx + labelW / 2 + pad]);
             cutouts.push([rightCx - labelW / 2 - pad, rightCx + labelW / 2 + pad]);
           }
@@ -703,10 +706,10 @@ export default function PlayfieldBackground() {
             ctx.font = `48px F10Varsity, system-ui, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            const okL = drawGlyphText(String(label), 45, yPx, 48, "center");
-            const okR = drawGlyphText(String(label), w - 45, yPx, 48, "center");
-            if (!okL) ctx.fillText(String(label), 45, yPx);
-            if (!okR) ctx.fillText(String(label), w - 45, yPx);
+            const okL = drawGlyphText(String(label), 40, yPx, 48, "center");
+            const okR = drawGlyphText(String(label), w - 40, yPx, 48, "center");
+            if (!okL) ctx.fillText(String(label), 40, yPx);
+            if (!okR) ctx.fillText(String(label), w - 40, yPx);
 
             if (yardInCycle === 50) {
               if (isPrimaryCycle) {
