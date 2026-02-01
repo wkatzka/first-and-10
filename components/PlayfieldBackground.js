@@ -92,6 +92,7 @@ export default function PlayfieldBackground() {
   const startTimeRef = useRef(0);
 
   const fieldHeightPx = fieldCycleYards * pxPerYard;
+  const glyphsRef = useRef({ ready: false, map: new Map() });
 
   // precompute 5-yard ticks for drawing lines
   const ticks = useMemo(() => {
@@ -105,6 +106,186 @@ export default function PlayfieldBackground() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    const loadImage = (src) =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+
+    const sampleBg = (imgData) => {
+      // average the 4 corners
+      const { data, width, height } = imgData;
+      const pts = [
+        [0, 0],
+        [width - 1, 0],
+        [0, height - 1],
+        [width - 1, height - 1],
+      ];
+      let r = 0, g = 0, b = 0;
+      for (const [x, y] of pts) {
+        const i = (y * width + x) * 4;
+        r += data[i + 0];
+        g += data[i + 1];
+        b += data[i + 2];
+      }
+      return { r: r / pts.length, g: g / pts.length, b: b / pts.length };
+    };
+
+    const chromaKeyToAlpha = (c, threshold = 52) => {
+      const cctx = c.getContext("2d");
+      if (!cctx) return c;
+      const imgData = cctx.getImageData(0, 0, c.width, c.height);
+      const bg = sampleBg(imgData);
+      const { data } = imgData;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const dr = data[i + 0] - bg.r;
+        const dg = data[i + 1] - bg.g;
+        const db = data[i + 2] - bg.b;
+        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+        if (dist < threshold) {
+          data[i + 3] = 0; // transparent
+        }
+      }
+
+      cctx.putImageData(imgData, 0, 0);
+      return c;
+    };
+
+    const trimCanvas = (c) => {
+      const cctx = c.getContext("2d");
+      if (!cctx) return c;
+      const img = cctx.getImageData(0, 0, c.width, c.height);
+      const { data, width, height } = img;
+
+      let minX = width, minY = height, maxX = -1, maxY = -1;
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const a = data[(y * width + x) * 4 + 3];
+          if (a > 8) {
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      if (maxX < minX || maxY < minY) return c; // empty
+
+      const pad = 3;
+      minX = Math.max(0, minX - pad);
+      minY = Math.max(0, minY - pad);
+      maxX = Math.min(width - 1, maxX + pad);
+      maxY = Math.min(height - 1, maxY + pad);
+
+      const tw = maxX - minX + 1;
+      const th = maxY - minY + 1;
+      const out = document.createElement("canvas");
+      out.width = tw;
+      out.height = th;
+      const outCtx = out.getContext("2d");
+      if (!outCtx) return c;
+      outCtx.drawImage(c, minX, minY, tw, th, 0, 0, tw, th);
+      return out;
+    };
+
+    const sliceRow = (img, y0, y1, x0, x1, count) => {
+      const out = [];
+      const rowH = Math.max(1, Math.floor(y1 - y0));
+      const rowW = Math.max(1, Math.floor(x1 - x0));
+      const cellW = rowW / count;
+      for (let i = 0; i < count; i++) {
+        const c = document.createElement("canvas");
+        c.width = Math.max(1, Math.floor(cellW));
+        c.height = rowH;
+        const cctx = c.getContext("2d");
+        if (!cctx) continue;
+        const sx = x0 + i * cellW;
+        cctx.drawImage(img, sx, y0, cellW, rowH, 0, 0, c.width, c.height);
+        out.push(trimCanvas(chromaKeyToAlpha(c)));
+      }
+      return out;
+    };
+
+    const warmGlyphCache = async () => {
+      // These two images come from your provided glyph sheets.
+      // If they fail to load, we fall back to normal canvas text.
+      try {
+        const [sheetImg, zeroImg] = await Promise.all([
+          loadImage("/fonts/f10-glyph-sheet.png"),
+          loadImage("/fonts/f10-glyph-0.png"),
+        ]);
+
+        const map = new Map();
+
+        // Digits 1-9 live on the bottom row of the sheet.
+        // These bounds are tuned for the provided 1024x682 sheet.
+        const y0 = sheetImg.height * 0.735;
+        const y1 = sheetImg.height * 0.93;
+        const x0 = sheetImg.width * 0.20;
+        const x1 = sheetImg.width * 0.86;
+        const digits = sliceRow(sheetImg, y0, y1, x0, x1, 9);
+        for (let i = 0; i < digits.length; i++) {
+          map.set(String(i + 1), digits[i]);
+        }
+
+        // 0 image is full-frame on dark background; key it and trim.
+        {
+          const c = document.createElement("canvas");
+          c.width = zeroImg.width;
+          c.height = zeroImg.height;
+          const cctx = c.getContext("2d");
+          if (cctx) {
+            cctx.drawImage(zeroImg, 0, 0);
+            const zero = trimCanvas(chromaKeyToAlpha(c, 40));
+            map.set("0", zero);
+          }
+        }
+
+        glyphsRef.current = { ready: map.size >= 10, map };
+      } catch (e) {
+        // ignore; use fallback fillText
+        glyphsRef.current = { ready: false, map: new Map() };
+      }
+    };
+
+    const drawGlyphText = (text, x, y, heightPx, align = "center") => {
+      const { ready, map } = glyphsRef.current;
+      if (!ready) return false;
+
+      const chars = String(text).split("");
+      const gap = Math.max(2, Math.round(heightPx * 0.08));
+      const glyphs = chars
+        .map((ch) => map.get(ch) || null)
+        .filter(Boolean);
+
+      if (glyphs.length !== chars.length) return false;
+
+      const widths = glyphs.map((g) => (g.width / Math.max(1, g.height)) * heightPx);
+      const totalW = widths.reduce((s, w) => s + w, 0) + gap * (glyphs.length - 1);
+
+      let startX = x;
+      if (align === "center") startX = x - totalW / 2;
+      if (align === "right") startX = x - totalW;
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.globalCompositeOperation = "lighter";
+      let cx = startX;
+      for (let i = 0; i < glyphs.length; i++) {
+        const g = glyphs[i];
+        const w = widths[i];
+        ctx.drawImage(g, cx, y - heightPx / 2, w, heightPx);
+        cx += w + gap;
+      }
+      ctx.restore();
+
+      return true;
+    };
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -122,6 +303,7 @@ export default function PlayfieldBackground() {
     window.addEventListener("resize", resize);
 
     startTimeRef.current = performance.now();
+    warmGlyphCache();
 
     // Spawn plays continuously
     const maybeSpawn = (now, w) => {
@@ -330,8 +512,10 @@ export default function PlayfieldBackground() {
             ctx.font = `48px F10Varsity, system-ui, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(String(label), 45, yPx);
-            ctx.fillText(String(label), w - 45, yPx);
+            const okL = drawGlyphText(String(label), 45, yPx, 48, "center");
+            const okR = drawGlyphText(String(label), w - 45, yPx, 48, "center");
+            if (!okL) ctx.fillText(String(label), 45, yPx);
+            if (!okR) ctx.fillText(String(label), w - 45, yPx);
 
             if (yardInCycle === 50) {
               ctx.font = `92px F10Varsity, system-ui, sans-serif`;
