@@ -94,6 +94,71 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
             </ul>
           </div>
         </section>
+
+        {/* Engine Impact Glossary */}
+        <section className="bg-gray-800 rounded-xl p-6 mb-6">
+          <h2 className="text-xl font-bold text-cyan-300 mb-4">Engine Impact (What the Bars Mean)</h2>
+          <p className="text-gray-400 text-sm mb-4">
+            On the back of cards, <strong className="text-white">Engine Impact</strong> shows how that player grades
+            versus other players from the same era and position (0–100). Higher is better.
+          </p>
+          <div className="space-y-4 text-gray-300 text-sm">
+            <div>
+              <h3 className="text-white font-semibold mb-2">Quarterback (QB)</h3>
+              <ul className="space-y-1 ml-4 text-gray-400">
+                <li>• <strong className="text-white">Accuracy</strong> — Higher completion quality; performs better under neutral conditions.</li>
+                <li>• <strong className="text-white">Risk Control</strong> — Protects the ball; reduces interceptions and drive-killers.</li>
+                <li>• <strong className="text-white">Mobility</strong> — Adds scramble upside when pressured; can turn sacks into gains.</li>
+                <li>• <strong className="text-white">Volume</strong> — More pass volume; benefits more from strong receivers in pass-heavy styles.</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-white font-semibold mb-2">Wide Receiver / Tight End (WR / TE)</h3>
+              <ul className="space-y-1 ml-4 text-gray-400">
+                <li>• <strong className="text-white">Hands</strong> — Reliability on targets; increases catch success.</li>
+                <li>• <strong className="text-white">Explosive</strong> — Big-play ability (yards per catch); creates chunk gains.</li>
+                <li>• <strong className="text-white">TD Threat</strong> — Scoring impact; higher chance to turn drives into touchdowns.</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-white font-semibold mb-2">Running Back (RB)</h3>
+              <ul className="space-y-1 ml-4 text-gray-400">
+                <li>• <strong className="text-white">Power Run</strong> — Consistent rushing output; better into run-defense matchups.</li>
+                <li>• <strong className="text-white">Breakaway</strong> — Efficiency/big-run upside; higher chance of 15+ yard runs.</li>
+                <li>• <strong className="text-white">Receiving</strong> — Adds value in the pass game; helps when pass looks are strong.</li>
+                <li>• <strong className="text-white">Workhorse</strong> — Sustains the ground game; steadier production across drives.</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-white font-semibold mb-2">Defense (DL / LB / DB)</h3>
+              <ul className="space-y-1 ml-4 text-gray-400">
+                <li>• <strong className="text-white">Pressure</strong> (DL) — Disrupts QBs; more sacks/pressure leads to worse throws.</li>
+                <li>• <strong className="text-white">Run Stop</strong> (DL/LB) — Stuff runs; lowers rushing efficiency.</li>
+                <li>• <strong className="text-white">Coverage</strong> (LB/DB) — Wins routes; forces incompletions and tighter windows.</li>
+                <li>• <strong className="text-white">Ballhawk</strong> (DB) — Creates turnovers; higher interception likelihood.</li>
+                <li>• <strong className="text-white">Tackling</strong> (DB) — Limits extra yards and breaks fewer big plays.</li>
+                <li>• <strong className="text-white">Playmaking</strong> (LB) — Splash plays (turnovers/impact moments) from the middle level.</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-white font-semibold mb-2">Kicker (K)</h3>
+              <ul className="space-y-1 ml-4 text-gray-400">
+                <li>• <strong className="text-white">Accuracy</strong> — Converts more field goals overall.</li>
+                <li>• <strong className="text-white">Range</strong> — Better at longer attempts; more “clutch” makes from distance.</li>
+                <li>• <strong className="text-white">XP</strong> — Extra point reliability (small, but can matter in close games).</li>
+              </ul>
+            </div>
+
+            <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-gray-400">
+              <strong className="text-white">Note:</strong> When a specific historical stat is missing, the engine estimates
+              that trait using the player’s other available stats versus era peers (so strong “partial” stat profiles can still rate strong).
+            </div>
+          </div>
+        </section>
         
         {/* Schedule */}
         <section className="bg-gray-800 rounded-xl p-6 mb-6">

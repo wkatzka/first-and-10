@@ -64,6 +64,54 @@ export default function CardModal({ card, onClose }) {
   };
 
   const stats = formatStats();
+
+  const engineTraits = (card && card.engine_traits && typeof card.engine_traits === 'object')
+    ? card.engine_traits
+    : null;
+
+  const engineTraitList = () => {
+    if (!engineTraits) return [];
+    const pos = card.position;
+
+    const pickKeys = (keys) => keys
+      .filter(k => engineTraits[k] != null && Number.isFinite(Number(engineTraits[k])))
+      .map(k => ({ key: k, value: Math.round(Number(engineTraits[k])) }));
+
+    // Order matters (show the “most strategic” first)
+    if (pos === 'QB') return pickKeys(['accuracy', 'riskControl', 'mobility', 'volume']);
+    if (pos === 'WR' || pos === 'TE') return pickKeys(['hands', 'explosive', 'tdThreat']);
+    if (pos === 'RB') return pickKeys(['powerRun', 'breakaway', 'receiving', 'workhorse']);
+    if (pos === 'DL') return pickKeys(['pressure', 'runStop', 'coverage']);
+    if (pos === 'LB') return pickKeys(['runStop', 'coverage', 'playmaking']);
+    if (pos === 'DB') return pickKeys(['coverage', 'ballhawk', 'tackling']);
+    if (pos === 'K') return pickKeys(['accuracy', 'range', 'extraPoints']);
+    return pickKeys(Object.keys(engineTraits));
+  };
+
+  const traitLabel = (k) => {
+    const map = {
+      accuracy: 'Accuracy',
+      riskControl: 'Risk Control',
+      mobility: 'Mobility',
+      volume: 'Volume',
+      hands: 'Hands',
+      explosive: 'Explosive',
+      tdThreat: 'TD Threat',
+      powerRun: 'Power Run',
+      breakaway: 'Breakaway',
+      receiving: 'Receiving',
+      workhorse: 'Workhorse',
+      pressure: 'Pressure',
+      runStop: 'Run Stop',
+      coverage: 'Coverage',
+      playmaking: 'Playmaking',
+      ballhawk: 'Ballhawk',
+      tackling: 'Tackling',
+      range: 'Range',
+      extraPoints: 'XP',
+    };
+    return map[k] || k;
+  };
   
   return (
     <div 
@@ -190,6 +238,46 @@ export default function CardModal({ card, onClose }) {
                   {getStrategicAdvantage(card)}
                 </p>
               </div>
+
+              {/* Engine Impact */}
+              {engineTraits && engineTraitList().length > 0 && (
+                <div className="mb-3 p-2 rounded-lg bg-white/5 border border-white/10">
+                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">
+                    Engine Impact
+                    {card.engine_era ? (
+                      <span className="ml-2 text-gray-600 normal-case tracking-normal">
+                        (vs {card.engine_era})
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="space-y-1.5">
+                    {engineTraitList().slice(0, 4).map(({ key, value }) => (
+                      <div key={key} className="flex items-center gap-2">
+                        <div className="w-24 text-[11px] text-gray-300">
+                          {traitLabel(key)}
+                        </div>
+                        <div className="flex-1 h-2 rounded bg-white/10 overflow-hidden">
+                          <div
+                            className="h-full rounded"
+                            style={{
+                              width: `${Math.max(3, Math.min(100, value))}%`,
+                              background: `linear-gradient(90deg, ${tierColor} 0%, ${posColor} 100%)`,
+                            }}
+                          />
+                        </div>
+                        <div className="w-10 text-right text-[11px] font-bold" style={{ color: tierColor }}>
+                          {value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {card.engine_inferred && Object.keys(card.engine_inferred).length > 0 && (
+                    <div className="mt-2 text-[11px] text-gray-500">
+                      Some traits are estimated from era peers.
+                    </div>
+                  )}
+                </div>
+              )}
               
               {/* Stats */}
               <div className="flex-1 overflow-y-auto">
