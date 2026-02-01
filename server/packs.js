@@ -281,6 +281,28 @@ function openPack() {
 }
 
 /**
+ * Open a single-card pack (for testing animations)
+ * Returns 1 random AVAILABLE player
+ */
+function openSingleCard() {
+  loadPlayers();
+  
+  const tier = pickRandomTier();
+  let player = pickRandomPlayerFromTier(tier);
+  
+  if (!player) {
+    player = pickAnyAvailablePlayer();
+  }
+  
+  if (!player) return [];
+  
+  return [{
+    ...player,
+    pack_position: 1,
+  }];
+}
+
+/**
  * Starter pack position assignments
  * Guarantees ALL 11 roster positions across 3 starter packs:
  * - Pack 1 (packNum 0): QB, RB, WR, TE, OL
@@ -394,6 +416,7 @@ function getPlayerByKey(playerKey) {
 module.exports = {
   loadPlayers,
   openPack,
+  openSingleCard,
   openStarterPack,
   pickRandomTier,
   pickRandomPlayerFromTier,

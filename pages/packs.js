@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import Card from '../components/Card';
 import CardModal from '../components/CardModal';
 import FoilPackOpening from '../components/FoilPackOpening';
-import { getPackInfo, openPack, openAllPacks, TIER_NAMES } from '../lib/api';
+import { getPackInfo, openPack, openSinglePack, openAllPacks, TIER_NAMES } from '../lib/api';
 
 export default function Packs({ user, onLogout, unreadMessages }) {
   const router = useRouter();
@@ -68,6 +68,29 @@ export default function Packs({ user, onLogout, unreadMessages }) {
       setOpening(false);
     }
   };
+
+  const handleOpenSinglePack = async () => {
+    if (!packInfo || packInfo.packsRemaining <= 0) return;
+    
+    setOpening(true);
+    setShowResults(false);
+    setOpenedCards([]);
+    setRevealIndex(-1);
+    setImagesGenerating(false);
+    setCurrentPackType('bonus');
+    
+    try {
+      const data = await openSinglePack();
+      setPendingPackData(data);
+      setOpenedCards(data.cards);
+      setImagesGenerating(data.imagesGenerating || false);
+      setShowPackAnimation(true);
+    } catch (err) {
+      console.error('Failed to open single pack:', err);
+      alert(err.message);
+      setOpening(false);
+    }
+  };
   
   const handleAnimationComplete = async () => {
     setShowPackAnimation(false);
@@ -123,6 +146,8 @@ export default function Packs({ user, onLogout, unreadMessages }) {
   const bestCard = openedCards.length > 0 
     ? openedCards.reduce((best, card) => card.tier > best.tier ? card : best, openedCards[0])
     : null;
+  
+  const canOpenSinglePack = user?.username === 'Will!' || user?.username === 'TestUser';
   
   if (!user) return null;
   
@@ -188,6 +213,16 @@ export default function Packs({ user, onLogout, unreadMessages }) {
                 >
                   {opening ? 'Opening...' : 'Open 1 Pack'}
                 </button>
+                
+                {canOpenSinglePack && (
+                  <button
+                    onClick={handleOpenSinglePack}
+                    disabled={opening}
+                    className="w-full py-3 bg-gray-700 text-white font-semibold rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50"
+                  >
+                    Open 1-Card Test Pack
+                  </button>
+                )}
                 
                 {packInfo.packsRemaining > 1 && (
                   <button

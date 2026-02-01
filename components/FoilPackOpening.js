@@ -26,12 +26,21 @@ export default function FoilPackOpening({
   const [cardSwipeX, setCardSwipeX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [shimmerPosition, setShimmerPosition] = useState({ x: 50, y: 50 });
+  const [videoReady, setVideoReady] = useState(false);
+  const [videoDuration, setVideoDuration] = useState(0);
   
   const containerRef = useRef(null);
   const packRef = useRef(null);
+  const packVideoRef = useRef(null);
+  const maskVideoRef = useRef(null);
+  const revealCanvasRef = useRef(null);
+  const cardImageRef = useRef(null);
   
   // Foil pack image (provided by user)
   const foilPackImage = '/foil-pack.png';
+  const packVideoSrc = '/pack-open.mp4';
+  const packMaskSrc = '/pack-open-mask.mp4';
+  const useVideoPack = true;
   
   // Start animation when opened
   useEffect(() => {
@@ -41,6 +50,8 @@ export default function FoilPackOpening({
       setCurrentCardIndex(0);
       setSwipedCards([]);
       setCardSwipeX(0);
+      setVideoReady(false);
+      setVideoDuration(0);
       
       // Pack entrance animation
       setTimeout(() => setPhase('readyToOpen'), 600);
@@ -54,8 +65,97 @@ export default function FoilPackOpening({
       setTearProgress(0);
       setCurrentCardIndex(0);
       setSwipedCards([]);
+      setVideoReady(false);
     }
   }, [isOpen]);
+
+  // Load card image for video reveal
+  useEffect(() => {
+    if (!useVideoPack || !isOpen) return;
+    const currentCard = cards[0];
+    if (!currentCard) return;
+    
+    const img = new Image();
+    img.src = currentCard.image_url || '/cards/placeholder.svg';
+    img.onload = () => {
+      cardImageRef.current = img;
+    };
+  }, [isOpen, cards, useVideoPack]);
+
+  // Initialize video metadata
+  useEffect(() => {
+    if (!useVideoPack || !isOpen) return;
+    const packVideo = packVideoRef.current;
+    const maskVideo = maskVideoRef.current;
+    if (!packVideo || !maskVideo) return;
+    
+    const handleLoaded = () => {
+      const duration = packVideo.duration || 0;
+      setVideoDuration(duration);
+      setVideoReady(true);
+      
+      const canvas = revealCanvasRef.current;
+      if (canvas) {
+        canvas.width = packVideo.videoWidth || 560;
+        canvas.height = packVideo.videoHeight || 800;
+      }
+    };
+    
+    packVideo.addEventListener('loadedmetadata', handleLoaded);
+    return () => {
+      packVideo.removeEventListener('loadedmetadata', handleLoaded);
+    };
+  }, [isOpen, useVideoPack]);
+
+  // Sync video to tear progress and update reveal mask
+  useEffect(() => {
+    if (!useVideoPack || !videoReady || !videoDuration) return;
+    const packVideo = packVideoRef.current;
+    const maskVideo = maskVideoRef.current;
+    if (!packVideo || !maskVideo) return;
+    
+    const time = Math.min(Math.max(tearProgress, 0), 1) * videoDuration;
+    try {
+      packVideo.currentTime = time;
+      maskVideo.currentTime = time;
+    } catch (e) {
+      // Ignore seek errors on some browsers
+    }
+  }, [tearProgress, videoReady, videoDuration, useVideoPack]);
+
+  // Draw masked card reveal
+  useEffect(() => {
+    if (!useVideoPack || !videoReady) return;
+    const canvas = revealCanvasRef.current;
+    const maskVideo = maskVideoRef.current;
+    if (!canvas || !maskVideo) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    let rafId = null;
+    const drawFrame = () => {
+      const img = cardImageRef.current;
+      if (!img) {
+        rafId = requestAnimationFrame(drawFrame);
+        return;
+      }
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Draw card image (cover)
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      // Apply mask
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.drawImage(maskVideo, 0, 0, canvas.width, canvas.height);
+      ctx.globalCompositeOperation = 'source-over';
+      
+      rafId = requestAnimationFrame(drawFrame);
+    };
+    
+    drawFrame();
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [videoReady, useVideoPack]);
   
   // Shimmer follows mouse/touch
   const handleShimmerMove = useCallback((clientX, clientY) => {
@@ -240,164 +340,197 @@ export default function FoilPackOpening({
           onMouseDown={handlePointerDown}
           onTouchStart={handlePointerDown}
         >
-          {/* Pack Back (revealed as foil tears) */}
-          <div 
-            className="absolute inset-0 rounded-xl overflow-hidden"
-            style={{
-              background: 'linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f0f1a 100%)',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
-            }}
-          >
-            {/* Cards inside pack */}
-            <div className="absolute inset-4 flex items-center justify-center">
-              <div className="relative" style={{ transform: `translateY(${tearProgress * 20}px)` }}>
-                {[...Array(5)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="absolute w-36 h-52 rounded-lg"
-                    style={{
-                      background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
-                      border: '1px solid #4b5563',
-                      transform: `translateX(-50%) translateY(${i * -3}px) rotate(${(i - 2) * 2}deg)`,
-                      left: '50%',
-                      opacity: 0.3 + (tearProgress * 0.7),
-                      transition: 'opacity 0.2s',
+          {useVideoPack ? (
+            <div className="absolute inset-0 rounded-xl overflow-hidden bg-black shadow-2xl">
+              {/* Card reveal canvas (masked by pack opening) */}
+              <canvas
+                ref={revealCanvasRef}
+                className="absolute inset-0 w-full h-full"
+                style={{ objectFit: 'cover' }}
+              />
+              
+              {/* Pack opening video */}
+              <video
+                ref={packVideoRef}
+                src={packVideoSrc}
+                className="absolute inset-0 w-full h-full object-cover"
+                muted
+                playsInline
+                preload="auto"
+              />
+              
+              {/* Mask video (hidden) */}
+              <video
+                ref={maskVideoRef}
+                src={packMaskSrc}
+                className="hidden"
+                muted
+                playsInline
+                preload="auto"
+              />
+            </div>
+          ) : (
+            <>
+              {/* Pack Back (revealed as foil tears) */}
+              <div 
+                className="absolute inset-0 rounded-xl overflow-hidden"
+                style={{
+                  background: 'linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f0f1a 100%)',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)',
+                }}
+              >
+                {/* Cards inside pack */}
+                <div className="absolute inset-4 flex items-center justify-center">
+                  <div className="relative" style={{ transform: `translateY(${tearProgress * 20}px)` }}>
+                    {[...Array(5)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="absolute w-36 h-52 rounded-lg"
+                        style={{
+                          background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+                          border: '1px solid #4b5563',
+                          transform: `translateX(-50%) translateY(${i * -3}px) rotate(${(i - 2) * 2}deg)`,
+                          left: '50%',
+                          opacity: 0.3 + (tearProgress * 0.7),
+                          transition: 'opacity 0.2s',
+                        }}
+                      >
+                        <div className="absolute inset-0 flex items-center justify-center text-3xl text-gray-600">
+                          🏈
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                {/* "Your Cards" text */}
+                <div 
+                  className="absolute bottom-6 left-0 right-0 text-center"
+                  style={{ opacity: tearProgress }}
+                >
+                  <span className="text-gray-400 text-sm">Your cards are ready!</span>
+                </div>
+              </div>
+              
+              {/* Foil Front (tears away) */}
+              <div 
+                className="absolute inset-0 rounded-xl overflow-hidden"
+                style={{
+                  transform: `translateY(${tearProgress * 120}%) scaleY(${1 - tearProgress * 0.3})`,
+                  opacity: 1 - tearProgress * 0.5,
+                  transformOrigin: 'top center',
+                  transition: isDragging ? 'none' : 'all 0.3s ease-out',
+                }}
+              >
+                {/* Metallic foil base */}
+                <div 
+                  className="absolute inset-0"
+                  style={{
+                    background: `linear-gradient(
+                      ${135 + shimmerPosition.x * 0.5}deg,
+                      #c0c0c0 0%,
+                      #e8e8e8 20%,
+                      #ffffff 35%,
+                      #d4d4d4 50%,
+                      #a8a8a8 65%,
+                      #e0e0e0 80%,
+                      #b8b8b8 100%
+                    )`,
+                  }}
+                />
+                
+                {/* Holographic shimmer overlay */}
+                <div 
+                  className="absolute inset-0 mix-blend-overlay"
+                  style={{
+                    background: `
+                      linear-gradient(
+                        ${shimmerPosition.x * 3.6}deg,
+                        rgba(255, 0, 128, 0.2) 0%,
+                        rgba(0, 255, 255, 0.2) 25%,
+                        rgba(255, 255, 0, 0.2) 50%,
+                        rgba(128, 0, 255, 0.2) 75%,
+                        rgba(255, 0, 128, 0.2) 100%
+                      )
+                    `,
+                    transition: 'background 0.1s ease-out',
+                  }}
+                />
+                
+                {/* Moving light reflection */}
+                <div 
+                  className="absolute inset-0"
+                  style={{
+                    background: `radial-gradient(
+                      ellipse 100% 60% at ${shimmerPosition.x}% ${shimmerPosition.y}%,
+                      rgba(255, 255, 255, 0.6) 0%,
+                      transparent 50%
+                    )`,
+                    transition: 'background 0.05s ease-out',
+                  }}
+                />
+                
+                {/* Foil texture lines */}
+                <div 
+                  className="absolute inset-0 opacity-10"
+                  style={{
+                    backgroundImage: `repeating-linear-gradient(
+                      90deg,
+                      transparent,
+                      transparent 2px,
+                      rgba(0,0,0,0.1) 2px,
+                      rgba(0,0,0,0.1) 4px
+                    )`,
+                  }}
+                />
+                
+                {/* Pack branding */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <div 
+                    className="text-5xl mb-3 drop-shadow-lg"
+                    style={{ 
+                      filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
+                      transform: `translateY(${-tearProgress * 30}px)`,
                     }}
                   >
-                    <div className="absolute inset-0 flex items-center justify-center text-3xl text-gray-600">
-                      🏈
-                    </div>
+                    🏈
                   </div>
-                ))}
+                  <div 
+                    className="font-bold text-xl tracking-wide"
+                    style={{ 
+                      color: 'rgba(0,0,0,0.4)',
+                      textShadow: '1px 1px 0 rgba(255,255,255,0.5)',
+                      transform: `translateY(${-tearProgress * 20}px)`,
+                    }}
+                  >
+                    FIRST & 10
+                  </div>
+                  <div 
+                    className="text-xs mt-2 tracking-widest"
+                    style={{ 
+                      color: 'rgba(0,0,0,0.3)',
+                      transform: `translateY(${-tearProgress * 10}px)`,
+                    }}
+                  >
+                    {packType === 'starter' ? '★ STARTER PACK ★' : '★ BONUS PACK ★'}
+                  </div>
+                </div>
+                
+                {/* Tear edge effect */}
+                {tearProgress > 0 && (
+                  <div 
+                    className="absolute left-0 right-0 h-8"
+                    style={{
+                      bottom: '-4px',
+                      background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.2))',
+                      borderBottom: '2px solid rgba(0,0,0,0.1)',
+                      transform: `scaleY(${1 + tearProgress})`,
+                    }}
+                  />
+                )}
               </div>
-            </div>
-            
-            {/* "Your Cards" text */}
-            <div 
-              className="absolute bottom-6 left-0 right-0 text-center"
-              style={{ opacity: tearProgress }}
-            >
-              <span className="text-gray-400 text-sm">Your cards are ready!</span>
-            </div>
-          </div>
-          
-          {/* Foil Front (tears away) */}
-          <div 
-            className="absolute inset-0 rounded-xl overflow-hidden"
-            style={{
-              transform: `translateY(${tearProgress * 120}%) scaleY(${1 - tearProgress * 0.3})`,
-              opacity: 1 - tearProgress * 0.5,
-              transformOrigin: 'top center',
-              transition: isDragging ? 'none' : 'all 0.3s ease-out',
-            }}
-          >
-            {/* Metallic foil base */}
-            <div 
-              className="absolute inset-0"
-              style={{
-                background: `linear-gradient(
-                  ${135 + shimmerPosition.x * 0.5}deg,
-                  #c0c0c0 0%,
-                  #e8e8e8 20%,
-                  #ffffff 35%,
-                  #d4d4d4 50%,
-                  #a8a8a8 65%,
-                  #e0e0e0 80%,
-                  #b8b8b8 100%
-                )`,
-              }}
-            />
-            
-            {/* Holographic shimmer overlay */}
-            <div 
-              className="absolute inset-0 mix-blend-overlay"
-              style={{
-                background: `
-                  linear-gradient(
-                    ${shimmerPosition.x * 3.6}deg,
-                    rgba(255, 0, 128, 0.2) 0%,
-                    rgba(0, 255, 255, 0.2) 25%,
-                    rgba(255, 255, 0, 0.2) 50%,
-                    rgba(128, 0, 255, 0.2) 75%,
-                    rgba(255, 0, 128, 0.2) 100%
-                  )
-                `,
-                transition: 'background 0.1s ease-out',
-              }}
-            />
-            
-            {/* Moving light reflection */}
-            <div 
-              className="absolute inset-0"
-              style={{
-                background: `radial-gradient(
-                  ellipse 100% 60% at ${shimmerPosition.x}% ${shimmerPosition.y}%,
-                  rgba(255, 255, 255, 0.6) 0%,
-                  transparent 50%
-                )`,
-                transition: 'background 0.05s ease-out',
-              }}
-            />
-            
-            {/* Foil texture lines */}
-            <div 
-              className="absolute inset-0 opacity-10"
-              style={{
-                backgroundImage: `repeating-linear-gradient(
-                  90deg,
-                  transparent,
-                  transparent 2px,
-                  rgba(0,0,0,0.1) 2px,
-                  rgba(0,0,0,0.1) 4px
-                )`,
-              }}
-            />
-            
-            {/* Pack branding */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div 
-                className="text-5xl mb-3 drop-shadow-lg"
-                style={{ 
-                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))',
-                  transform: `translateY(${-tearProgress * 30}px)`,
-                }}
-              >
-                🏈
-              </div>
-              <div 
-                className="font-bold text-xl tracking-wide"
-                style={{ 
-                  color: 'rgba(0,0,0,0.4)',
-                  textShadow: '1px 1px 0 rgba(255,255,255,0.5)',
-                  transform: `translateY(${-tearProgress * 20}px)`,
-                }}
-              >
-                FIRST & 10
-              </div>
-              <div 
-                className="text-xs mt-2 tracking-widest"
-                style={{ 
-                  color: 'rgba(0,0,0,0.3)',
-                  transform: `translateY(${-tearProgress * 10}px)`,
-                }}
-              >
-                {packType === 'starter' ? '★ STARTER PACK ★' : '★ BONUS PACK ★'}
-              </div>
-            </div>
-            
-            {/* Tear edge effect */}
-            {tearProgress > 0 && (
-              <div 
-                className="absolute left-0 right-0 h-8"
-                style={{
-                  bottom: '-4px',
-                  background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.2))',
-                  borderBottom: '2px solid rgba(0,0,0,0.1)',
-                  transform: `scaleY(${1 + tearProgress})`,
-                }}
-              />
-            )}
-          </div>
+            </>
+          )}
           
           {/* Instruction text */}
           {phase === 'readyToOpen' && (

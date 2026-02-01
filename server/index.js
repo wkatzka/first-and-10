@@ -18,7 +18,7 @@ const pressConference = require('./press-conference');
 const messages = require('./messages');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 4000;
 
 // Middleware
 // CORS configuration for production
@@ -382,6 +382,85 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
       cards: savedCards,
       packsRemaining: user.max_packs - user.packs_opened - 1,
       imagesGenerating: AI_ENABLED, // Tell frontend images are being generated
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Open a single-card pack (for testing foil animation)
+app.post('/api/packs/open-single', authMiddleware, async (req, res) => {
+  try {
+    const user = db.getUser(req.user.id);
+    
+    if (user.packs_opened >= user.max_packs) {
+      return res.status(400).json({ error: 'No packs remaining' });
+    }
+    
+    const cards = packs.openSingleCard();
+    
+    if (cards.length === 0) {
+      return res.status(400).json({ error: 'No cards available to mint' });
+    }
+    
+    const savedCards = [];
+    const cardsToGenerateImages = [];
+    
+    for (const card of cards) {
+      try {
+        mintingLedger.mintCard(card, req.user.id);
+      } catch (mintErr) {
+        console.error('Mint error (skipping):', mintErr.message);
+        continue;
+      }
+      
+      card.stats = cardImageGenerator.getFormattedStats(card);
+      
+      let imageUrl;
+      let imagePending = false;
+      
+      if (AI_ENABLED) {
+        imageUrl = '/cards/placeholder.svg';
+        imagePending = true;
+      } else {
+        imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
+      }
+      
+      card.image_url = imageUrl;
+      card.image_pending = imagePending;
+      
+      const cardId = db.addCard(req.user.id, card);
+      const savedCard = { id: cardId, ...card, image_url: imageUrl, image_pending: imagePending };
+      savedCards.push(savedCard);
+      
+      if (imagePending) {
+        cardsToGenerateImages.push({ cardId, card: savedCard });
+      }
+    }
+    
+    db.incrementPacksOpened(req.user.id);
+    
+    if (cardsToGenerateImages.length > 0) {
+      setImmediate(async () => {
+        for (const { cardId, card } of cardsToGenerateImages) {
+          try {
+            console.log(`Background: Generating AI image for card ${cardId}...`);
+            const imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
+            db.updateCardImage(cardId, imageUrl);
+            console.log(`Background: Card ${cardId} image ready: ${imageUrl}`);
+          } catch (err) {
+            console.error(`Background: Failed to generate image for card ${cardId}:`, err.message);
+          }
+        }
+      });
+    }
+    
+    res.json({
+      packType: 'bonus',
+      packNumber: user.packs_opened + 1,
+      cards: savedCards,
+      packsRemaining: user.max_packs - user.packs_opened - 1,
+      imagesGenerating: AI_ENABLED,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1330,6 +1409,34 @@ app.post('/api/admin/add-packs', (req, res) => {
       old_max: user.max_packs,
       new_max: newMax,
       packs_remaining: newMax - user.packs_opened,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Admin: Grant a single-card pack (no login required)
+app.post('/api/admin/grant-single-card-pack', adminAuth, async (req, res) => {
+  try {
+    const { username } = req.body;
+    
+    if (!username) {
+      return res.status(400).json({ error: 'Missing username' });
+    }
+    
+    const user = db.getUserByUsername(username);
+    if (!user) {
+      return res.status(404).json({ error: `User "${username}" not found` });
+    }
+    
+    // Grant a single pack without opening it
+    db.updateUserMaxPacks(user.id, (user.max_packs || 0) + 1);
+    
+    res.json({ 
+      success: true,
+      username,
+      max_packs: (user.max_packs || 0) + 1,
+      packs_remaining: (user.max_packs || 0) + 1 - user.packs_opened,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
