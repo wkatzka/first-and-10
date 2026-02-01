@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import '../styles/globals.css';
 import { getMe, setToken, getActiveConferences, getUnreadCount } from '../lib/api';
 import PressConference, { PressConferenceBadge } from '../components/PressConference';
+import PlayfieldBackground from '../components/PlayfieldBackground';
 
 export default function App({ Component, pageProps }) {
   const [user, setUser] = useState(null);
@@ -118,6 +119,7 @@ export default function App({ Component, pageProps }) {
   
   return (
     <>
+      <PlayfieldBackground />
       <Component 
         {...pageProps} 
         user={user} 

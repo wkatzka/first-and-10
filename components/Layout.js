@@ -69,65 +69,6 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
   
   return (
     <div className="f10-app-shell pb-20 md:pb-0">
-      {/* Playbook background */}
-      <div className="f10-playbook-bg" aria-hidden="true">
-        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="playbook" x="0" y="0" width="520" height="520" patternUnits="userSpaceOnUse">
-              <circle cx="80" cy="60" r="5" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.08" />
-              <path d="M80 66 L80 110 L50 150" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.08" />
-              <path d="M53 145 L50 150 L55 148" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.08" />
-
-              <circle cx="200" cy="80" r="5" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.06" />
-              <path d="M200 86 L200 140 L260 140" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.06" />
-              <path d="M255 137 L260 140 L255 143" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.06" />
-
-              <circle cx="350" cy="100" r="5" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.05" />
-              <path d="M350 106 L350 180 L400 140" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.05" />
-              <path d="M394 144 L400 140 L396 148" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.05" />
-
-              <circle cx="450" cy="200" r="4" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.06" />
-              <path d="M450 205 L450 280" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.06" />
-              <path d="M450 280 Q450 295 435 295" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.06" />
-
-              <circle cx="120" cy="250" r="4" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.07" />
-              <path d="M120 255 L120 380" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.07" />
-              <path d="M117 375 L120 380 L123 375" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.07" />
-
-              <circle cx="280" cy="300" r="5" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.05" />
-              <path d="M280 306 L280 380 L340 340" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.05" />
-              <path d="M334 344 L340 340 L336 348" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.05" />
-
-              <circle cx="60" cy="400" r="4" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.06" />
-              <path d="M60 405 L60 430 L180 430" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.06" />
-              <path d="M175 427 L180 430 L175 433" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.06" />
-
-              <circle cx="400" cy="380" r="4" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.05" />
-              <path d="M400 385 L400 420 Q400 450 430 450 L480 450" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.05" />
-              <path d="M475 447 L480 450 L475 453" stroke="#00e5ff" strokeWidth="0.6" fill="none" opacity="0.05" />
-
-              <g opacity="0.04">
-                <path d="M147 177 L157 187 M157 177 L147 187" stroke="#ff0080" strokeWidth="0.6" />
-              </g>
-              <g opacity="0.035">
-                <path d="M317 257 L327 267 M327 257 L317 267" stroke="#ff0080" strokeWidth="0.6" />
-              </g>
-              <g opacity="0.04">
-                <path d="M237 407 L247 417 M247 407 L237 417" stroke="#ff0080" strokeWidth="0.6" />
-              </g>
-              <g opacity="0.03">
-                <path d="M427 87 L437 97 M437 87 L427 97" stroke="#ff0080" strokeWidth="0.6" />
-              </g>
-
-              <line x1="0" y1="60" x2="520" y2="60" stroke="#00e5ff" strokeWidth="0.3" opacity="0.03" />
-              <line x1="0" y1="250" x2="520" y2="250" stroke="#00e5ff" strokeWidth="0.3" opacity="0.025" />
-              <line x1="0" y1="400" x2="520" y2="400" stroke="#00e5ff" strokeWidth="0.3" opacity="0.02" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#playbook)" />
-        </svg>
-      </div>
-
       {/* Header */}
       <header className="bg-black/30 backdrop-blur border-b border-white/10 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4">

@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "F10Varsity";
+  src: url("/fonts/F10Varsity.woff2") format("woff2");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
 :root {
   /* Tier colors - updated scheme */
   --tier-1: #6B7280;   /* Gray */
@@ -76,7 +84,8 @@ h1, h2, h3, .f10-display {
   position: relative;
   z-index: 1;
   min-height: 100vh;
-  background: var(--nav-bg-primary);
+  /* Let the global canvas background show through */
+  background: transparent;
 }
 
 /* ========================================
