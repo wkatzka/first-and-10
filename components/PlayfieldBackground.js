@@ -36,6 +36,11 @@ function easeOutCubic(t) {
   return 1 - Math.pow(1 - t, 3);
 }
 
+// Smoother easing for arrow travel (ease in and out)
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
 function bezierPoint(p0, p1, p2, p3, t) {
   const u = 1 - t;
   const tt = t * t;
@@ -119,6 +124,58 @@ function buildFlag(p0, p3, centerX) {
   return { p0, p1, p2, p3 };
 }
 
+// --- 5 arrow route types for playfield (per-play shuffled order) ---
+// 1. Straight up
+function buildStraight(p0, p3) {
+  const p1 = { x: p0.x + (p3.x - p0.x) * 0.35, y: p0.y + (p3.y - p0.y) * 0.35 };
+  const p2 = { x: p0.x + (p3.x - p0.x) * 0.7, y: p0.y + (p3.y - p0.y) * 0.7 };
+  return { p0, p1, p2, p3 };
+}
+// 2. Straight up (same, second arrow)
+// 3. Up then 45° break halfway
+function buildTurn45(p0, p3) {
+  const dx = p3.x - p0.x;
+  const dy = p3.y - p0.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const perp = { x: -dy / dist, y: dx / dist };
+  const side = Math.random() > 0.5 ? 1 : -1;
+  const p1 = { x: p0.x + dx * 0.5, y: p0.y + dy * 0.5 };
+  const k = dist * 0.28 * side;
+  const p2 = { x: p1.x + perp.x * k + dx * 0.25, y: p1.y + perp.y * k + dy * 0.25 };
+  return { p0, p1, p2, p3 };
+}
+// 4. Up then 90° break halfway
+function buildTurn90(p0, p3) {
+  const dx = p3.x - p0.x;
+  const dy = p3.y - p0.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const perp = { x: -dy / dist, y: dx / dist };
+  const side = Math.random() > 0.5 ? 1 : -1;
+  const p1 = { x: p0.x + dx * 0.5, y: p0.y + dy * 0.5 };
+  const k = dist * 0.5 * side;
+  const p2 = { x: p1.x + perp.x * k, y: p1.y + perp.y * k };
+  return { p0, p1, p2, p3 };
+}
+// 5. Up 75% then turn back to 50%
+function buildComeback(p0, p3) {
+  const dx = p3.x - p0.x;
+  const dy = p3.y - p0.y;
+  const up75 = { x: p0.x + dx * 0.75, y: p0.y + dy * 0.75 };
+  const end50 = { x: p0.x + dx * 0.5, y: p0.y + dy * 0.5 };
+  const p1 = { x: p0.x + dx * 0.4, y: p0.y + dy * 0.4 };
+  const p2 = { x: up75.x + (end50.x - up75.x) * 0.6, y: up75.y + (end50.y - up75.y) * 0.6 };
+  return { p0, p1, p2, p3: end50 };
+}
+
+function shuffleArray(arr) {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 function rand(min, max) {
   return min + Math.random() * (max - min);
 }
@@ -127,7 +184,8 @@ function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-const CIRCLES_PER_PLAY = 6; // formation: one horizontal line of circles (like line of scrimmage)
+const ARROWS_PER_PLAY = 5; // 5 arrows: straight, straight, 45° turn, 90° turn, comeback
+const ARROW_ROUTE_BUILDERS = [buildStraight, buildStraight, buildTurn45, buildTurn90, buildComeback];
 const SPAWN_INTERVAL_MS = 4000; // new play every 4 seconds
 const ARROW_TRAVEL_MS = 4000;   // arrows take 4s to travel and disappear
 
@@ -176,8 +234,6 @@ export default function PlayfieldBackground() {
 
     startTimeRef.current = performance.now();
 
-    const ROUTES = [buildBezier, buildButtonhook, buildSlant, buildPost, buildFlag];
-
     const maybeSpawn = (now, w, h) => {
       const plays = playsRef.current;
 
@@ -188,39 +244,28 @@ export default function PlayfieldBackground() {
 
       lastSpawnTimeRef.current = now;
       const t0 = now;
-      const margin = 0.15;
-      const step = (1 - 2 * margin) / Math.max(1, CIRCLES_PER_PLAY - 1);
+      const margin = 0.18;
+      const step = (1 - 2 * margin) / Math.max(1, ARROWS_PER_PLAY - 1);
 
-      // Spawn all 5 yard lines at once (10, 30, 50, 30, 10) so arrows run on their lines together
+      // Spawn all 5 yard lines at once; each play gets a shuffled order of the 5 route types
       for (let band = 0; band < BAND_YARDS.length; band++) {
         const lineYard = BAND_YARDS[band];
         const lineY = lineYard * pxPerYard;
         if (band === BAND_YARDS.length - 1) pulseWhenLast10FinishesRef.current = true;
 
-        for (let i = 0; i < CIRCLES_PER_PLAY; i++) {
+        const routeOrder = shuffleArray([0, 1, 2, 3, 4]);
+
+        for (let i = 0; i < ARROWS_PER_PLAY; i++) {
           const startO = {
-            x: w * (margin + i * step) + rand(-20, 20),
+            x: w * (margin + i * step) + rand(-16, 16),
             y: lineY,
           };
-          const upfieldY = lineY - rand(200, 340);
-          const endO = { x: startO.x + rand(-90, 90), y: upfieldY };
+          const upfieldY = lineY - rand(220, 320);
+          const endO = { x: startO.x + rand(-60, 60), y: upfieldY };
 
-          const avoidX = {
-            x: lerp(startO.x, endO.x, 0.35) + rand(-35, 35),
-            y: lineY - rand(70, 130),
-          };
-
-          const routeType = ROUTES[(band * CIRCLES_PER_PLAY + i) % ROUTES.length];
-          let b;
-          if (routeType === buildBezier) {
-            b = buildBezier(startO, endO, avoidX);
-          } else if (routeType === buildPost) {
-            b = buildPost(startO, endO, w / 2);
-          } else if (routeType === buildFlag) {
-            b = buildFlag(startO, endO, w / 2);
-          } else {
-            b = routeType(startO, endO);
-          }
+          const buildRoute = ARROW_ROUTE_BUILDERS[routeOrder[i]];
+          const b = buildRoute(startO, endO);
+          const avoidX = { x: (b.p0.x + b.p3.x) / 2 + rand(-25, 25), y: lineY - rand(80, 120) };
 
           const color = pick(COLORS.neon);
 
@@ -232,13 +277,13 @@ export default function PlayfieldBackground() {
             p2: b.p2,
             p3: b.p3,
             avoidX,
-            startO,
-            endO,
+            startO: b.p0,
+            endO: b.p3,
             t0,
-            oIn: 140,
+            oIn: 120,
             drawDur: ARROW_TRAVEL_MS,
             hold: 0,
-            fadeOut: 300,
+            fadeOut: 280,
           });
         }
       }
@@ -270,7 +315,7 @@ export default function PlayfieldBackground() {
       const tO = Math.min(1, Math.max(0, dt / play.oIn));
       const drawT = (dt - play.oIn) / play.drawDur;
       const u = Math.min(1, Math.max(0, drawT));
-      const eased = easeOutCubic(u);
+      const eased = easeInOutCubic(u);
 
       // fade out after hold
       const endTime = play.oIn + play.drawDur + play.hold;
@@ -328,18 +373,15 @@ export default function PlayfieldBackground() {
       ctx.stroke();
       ctx.restore();
 
-      // Arrow draw (progressive)
-      const segments = 70;
-      const segEnd = Math.max(1, Math.floor(eased * segments));
+      // Arrow draw (smooth progressive reveal: more segments + smooth head position)
+      const segments = 160;
+      const headT = eased;
+      const segEnd = Math.min(segments, Math.ceil(headT * segments));
 
       ctx.save();
-      ctx.globalAlpha = 0.9 * alpha;
       ctx.strokeStyle = play.color;
-      ctx.lineWidth = 2;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.shadowColor = play.color;
-      ctx.shadowBlur = 10;
 
       ctx.beginPath();
       for (let i = 0; i <= segEnd; i++) {
@@ -348,13 +390,25 @@ export default function PlayfieldBackground() {
         if (i === 0) ctx.moveTo(P.x, P.y);
         else ctx.lineTo(P.x, P.y);
       }
+
+      // Soft glow pass
+      ctx.globalAlpha = 0.35 * alpha;
+      ctx.shadowColor = play.color;
+      ctx.shadowBlur = 24;
+      ctx.lineWidth = 5;
       ctx.stroke();
 
-      // Arrowhead at current end
-      const tHead = segEnd / segments;
-      const P = bezierPoint(p0, p1, p2, p3, tHead);
-      const T = bezierTangent(p0, p1, p2, p3, tHead);
-      drawArrowhead(P, T, play.color, 2);
+      // Main stroke
+      ctx.globalAlpha = 0.92 * alpha;
+      ctx.shadowBlur = 18;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Arrowhead at smooth position (not snapped to segment)
+      const P = bezierPoint(p0, p1, p2, p3, headT);
+      const T = bezierTangent(p0, p1, p2, p3, headT);
+      ctx.shadowBlur = 22;
+      drawArrowhead(P, T, play.color, 2.5);
 
       ctx.restore();
     };
