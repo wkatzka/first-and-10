@@ -9,6 +9,7 @@ const COLORS = {
 
 const pxPerYard = 18; // tune for density
 const fieldCycleYards = 100; // endzone to endzone
+const MAX_ARROW_YARDS = 12; // arrows don't extend more than this many yards upfield
 const loopMs = 54_000; // 54 second scroll loop (20% slower than 45s)
 const yardsPerTick = 5;
 const BG_DIM = 0.62; // overall background dim (lower = dimmer)
@@ -157,7 +158,7 @@ function buildTurn90(p0, p3) {
 }
 // 5. Out 75%, sharp 135° turn, come back toward center of yard line (either side)
 function buildOut135(p0, _p3, centerX) {
-  const totalUp = 260;
+  const totalUp = MAX_ARROW_YARDS * pxPerYard;
   const corner = { x: p0.x, y: p0.y - totalUp * 0.75 };
   const towardCenter = centerX > p0.x ? 1 : -1;
   const comeBack = 0.35 * totalUp;
@@ -262,7 +263,8 @@ export default function PlayfieldBackground() {
             x: w * (margin + i * step) + rand(-16, 16),
             y: lineY,
           };
-          const upfieldY = lineY - rand(220, 320);
+          const maxUpPx = MAX_ARROW_YARDS * pxPerYard;
+          const upfieldY = lineY - rand(maxUpPx * 0.5, maxUpPx);
           const endO = { x: startO.x + rand(-60, 60), y: upfieldY };
 
           const buildRoute = ARROW_ROUTE_BUILDERS[routeOrder[i]];
