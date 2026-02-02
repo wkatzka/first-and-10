@@ -9,7 +9,7 @@ const COLORS = {
 
 const pxPerYard = 18; // tune for density
 const fieldCycleYards = 100; // endzone to endzone
-const loopMs = 45_000; // 45 second scroll loop (50% slower than 30s)
+const loopMs = 54_000; // 54 second scroll loop (20% slower than 45s)
 const yardsPerTick = 5;
 const BG_DIM = 0.62; // overall background dim (lower = dimmer)
 const SCROLL_DIR = -1; // -1 = scroll bottom->up (content moves up)
@@ -187,8 +187,8 @@ function pick(arr) {
 
 const ARROWS_PER_PLAY = 5; // exactly 5: straight, straight, sharp 45°, sharp 90°, out 75% + 135° back to center
 const ARROW_ROUTE_BUILDERS = [buildStraight, buildStraight, buildTurn45, buildTurn90, buildOut135];
-const SPAWN_INTERVAL_MS = 4000; // new play every 4 seconds
-const ARROW_TRAVEL_MS = 4000;   // arrows take 4s to travel and disappear
+const SPAWN_INTERVAL_MS = 4800; // new play every 4.8s (20% slower)
+const ARROW_TRAVEL_MS = 4800;   // arrows take 4.8s to travel (20% slower)
 
 // Plays on every 10-yard line
 const BAND_YARDS = [10, 20, 30, 40, 50, 60, 70, 80, 90];
