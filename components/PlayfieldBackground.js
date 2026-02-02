@@ -8,25 +8,32 @@ const COLORS = {
 };
 
 const pxPerYard = 18; // tune for density
-const fieldCycleYards = 100; // endzone to endzone
+const ENDZONE_DEPTH_YARDS = 10; // 10 yards of endzone before 0 and after 100
+const fieldCycleYards = 100; // playing field only (0–100)
+const fieldTotalYards = ENDZONE_DEPTH_YARDS + fieldCycleYards + ENDZONE_DEPTH_YARDS; // 120: endzone(10) + field(100) + endzone(10)
 const MAX_ARROW_YARDS = 12; // arrows don't extend more than this many yards upfield
 const loopMs = 54_000; // 54 second scroll loop (20% slower than 45s)
 const yardsPerTick = 5;
 const BG_DIM = 0.62; // overall background dim (lower = dimmer)
 const SCROLL_DIR = -1; // -1 = scroll bottom->up (content moves up)
-const ENDZONE_HEIGHT_PX = 72; // fixed endzone band at top/bottom of viewport
+const ENDZONE_CYCLE_MS = 3000; // dot trace + double pulse loop
+const ENDZONE_DOT_TRAVEL_MS = 2000; // dots trace outline then collide
+const ENDZONE_PULSE_MS = 500; // each of the two pulses
 
 function mod(n, m) {
   return ((n % m) + m) % m;
 }
 
 function yardLabel(yardInCycle) {
-  // yardInCycle in [0,100)
-  // Only show numbers on the 10s, not on 0.
-  if (yardInCycle === 0) return null;
-  if (yardInCycle % 10 !== 0) return null; // skip 5-yard lines = your “skip a line”
-  if (yardInCycle <= 50) return yardInCycle;
-  return 100 - yardInCycle; // 60..90 -> 40..10
+  // positionInCycle 0..120: 0-10 endzone, 10=goal, 20-110 field, 110=goal, 110-120 endzone
+  if (yardInCycle === ENDZONE_DEPTH_YARDS / 2) return "FIRST & 10";
+  if (yardInCycle === ENDZONE_DEPTH_YARDS + fieldCycleYards + ENDZONE_DEPTH_YARDS / 2) return "FIRST & 10";
+  if (yardInCycle < ENDZONE_DEPTH_YARDS || yardInCycle >= ENDZONE_DEPTH_YARDS + fieldCycleYards) return null;
+  if (yardInCycle === ENDZONE_DEPTH_YARDS || yardInCycle === ENDZONE_DEPTH_YARDS + fieldCycleYards) return null;
+  if (yardInCycle % yardsPerTick !== 0) return null; // skip 5-yard lines = your “skip a line”
+  const fieldYard = yardInCycle - ENDZONE_DEPTH_YARDS;
+  if (fieldYard <= 50) return fieldYard;
+  return 100 - fieldYard;
 }
 
 function lerp(a, b, t) {
@@ -201,15 +208,12 @@ export default function PlayfieldBackground() {
   const startTimeRef = useRef(0);
   const nextBandRef = useRef(0);
   const lastSpawnTimeRef = useRef(0);
-  const endzonePulseRef = useRef(null);
-  const pulseWhenLast10FinishesRef = useRef(false);
 
-  const fieldHeightPx = fieldCycleYards * pxPerYard;
+  const fieldHeightPx = fieldTotalYards * pxPerYard;
 
-  // precompute 5-yard ticks for drawing lines
   const ticks = useMemo(() => {
     const a = [];
-    for (let y = 0; y <= fieldCycleYards; y += yardsPerTick) a.push(y);
+    for (let y = 0; y <= fieldTotalYards; y += yardsPerTick) a.push(y);
     return a;
   }, []);
 
@@ -252,9 +256,7 @@ export default function PlayfieldBackground() {
       // Spawn all 5 yard lines at once; each play gets a shuffled order of the 5 route types
       for (let band = 0; band < BAND_YARDS.length; band++) {
         const lineYard = BAND_YARDS[band];
-        const lineY = lineYard * pxPerYard;
-        if (band === BAND_YARDS.length - 1) pulseWhenLast10FinishesRef.current = true;
-
+        const lineY = (ENDZONE_DEPTH_YARDS + lineYard) * pxPerYard;
         const routeOrder = shuffleArray([0, 1, 2, 3, 4]);
         const centerX = w / 2;
 
@@ -417,6 +419,66 @@ export default function PlayfieldBackground() {
       ctx.restore();
     };
 
+    const drawEndzoneWithDots = (rectX, rectY, rectW, rectH, phase) => {
+      const W = rectW;
+      const H = rectH;
+      const pulsePhase = phase - ENDZONE_DOT_TRAVEL_MS;
+      const isPulsing = pulsePhase >= 0 && pulsePhase < 2 * ENDZONE_PULSE_MS;
+      const pulse1 = pulsePhase >= 0 && pulsePhase < ENDZONE_PULSE_MS;
+      const pulse2 = pulsePhase >= ENDZONE_PULSE_MS && pulsePhase < 2 * ENDZONE_PULSE_MS;
+      const pulseT = pulse1 ? pulsePhase / ENDZONE_PULSE_MS : pulse2 ? (pulsePhase - ENDZONE_PULSE_MS) / ENDZONE_PULSE_MS : 0;
+      const pulseGlow = isPulsing ? (Math.sin(pulseT * Math.PI) * 0.5 + 0.5) : 0;
+
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+
+      ctx.fillStyle = "rgba(143, 217, 255, 0.08)";
+      ctx.fillRect(rectX, rectY, W, H);
+
+      ctx.strokeStyle = COLORS.icy;
+      ctx.shadowColor = COLORS.icy;
+      if (isPulsing) {
+        ctx.shadowBlur = 12 + pulseGlow * 20;
+        ctx.lineWidth = 2 + pulseGlow * 3;
+        ctx.globalAlpha = (0.5 + pulseGlow * 0.4) * BG_DIM;
+      } else {
+        ctx.shadowBlur = 6;
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.4 * BG_DIM;
+      }
+      ctx.strokeRect(rectX, rectY, W, H);
+
+      if (phase < ENDZONE_DOT_TRAVEL_MS) {
+        const t = Math.min(1, phase / ENDZONE_DOT_TRAVEL_MS);
+        const t1 = Math.min(1, t * 2);
+        const t2 = t > 0.5 ? (t - 0.5) * 2 : 0;
+        const dotR = 6;
+        const dotPos = (localX, localY) => {
+          ctx.beginPath();
+          ctx.arc(rectX + localX, rectY + localY, dotR, 0, Math.PI * 2);
+          ctx.fillStyle = COLORS.icyBright;
+          ctx.shadowColor = COLORS.icy;
+          ctx.shadowBlur = 16;
+          ctx.fill();
+        };
+        ctx.globalAlpha = 0.95 * BG_DIM;
+        if (t1 <= 1) {
+          dotPos(W / 2 - (W / 2) * t1, 0);
+          dotPos(W / 2 + (W / 2) * t1, 0);
+          dotPos(W / 2 - (W / 2) * t1, H);
+          dotPos(W / 2 + (W / 2) * t1, H);
+        } else {
+          const s = t2;
+          dotPos(0, (H / 2) * s);
+          dotPos(W, (H / 2) * s);
+          dotPos(0, H - (H / 2) * s);
+          dotPos(W, H - (H / 2) * s);
+        }
+      }
+
+      ctx.restore();
+    };
+
     const drawField = (w, h, scrollPx, now) => {
       // background
       ctx.clearRect(0, 0, w, h);
@@ -436,6 +498,11 @@ export default function PlayfieldBackground() {
         const isPrimaryCycle = cycleOffset === 0;
         const baseScroll = mod(scrollPx, fieldHeightPx) - cycleOffset;
 
+        const endzonePhase = (now % ENDZONE_CYCLE_MS);
+        const endzoneH = ENDZONE_DEPTH_YARDS * pxPerYard;
+        drawEndzoneWithDots(0, 0 - baseScroll, w, endzoneH, endzonePhase);
+        drawEndzoneWithDots(0, (ENDZONE_DEPTH_YARDS + fieldCycleYards) * pxPerYard - baseScroll, w, endzoneH, endzonePhase);
+
         // yard lines + hashes + numbers
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
@@ -452,7 +519,7 @@ export default function PlayfieldBackground() {
 
           const yardInCycle = yard;
           const label =
-            yardInCycle === 0 || yardInCycle === 100
+            yardInCycle === ENDZONE_DEPTH_YARDS || yardInCycle === ENDZONE_DEPTH_YARDS + fieldCycleYards
               ? "FIRST & 10"
               : yardLabel(yardInCycle);
 
@@ -530,7 +597,7 @@ export default function PlayfieldBackground() {
               ctx.restore();
             }
 
-            if (yardInCycle === 50 && isPrimaryCycle) {
+            if (yardInCycle === ENDZONE_DEPTH_YARDS + 50 && isPrimaryCycle) {
               ctx.font = "92px CollegeBlock, system-ui, sans-serif";
               ctx.shadowBlur = 16;
               ctx.fillText("F10", w / 2, yPx);
@@ -541,21 +608,6 @@ export default function PlayfieldBackground() {
 
         ctx.restore();
       }
-
-      // Fixed endzone outline and "FIRST & 10" at top and bottom; pulse when play crosses into endzone
-      const pulseAt = endzonePulseRef.current;
-      const pulseDur = 600;
-      const isPulsing = pulseAt != null && now - pulseAt < pulseDur;
-      ctx.save();
-      ctx.strokeStyle = COLORS.icy;
-      ctx.shadowColor = COLORS.icy;
-      ctx.shadowBlur = isPulsing ? 24 : 8;
-      ctx.lineWidth = isPulsing ? 5 : 3;
-      ctx.globalCompositeOperation = "lighter";
-      ctx.globalAlpha = (isPulsing ? 0.9 : 0.6) * BG_DIM;
-      ctx.strokeRect(0, 0, w, ENDZONE_HEIGHT_PX);
-      ctx.strokeRect(0, h - ENDZONE_HEIGHT_PX, w, ENDZONE_HEIGHT_PX);
-      ctx.restore();
 
       // subtle grain overlay (cheap + nice)
       ctx.save();
@@ -594,23 +646,17 @@ export default function PlayfieldBackground() {
       const h = window.innerHeight;
 
       const t = (now - startTimeRef.current) % loopMs;
-      const scrollPhase = ((10 * pxPerYard - h / 2) % fieldHeightPx + fieldHeightPx) % fieldHeightPx;
+      const scrollPhase = ((20 * pxPerYard - h / 2) % fieldHeightPx + fieldHeightPx) % fieldHeightPx;
       const scrollPx = scrollPhase + SCROLL_DIR * (t / loopMs) * fieldHeightPx;
 
       drawField(w, h, scrollPx, now);
 
       maybeSpawn(now, w, h);
 
-      const hadPlays = playsRef.current.length > 0;
       playsRef.current = playsRef.current.filter((p) => {
         const life = p.oIn + p.drawDur + p.hold + p.fadeOut;
         return now - p.t0 < life;
       });
-      if (hadPlays && playsRef.current.length === 0 && pulseWhenLast10FinishesRef.current) {
-        endzonePulseRef.current = now;
-        pulseWhenLast10FinishesRef.current = false;
-      }
-
       // draw plays twice (stacked) so they remain continuous across seam
       for (const seamOffset of [0, fieldHeightPx]) {
         const plays = playsRef.current;
