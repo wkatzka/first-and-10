@@ -135,6 +135,7 @@ export default function PlayfieldBackground() {
   const rafRef = useRef(null);
   const startTimeRef = useRef(0);
   const nextBandRef = useRef(0);
+  const endzonePulseRef = useRef(null);
 
   const fieldHeightPx = fieldCycleYards * pxPerYard;
 
@@ -172,16 +173,22 @@ export default function PlayfieldBackground() {
     const BAND_YARDS = [10, 30, 50, 70, 90];
     const ROUTES = [buildBezier, buildButtonhook, buildSlant, buildPost, buildFlag];
 
-    const maybeSpawn = (now, w) => {
+    const maybeSpawn = (now, w, h, scrollPx) => {
       const plays = playsRef.current;
 
       if (plays.length > 0) return;
 
       const band = nextBandRef.current;
-      nextBandRef.current = (nextBandRef.current + 1) % BAND_YARDS.length;
-
       const lineYard = BAND_YARDS[band];
       const lineY = lineYard * pxPerYard;
+
+      const baseScroll = mod(scrollPx, fieldHeightPx);
+      const targetBaseScroll = ((lineY - h / 2) % fieldHeightPx + fieldHeightPx) % fieldHeightPx;
+      let dist = Math.abs(baseScroll - targetBaseScroll);
+      dist = Math.min(dist, fieldHeightPx - dist);
+      if (dist >= 70) return;
+
+      nextBandRef.current = (nextBandRef.current + 1) % BAND_YARDS.length;
 
       const margin = 0.15;
       const step = (1 - 2 * margin) / Math.max(1, CIRCLES_PER_PLAY - 1);
@@ -349,7 +356,7 @@ export default function PlayfieldBackground() {
       ctx.restore();
     };
 
-    const drawField = (w, h, scrollPx) => {
+    const drawField = (w, h, scrollPx, now) => {
       // background
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = COLORS.field;
@@ -457,14 +464,17 @@ export default function PlayfieldBackground() {
         ctx.restore();
       }
 
-      // Fixed endzone outline and "FIRST & 10" at top and bottom (always visible)
+      // Fixed endzone outline and "FIRST & 10" at top and bottom; pulse when play crosses into endzone
+      const pulseAt = endzonePulseRef.current;
+      const pulseDur = 600;
+      const isPulsing = pulseAt != null && now - pulseAt < pulseDur;
       ctx.save();
       ctx.strokeStyle = COLORS.icy;
       ctx.shadowColor = COLORS.icy;
-      ctx.shadowBlur = 8;
-      ctx.lineWidth = 3;
+      ctx.shadowBlur = isPulsing ? 24 : 8;
+      ctx.lineWidth = isPulsing ? 5 : 3;
       ctx.globalCompositeOperation = "lighter";
-      ctx.globalAlpha = 0.6 * BG_DIM;
+      ctx.globalAlpha = (isPulsing ? 0.9 : 0.6) * BG_DIM;
       ctx.strokeRect(0, 0, w, ENDZONE_HEIGHT_PX);
       ctx.strokeRect(0, h - ENDZONE_HEIGHT_PX, w, ENDZONE_HEIGHT_PX);
       ctx.restore();
@@ -516,17 +526,28 @@ export default function PlayfieldBackground() {
       const w = window.innerWidth;
       const h = window.innerHeight;
 
-      // Scroll: 0..fieldHeightPx over loopMs
       const t = (now - startTimeRef.current) % loopMs;
       const scrollPx = SCROLL_DIR * (t / loopMs) * fieldHeightPx;
 
-      // Draw field
-      drawField(w, h, scrollPx);
+      const plays = playsRef.current;
+      const endzoneTop = 10 * pxPerYard;
+      const endzoneBottom = 90 * pxPerYard;
+      for (const p of plays) {
+        const dt = now - p.t0;
+        const drawT = (dt - p.oIn) / p.drawDur;
+        const u = Math.min(1, Math.max(0, drawT));
+        const eased = easeOutCubic(u);
+        const head = bezierPoint(p.p0, p.p1, p.p2, p.p3, eased);
+        if (head.y < endzoneTop || head.y > endzoneBottom) {
+          endzonePulseRef.current = now;
+          break;
+        }
+      }
 
-      // Spawn + draw plays (plays are in field space; draw uses same scrollPx)
-      maybeSpawn(now, w);
+      drawField(w, h, scrollPx, now);
 
-      // cleanup dead plays
+      maybeSpawn(now, w, h, scrollPx);
+
       playsRef.current = playsRef.current.filter((p) => {
         const life = p.oIn + p.drawDur + p.hold + p.fadeOut;
         return now - p.t0 < life;
