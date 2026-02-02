@@ -124,47 +124,48 @@ function buildFlag(p0, p3, centerX) {
   return { p0, p1, p2, p3 };
 }
 
-// --- 5 arrow route types for playfield (per-play shuffled order) ---
-// 1. Straight up
+// --- 5 arrow route types (per-play shuffled order); exactly 5 arrows per play ---
+// 1 & 2. Straight up
 function buildStraight(p0, p3) {
   const p1 = { x: p0.x + (p3.x - p0.x) * 0.35, y: p0.y + (p3.y - p0.y) * 0.35 };
   const p2 = { x: p0.x + (p3.x - p0.x) * 0.7, y: p0.y + (p3.y - p0.y) * 0.7 };
   return { p0, p1, p2, p3 };
 }
-// 2. Straight up (same, second arrow)
-// 3. Up then 45° break halfway
+// 3. Sharp 45° turn at 50% (literal angle: p1 = p2 = corner)
 function buildTurn45(p0, p3) {
   const dx = p3.x - p0.x;
   const dy = p3.y - p0.y;
   const dist = Math.hypot(dx, dy) || 1;
-  const perp = { x: -dy / dist, y: dx / dist };
+  const up = { x: dx / dist, y: dy / dist };
+  const perp = { x: -up.y, y: up.x };
   const side = Math.random() > 0.5 ? 1 : -1;
-  const p1 = { x: p0.x + dx * 0.5, y: p0.y + dy * 0.5 };
-  const k = dist * 0.28 * side;
-  const p2 = { x: p1.x + perp.x * k + dx * 0.25, y: p1.y + perp.y * k + dy * 0.25 };
-  return { p0, p1, p2, p3 };
+  const corner = { x: p0.x + dx * 0.5, y: p0.y + dy * 0.5 };
+  const leg = dist * 0.5;
+  const end = { x: corner.x + (up.x * 0.707 + perp.x * side * 0.707) * leg, y: corner.y + (up.y * 0.707 + perp.y * side * 0.707) * leg };
+  return { p0, p1: corner, p2: corner, p3: end };
 }
-// 4. Up then 90° break halfway
+// 4. Sharp 90° turn at 50% (literal angle)
 function buildTurn90(p0, p3) {
   const dx = p3.x - p0.x;
   const dy = p3.y - p0.y;
   const dist = Math.hypot(dx, dy) || 1;
   const perp = { x: -dy / dist, y: dx / dist };
   const side = Math.random() > 0.5 ? 1 : -1;
-  const p1 = { x: p0.x + dx * 0.5, y: p0.y + dy * 0.5 };
-  const k = dist * 0.5 * side;
-  const p2 = { x: p1.x + perp.x * k, y: p1.y + perp.y * k };
-  return { p0, p1, p2, p3 };
+  const corner = { x: p0.x + dx * 0.5, y: p0.y + dy * 0.5 };
+  const end = { x: corner.x + perp.x * side * dist * 0.5, y: corner.y + perp.y * side * dist * 0.5 };
+  return { p0, p1: corner, p2: corner, p3: end };
 }
-// 5. Up 75% then turn back to 50%
-function buildComeback(p0, p3) {
-  const dx = p3.x - p0.x;
-  const dy = p3.y - p0.y;
-  const up75 = { x: p0.x + dx * 0.75, y: p0.y + dy * 0.75 };
-  const end50 = { x: p0.x + dx * 0.5, y: p0.y + dy * 0.5 };
-  const p1 = { x: p0.x + dx * 0.4, y: p0.y + dy * 0.4 };
-  const p2 = { x: up75.x + (end50.x - up75.x) * 0.6, y: up75.y + (end50.y - up75.y) * 0.6 };
-  return { p0, p1, p2, p3: end50 };
+// 5. Out 75%, sharp 135° turn, come back toward center of yard line (either side)
+function buildOut135(p0, _p3, centerX) {
+  const totalUp = 260;
+  const corner = { x: p0.x, y: p0.y - totalUp * 0.75 };
+  const towardCenter = centerX > p0.x ? 1 : -1;
+  const comeBack = 0.35 * totalUp;
+  const p3 = {
+    x: corner.x + towardCenter * 0.707 * comeBack,
+    y: corner.y + 0.707 * comeBack,
+  };
+  return { p0, p1: corner, p2: corner, p3 };
 }
 
 function shuffleArray(arr) {
@@ -184,13 +185,13 @@ function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-const ARROWS_PER_PLAY = 5; // 5 arrows: straight, straight, 45° turn, 90° turn, comeback
-const ARROW_ROUTE_BUILDERS = [buildStraight, buildStraight, buildTurn45, buildTurn90, buildComeback];
+const ARROWS_PER_PLAY = 5; // exactly 5: straight, straight, sharp 45°, sharp 90°, out 75% + 135° back to center
+const ARROW_ROUTE_BUILDERS = [buildStraight, buildStraight, buildTurn45, buildTurn90, buildOut135];
 const SPAWN_INTERVAL_MS = 4000; // new play every 4 seconds
 const ARROW_TRAVEL_MS = 4000;   // arrows take 4s to travel and disappear
 
-// 5 plays per cycle: 10 → 30 → 50 → 30 → 10
-const BAND_YARDS = [10, 30, 50, 30, 10];
+// Plays on every 10-yard line
+const BAND_YARDS = [10, 20, 30, 40, 50, 60, 70, 80, 90];
 
 export default function PlayfieldBackground() {
   const canvasRef = useRef(null);
@@ -254,6 +255,7 @@ export default function PlayfieldBackground() {
         if (band === BAND_YARDS.length - 1) pulseWhenLast10FinishesRef.current = true;
 
         const routeOrder = shuffleArray([0, 1, 2, 3, 4]);
+        const centerX = w / 2;
 
         for (let i = 0; i < ARROWS_PER_PLAY; i++) {
           const startO = {
@@ -264,7 +266,7 @@ export default function PlayfieldBackground() {
           const endO = { x: startO.x + rand(-60, 60), y: upfieldY };
 
           const buildRoute = ARROW_ROUTE_BUILDERS[routeOrder[i]];
-          const b = buildRoute(startO, endO);
+          const b = buildRoute(startO, endO, centerX);
           const avoidX = { x: (b.p0.x + b.p3.x) / 2 + rand(-25, 25), y: lineY - rand(80, 120) };
 
           const color = pick(COLORS.neon);
