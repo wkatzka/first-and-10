@@ -49,17 +49,14 @@ function shuffleCopy(arr) {
  * @returns {boolean} - True if roster is complete
  */
 function hasFullRoster(userId) {
-  const roster = db.getFullRoster(userId);
-  if (!roster || !roster.roster || !roster.cards) return false;
+  const full = db.getFullRoster(userId);
+  if (!full || !full.roster || !full.cards) return false;
 
-  // `db.getFullRoster()` returns `cards` keyed by slot IDs (e.g. `qb_card_id`),
-  // not position labels. Validate that each required slot has a valid card.
+  // Roster record has slot keys (qb_card_id, etc.); cards must exist for each
   for (const key of REQUIRED_SLOT_KEYS) {
-    const cardId = roster.roster[key];
-    const card = roster.cards[key];
+    const cardId = full.roster[key];
+    const card = full.cards[key];
     if (!cardId || !card) return false;
-    // Safety: ignore any stale roster pointers
-    if (card.user_id !== userId) return false;
   }
   return true;
 }
@@ -127,6 +124,18 @@ function getNextMonday(from = new Date()) {
   const day = date.getDay();
   const daysUntilMonday = day === 0 ? 1 : (8 - day);
   date.setDate(date.getDate() + daysUntilMonday);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+/**
+ * Get the Monday of the current week (so the week includes today)
+ */
+function getThisMonday(from = new Date()) {
+  const date = new Date(from);
+  const day = date.getDay();
+  const daysBack = day === 0 ? 6 : day - 1;
+  date.setDate(date.getDate() - daysBack);
   date.setHours(0, 0, 0, 0);
   return date;
 }
@@ -301,20 +310,23 @@ function initializeSchedule(forceReset = false) {
   }
   
   const now = getESTDate();
-  
-  // If no season start or force reset, start next Monday
+
+  // If no season start or force reset: start from THIS week so today has games
   if (!schedule.seasonStart || forceReset) {
-    schedule.seasonStart = formatDate(getNextMonday(now));
+    const weekStart = getThisMonday(now);
+    schedule.seasonStart = formatDate(weekStart);
     schedule.currentWeek = 1;
     schedule.games = [];
     schedule.completedGames = [];
-    
-    // Generate first week's schedule (only eligible users)
-    const weekStart = new Date(schedule.seasonStart);
+
+    // Generate this week's schedule (includes today) and next week so we have runway
     schedule.games = generateWeekSchedule(weekStart, eligibleUsers);
-    
+    const nextWeekStart = new Date(weekStart);
+    nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+    schedule.games.push(...generateWeekSchedule(nextWeekStart, eligibleUsers));
+
     saveSchedule(schedule);
-    console.log(`Season initialized. Starts ${schedule.seasonStart}`);
+    console.log(`Season (re)initialized. Week starts ${schedule.seasonStart}, ${schedule.games.length} games`);
   }
   
   return schedule;
@@ -322,12 +334,12 @@ function initializeSchedule(forceReset = false) {
 
 /**
  * Refresh the schedule with current eligible users (full rosters).
- * Regenerates the season from next Monday so new teams with full rosters are included.
+ * Regenerates from this week so today and going forward include all full-roster teams.
  */
 function refreshSchedule() {
   const allUsers = db.getAllUsers();
   const eligibleUsers = getEligibleUsers(allUsers);
-  console.log(`Schedule refresh: ${eligibleUsers.length}/${allUsers.length} users have full rosters`);
+  console.log(`Schedule refresh: ${eligibleUsers.length}/${allUsers.length} users have full rosters`, eligibleUsers.map(u => u.username || u.id));
   return initializeSchedule(true);
 }
 
