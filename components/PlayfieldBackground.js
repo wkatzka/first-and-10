@@ -94,6 +94,7 @@ export default function PlayfieldBackground() {
   const startTimeRef = useRef(0);
 
   const fieldHeightPx = fieldCycleYards * pxPerYard;
+  const spriteFontRef = useRef({ ready: false, map: new Map() });
 
   // precompute 5-yard ticks for drawing lines
   const ticks = useMemo(() => {
@@ -120,10 +121,136 @@ export default function PlayfieldBackground() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
+    // Sports font from sheet: 4 rows — SPORTS (6), A–M (13), N–Z (13), 0–9! (11)
+    const loadSpriteFont = () => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const sheetW = img.naturalWidth;
+        const sheetH = img.naturalHeight;
+        const rows = [
+          { n: 6, chars: ["S", "P", "O", "R", "T", "S"] },
+          { n: 13, chars: ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M"] },
+          { n: 13, chars: ["N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"] },
+          { n: 11, chars: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "!"] },
+        ];
+        const rowH = sheetH / 4;
+        const map = new Map();
+        const tmp = document.createElement("canvas");
+        tmp.width = sheetW;
+        tmp.height = sheetH;
+        const tctx = tmp.getContext("2d");
+        tctx.drawImage(img, 0, 0);
+        const chromaKey = (glyphCanvas, threshold = 240) => {
+          const gctx = glyphCanvas.getContext("2d");
+          if (!gctx) return;
+          const d = gctx.getImageData(0, 0, glyphCanvas.width, glyphCanvas.height);
+          const data = d.data;
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i] >= threshold && data[i + 1] >= threshold && data[i + 2] >= threshold) {
+              data[i + 3] = 0;
+            }
+          }
+          gctx.putImageData(d, 0, 0);
+        };
+        for (let r = 0; r < rows.length; r++) {
+          const row = rows[r];
+          const cellW = sheetW / row.n;
+          const y0 = r * rowH;
+          for (let c = 0; c < row.n; c++) {
+            const ch = row.chars[c];
+            const x0 = c * cellW;
+            const glyph = document.createElement("canvas");
+            glyph.width = Math.max(1, Math.ceil(cellW));
+            glyph.height = Math.max(1, Math.ceil(rowH));
+            const gctx = glyph.getContext("2d");
+            gctx.drawImage(tmp, x0, y0, cellW, rowH, 0, 0, glyph.width, glyph.height);
+            chromaKey(glyph, 240);
+            map.set(ch, glyph);
+          }
+        }
+        spriteFontRef.current = { ready: true, map };
+      };
+      img.onerror = () => {
+        spriteFontRef.current = { ready: false, map: new Map() };
+      };
+      img.src = "/fonts/sports-font-sheet.png";
+    };
+
+    const measureSpriteWidth = (text, heightPx) => {
+      const { ready, map } = spriteFontRef.current;
+      if (!ready) return null;
+      const chars = String(text).toUpperCase().split("");
+      const gap = /^[\d\s]+$/.test(String(text)) ? 0 : Math.round(heightPx * 0.08);
+      let w = 0;
+      for (let i = 0; i < chars.length; i++) {
+        const ch = chars[i];
+        if (ch === " ") w += heightPx * 0.35;
+        else if (ch === "&") w += heightPx * 0.5;
+        else {
+          const g = map.get(ch);
+          if (g) w += (g.width / Math.max(1, g.height)) * heightPx;
+        }
+        if (i < chars.length - 1) w += gap;
+      }
+      return w || null;
+    };
+
+    const drawSpriteText = (text, x, y, heightPx, align = "center") => {
+      const { ready, map } = spriteFontRef.current;
+      if (!ready) return false;
+      const chars = String(text).toUpperCase().split("");
+      const gap = /^[\d\s]+$/.test(String(text)) ? 0 : Math.round(heightPx * 0.08);
+      let totalW = 0;
+      const widths = [];
+      for (const ch of chars) {
+        if (ch === " ") widths.push(heightPx * 0.35);
+        else if (ch === "&") widths.push(heightPx * 0.5);
+        else {
+          const g = map.get(ch);
+          widths.push(g ? (g.width / Math.max(1, g.height)) * heightPx : 0);
+        }
+      }
+      totalW = widths.reduce((a, b) => a + b, 0) + gap * Math.max(0, chars.length - 1);
+      let startX = x;
+      if (align === "center") startX = x - totalW / 2;
+      if (align === "right") startX = x - totalW;
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.globalCompositeOperation = "source-over";
+      let cx = startX;
+      for (let i = 0; i < chars.length; i++) {
+        const ch = chars[i];
+        const w = widths[i] || 0;
+        if (ch === "&") {
+          ctx.font = `${heightPx * 0.6}px F10Varsity, system-ui, sans-serif`;
+          ctx.fillStyle = COLORS.icyBright;
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText("&", cx, y);
+        } else if (ch !== " ") {
+          const g = map.get(ch);
+          if (g) {
+            const gw = (g.width / Math.max(1, g.height)) * heightPx;
+            const gy = y - heightPx / 2;
+            ctx.drawImage(g, cx, gy, gw, heightPx);
+            ctx.globalCompositeOperation = "source-in";
+            ctx.fillStyle = COLORS.icyBright;
+            ctx.fillRect(cx, gy, gw, heightPx);
+            ctx.globalCompositeOperation = "source-over";
+          }
+        }
+        cx += w + gap;
+      }
+      ctx.restore();
+      return true;
+    };
+
     resize();
     window.addEventListener("resize", resize);
 
     startTimeRef.current = performance.now();
+    loadSpriteFont();
 
     // Spawn plays continuously
     const maybeSpawn = (now, w) => {
@@ -325,7 +452,7 @@ export default function PlayfieldBackground() {
           // sideline label cutouts
           if (label !== null) {
             const labelStr = String(label);
-            const labelW = measureTextWidth(labelStr, "48px F10Varsity, system-ui, sans-serif") || 60;
+            const labelW = measureSpriteWidth(labelStr, 48) ?? measureTextWidth(labelStr, "48px system-ui, sans-serif") ?? 60;
             const pad = 16;
             const leftCx = 40;
             const rightCx = w - 40;
@@ -336,12 +463,9 @@ export default function PlayfieldBackground() {
           // endzone center text cutout (only one endzone)
           const isEndzone = isPrimaryCycle && yardInCycle === 5;
           if (isEndzone) {
-            ctx.save();
-            ctx.font = `64px F10Varsity, system-ui, sans-serif`;
-            const m = ctx.measureText("FIRST & 10");
-            ctx.restore();
+            const endzoneW = measureSpriteWidth("FIRST & 10", 64) ?? 320;
             const pad = 26;
-            cutouts.push([w / 2 - m.width / 2 - pad, w / 2 + m.width / 2 + pad]);
+            cutouts.push([w / 2 - endzoneW / 2 - pad, w / 2 + endzoneW / 2 + pad]);
           }
 
           // Normalize cutouts into drawable segments
@@ -381,16 +505,25 @@ export default function PlayfieldBackground() {
             ctx.fillStyle = COLORS.icyBright;
             ctx.shadowColor = COLORS.icy;
             ctx.shadowBlur = 12;
-            ctx.font = `48px F10Varsity, system-ui, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(String(label), 40, yPx);
-            ctx.fillText(String(label), w - 40, yPx);
-
+            const okL = drawSpriteText(String(label), 40, yPx, 48, "center");
+            const okR = drawSpriteText(String(label), w - 40, yPx, 48, "center");
+            if (!okL) {
+              ctx.font = "48px system-ui, sans-serif";
+              ctx.fillText(String(label), 40, yPx);
+            }
+            if (!okR) {
+              ctx.font = "48px system-ui, sans-serif";
+              ctx.fillText(String(label), w - 40, yPx);
+            }
             if (yardInCycle === 50 && isPrimaryCycle) {
-              ctx.font = `92px F10Varsity, system-ui, sans-serif`;
               ctx.shadowBlur = 16;
-              ctx.fillText("F10", w / 2, yPx + 70);
+              const okMid = drawSpriteText("F10", w / 2, yPx + 70, 92, "center");
+              if (!okMid) {
+                ctx.font = "92px system-ui, sans-serif";
+                ctx.fillText("F10", w / 2, yPx + 70);
+              }
             }
             ctx.restore();
           }
@@ -401,10 +534,13 @@ export default function PlayfieldBackground() {
             ctx.fillStyle = COLORS.icyBright;
             ctx.shadowColor = COLORS.icy;
             ctx.shadowBlur = 16;
-            ctx.font = `64px F10Varsity, system-ui, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText("FIRST & 10", w / 2, yPx);
+            const ok = drawSpriteText("FIRST & 10", w / 2, yPx, 64, "center");
+            if (!ok) {
+              ctx.font = "64px system-ui, sans-serif";
+              ctx.fillText("FIRST & 10", w / 2, yPx);
+            }
             ctx.restore();
           }
         }
