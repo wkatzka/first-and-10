@@ -1425,26 +1425,19 @@ app.get('/api/schedule/my-games', authMiddleware, (req, res) => {
   res.json({ games: myGames });
 });
 
+// Standings (team records from regular-season completed games; used for playoff seeding)
+app.get('/api/schedule/standings', authMiddleware, (req, res) => {
+  const schedule = scheduler.loadSchedule();
+  const standings = scheduler.getStandings(schedule);
+  res.json({ standings });
+});
+
 // Admin: Initialize/reset schedule (for testing)
 app.post('/api/schedule/init', authMiddleware, (req, res) => {
   const { reset } = req.body;
   const schedule = scheduler.initializeSchedule(reset === true);
   res.json({ 
     message: reset ? 'Schedule reset' : 'Schedule initialized',
-    seasonStart: schedule.seasonStart,
-    totalGames: schedule.games.length,
-  });
-});
-
-// Refresh schedule with current full-roster teams (regenerates from next Monday)
-app.post('/api/schedule/refresh', authMiddleware, (req, res) => {
-  const allUsers = db.getAllUsers();
-  const eligibleUsers = scheduler.getEligibleUsers(allUsers);
-  const schedule = scheduler.refreshSchedule();
-  res.json({
-    message: 'Schedule refreshed with current full-roster teams',
-    eligibleTeams: eligibleUsers.length,
-    totalTeams: allUsers.length,
     seasonStart: schedule.seasonStart,
     totalGames: schedule.games.length,
   });

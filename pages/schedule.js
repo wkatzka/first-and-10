@@ -8,6 +8,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
   const [todayGames, setTodayGames] = useState([]);
   const [tomorrowGames, setTomorrowGames] = useState([]);
   const [myGames, setMyGames] = useState([]);
+  const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('practice');
   
@@ -17,10 +18,6 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
   const [simulating, setSimulating] = useState(false);
   const [practiceResult, setPracticeResult] = useState(null);
   const [practiceError, setPracticeError] = useState(null);
-
-  // Refresh schedule (include new full-roster teams)
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshMessage, setRefreshMessage] = useState(null);
   
   useEffect(() => {
     if (!user) {
@@ -35,20 +32,23 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
       
-      const [todayRes, tomorrowRes, myRes, teamsData] = await Promise.all([
+      const [todayRes, tomorrowRes, myRes, standingsRes, teamsData] = await Promise.all([
         fetch('/api/schedule/today', { headers }),
         fetch('/api/schedule/tomorrow', { headers }),
         fetch('/api/schedule/my-games', { headers }),
+        fetch('/api/schedule/standings', { headers }),
         getAllUsers(),
       ]);
       
       const todayData = await todayRes.json();
       const tomorrowData = await tomorrowRes.json();
       const myData = await myRes.json();
+      const standingsData = await standingsRes.json();
       
       setTodayGames(todayData.games || []);
       setTomorrowGames(tomorrowData.games || []);
       setMyGames(myData.games || []);
+      setStandings(standingsData.standings || []);
       setTeams((teamsData.users || []).filter(t => t.id !== user?.id));
     } catch (err) {
       console.error('Failed to load schedule:', err);
@@ -75,28 +75,6 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
     }
   };
 
-  const refreshSchedule = async () => {
-    setRefreshing(true);
-    setRefreshMessage(null);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/schedule/refresh', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Refresh failed');
-      setRefreshMessage(
-        `Schedule refreshed: ${data.eligibleTeams} of ${data.totalTeams} teams (full rosters). Season starts ${data.seasonStart}, ${data.totalGames} games.`
-      );
-      await loadSchedule();
-    } catch (err) {
-      setRefreshMessage(err.message || 'Failed to refresh schedule');
-    } finally {
-      setRefreshing(false);
-    }
-  };
-  
   const formatGameStatus = (game) => {
     if (game.status === 'completed') {
       return (
@@ -177,7 +155,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
         <div className="text-center">
           <h1 className="text-3xl f10-title text-white mb-2">Game Schedule</h1>
           <p className="f10-subtitle">
-            Games auto-play at 7:00 PM & 9:00 PM EST daily
+            Regular season Mon–Fri (7 & 9 PM EST) · Playoffs Saturday · Super Bowl Sunday
           </p>
         </div>
         
@@ -185,33 +163,19 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
         <div className="max-w-2xl mx-auto f10-panel p-4" style={{ borderColor: 'rgba(0,229,255,0.25)' }}>
           <div className="flex items-start gap-3">
             <span className="text-2xl">📅</span>
-            <div className="flex-1">
+            <div>
               <div className="font-semibold" style={{ color: 'var(--nav-cyan)' }}>Auto-Compete Mode</div>
               <div className="text-sm text-gray-300">
                 Your roster plays automatically at scheduled times. 
                 Make sure your best lineup is set before game time!
               </div>
             </div>
-            <button
-              type="button"
-              onClick={refreshSchedule}
-              disabled={refreshing}
-              className="shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-              style={{ backgroundColor: 'rgba(0,229,255,0.15)', border: '1px solid rgba(0,229,255,0.35)', color: 'var(--nav-cyan)' }}
-            >
-              {refreshing ? 'Refreshing...' : 'Refresh schedule'}
-            </button>
           </div>
-          {refreshMessage && (
-            <div className={`mt-3 text-sm ${refreshMessage.startsWith('Schedule refreshed') ? 'text-green-400' : 'text-amber-400'}`}>
-              {refreshMessage}
-            </div>
-          )}
         </div>
         
         {/* Tabs */}
         <div className="flex gap-1 border-b border-white/10 overflow-x-auto">
-          {['practice', 'today', 'tomorrow', 'my-games'].map(tab => (
+          {['standings', 'practice', 'today', 'tomorrow', 'my-games'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -222,6 +186,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
               }`}
               style={activeTab === tab ? { borderColor: 'rgba(255,255,255,0.18)' } : undefined}
             >
+              {tab === 'standings' && '📊 Standings'}
               {tab === 'practice' && '🏈 Practice'}
               {tab === 'today' && "Today"}
               {tab === 'tomorrow' && "Tomorrow"}
@@ -235,6 +200,44 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
           <div className="text-center text-gray-400 py-12">Loading schedule...</div>
         ) : (
           <div className="space-y-4">
+            {activeTab === 'standings' && (
+              <div className="max-w-md mx-auto f10-panel p-6">
+                <h2 className="text-xl f10-title text-white mb-2">League Standings</h2>
+                <p className="text-sm text-gray-400 mb-4">
+                  Records from regular-season games. Top 4 make the playoffs (Saturday), then Super Bowl Sunday.
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-gray-400 border-b border-white/10">
+                        <th className="py-2 pr-2">#</th>
+                        <th className="py-2">Team</th>
+                        <th className="py-2 text-center">W</th>
+                        <th className="py-2 text-center">L</th>
+                        <th className="py-2 text-right">Record</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {standings.map((row, idx) => (
+                        <tr
+                          key={row.userId}
+                          className={`border-b border-white/5 ${row.userId === user?.id ? 'text-cyan-300' : 'text-white'}`}
+                        >
+                          <td className="py-2 pr-2 font-medium">{idx + 1}</td>
+                          <td className="py-2">{row.user?.username || row.user?.team_name || `Team ${row.userId}`}{row.userId === user?.id ? ' (You)' : ''}</td>
+                          <td className="py-2 text-center text-green-400">{row.wins}</td>
+                          <td className="py-2 text-center text-red-400">{row.losses}</td>
+                          <td className="py-2 text-right font-medium">{row.wins}-{row.losses}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {standings.length === 0 && (
+                  <div className="text-center text-gray-500 py-6">No regular-season games completed yet.</div>
+                )}
+              </div>
+            )}
             {activeTab === 'practice' && (
               <div className="max-w-md mx-auto space-y-4">
                 <div className="f10-panel p-6">

@@ -1,10 +1,11 @@
 /**
  * Game Scheduler
  * ===============
- * Automatically schedules and runs games at set times.
- * - 2 games per user per day (7 PM and 9 PM EST)
- * - Schedule released 1 day in advance
- * - Season starts on Monday
+ * NFL-style structure:
+ * - Regular season: Monday–Friday only (7 PM & 9 PM EST)
+ * - Playoffs: Saturday (semifinals, top 4 by record)
+ * - Super Bowl: Sunday
+ * Schedule is calculated daily (next week / playoffs added at midnight).
  */
 
 const fs = require('fs');
@@ -18,6 +19,10 @@ const SCHEDULE_PATH = path.join(DATA_DIR, 'schedule.json');
 
 // Game times in EST (24-hour format)
 const GAME_TIMES = [19, 21]; // 7 PM and 9 PM EST
+
+// Regular season = Mon–Fri only; then Saturday playoffs, Sunday Super Bowl
+const REGULAR_SEASON_WEEKS = 4;
+const PLAYOFF_TEAMS = 4; // top 4 by record get playoffs
 
 // Required roster slots (11 total) as stored in DB rosters
 const REQUIRED_SLOT_KEYS = [
@@ -85,6 +90,7 @@ function loadSchedule() {
   return {
     seasonStart: null,
     currentWeek: 0,
+    phase: 'regular', // 'regular' | 'playoffs' | 'superbowl'
     games: [],
     completedGames: [],
   };
@@ -165,10 +171,45 @@ function generateMatchups(userIds) {
 }
 
 /**
+ * Compute standings from completed games (regular season only).
+ * Returns array of { userId, wins, losses, user } sorted by wins desc, then losses asc.
+ */
+function getStandings(schedule) {
+  const wins = new Map();
+  const users = db.getAllUsers();
+  const userMap = {};
+  for (const u of users) userMap[u.id] = u;
+
+  for (const g of schedule.games) {
+    if (g.status !== 'completed' || (g.phase && g.phase !== 'regular')) continue;
+    const r = g.result;
+    if (!r || r.type === 'bye') continue;
+    const homeId = g.homeUserId;
+    const awayId = g.awayUserId;
+    if (!wins.has(homeId)) wins.set(homeId, { wins: 0, losses: 0 });
+    if (awayId && !wins.has(awayId)) wins.set(awayId, { wins: 0, losses: 0 });
+    if (r.winner === 'home') {
+      wins.get(homeId).wins++;
+      if (awayId) wins.get(awayId).losses++;
+    } else if (r.winner === 'away') {
+      wins.get(awayId).wins++;
+      wins.get(homeId).losses++;
+    }
+  }
+
+  const list = [];
+  for (const [userId, rec] of wins) {
+    list.push({ userId, wins: rec.wins, losses: rec.losses, user: userMap[userId] || null });
+  }
+  list.sort((a, b) => b.wins - a.wins || a.losses - b.losses);
+  return list;
+}
+
+/**
  * Generate a daily schedule
  * Each user gets 2 games per day (one at 7 PM, one at 9 PM)
  */
-function generateDailySchedule(date, users) {
+function generateDailySchedule(date, users, phase = 'regular') {
   const games = [];
   const userIds = users.map(u => u.id);
   
@@ -177,7 +218,6 @@ function generateDailySchedule(date, users) {
   }
   
   // Track same-day opponents to avoid rematches across the two daily games.
-  // Goal: each team plays TWO different opponents per day when possible.
   const opponentsByUser = new Map(userIds.map(id => [id, new Set()]));
   const usedPairsToday = new Set();
 
@@ -241,6 +281,7 @@ function generateDailySchedule(date, users) {
           awayUserId: null,
           status: 'bye',
           result: null,
+          phase: phase || 'regular',
         });
         usedUsersThisSlot.add(a);
         continue;
@@ -263,6 +304,7 @@ function generateDailySchedule(date, users) {
         awayUserId,
         status: 'scheduled',
         result: null,
+        phase: phase || 'regular',
       });
 
       opponentsByUser.get(a)?.add(b);
@@ -277,19 +319,91 @@ function generateDailySchedule(date, users) {
 }
 
 /**
- * Generate schedule for a full week
+ * Regular season: Monday–Friday only (5 days)
+ */
+function generateRegularSeasonWeekSchedule(weekStart, users) {
+  const schedule = [];
+  const date = new Date(weekStart);
+  for (let day = 0; day < 5; day++) {
+    const dayGames = generateDailySchedule(date, users, 'regular');
+    schedule.push(...dayGames);
+    date.setDate(date.getDate() + 1);
+  }
+  return schedule;
+}
+
+/**
+ * Generate schedule for a full week (all 7 days) - used only for legacy/init fallback
  */
 function generateWeekSchedule(startDate, users) {
   const schedule = [];
   const date = new Date(startDate);
-  
   for (let day = 0; day < 7; day++) {
-    const dayGames = generateDailySchedule(date, users);
+    const dayGames = generateDailySchedule(date, users, 'regular');
     schedule.push(...dayGames);
     date.setDate(date.getDate() + 1);
   }
-  
   return schedule;
+}
+
+/**
+ * Playoff Saturday: top 4 by standings, 1 vs 4 and 2 vs 3 (7 PM and 9 PM)
+ */
+function generatePlayoffSaturday(saturdayDateStr, standings) {
+  const top4 = standings.slice(0, PLAYOFF_TEAMS).map(s => s.userId);
+  if (top4.length < 4) return [];
+  const games = [
+    {
+      id: `playoff_semi_1_${saturdayDateStr}`,
+      date: saturdayDateStr,
+      time: 19,
+      timeDisplay: '7:00 PM EST',
+      homeUserId: top4[0],
+      awayUserId: top4[3],
+      status: 'scheduled',
+      result: null,
+      phase: 'playoff_semi',
+      seedHome: 1,
+      seedAway: 4,
+    },
+    {
+      id: `playoff_semi_2_${saturdayDateStr}`,
+      date: saturdayDateStr,
+      time: 21,
+      timeDisplay: '9:00 PM EST',
+      homeUserId: top4[1],
+      awayUserId: top4[2],
+      status: 'scheduled',
+      result: null,
+      phase: 'playoff_semi',
+      seedHome: 2,
+      seedAway: 3,
+    },
+  ];
+  return games;
+}
+
+/**
+ * Super Bowl Sunday: winners of the two semifinal games (single game, 7 PM)
+ */
+function generateSuperBowlSunday(sundayDateStr, schedule) {
+  const semis = schedule.games.filter(g => g.phase === 'playoff_semi' && g.status === 'completed');
+  if (semis.length < 2) return [];
+  const winner1 = semis[0].result?.winner === 'home' ? semis[0].homeUserId : semis[0].awayUserId;
+  const winner2 = semis[1].result?.winner === 'home' ? semis[1].homeUserId : semis[1].awayUserId;
+  return [
+    {
+      id: `superbowl_${sundayDateStr}`,
+      date: sundayDateStr,
+      time: 19,
+      timeDisplay: '7:00 PM EST',
+      homeUserId: winner1,
+      awayUserId: winner2,
+      status: 'scheduled',
+      result: null,
+      phase: 'superbowl',
+    },
+  ];
 }
 
 /**
@@ -310,37 +424,25 @@ function initializeSchedule(forceReset = false) {
   }
   
   const now = getESTDate();
+  if (!schedule.phase) schedule.phase = 'regular';
 
-  // If no season start or force reset: start from THIS week so today has games
+  // If no season start or force reset: regular season Mon–Fri only, start this week
   if (!schedule.seasonStart || forceReset) {
     const weekStart = getThisMonday(now);
     schedule.seasonStart = formatDate(weekStart);
     schedule.currentWeek = 1;
+    schedule.phase = 'regular';
     schedule.games = [];
     schedule.completedGames = [];
 
-    // Generate this week's schedule (includes today) and next week so we have runway
-    schedule.games = generateWeekSchedule(weekStart, eligibleUsers);
-    const nextWeekStart = new Date(weekStart);
-    nextWeekStart.setDate(nextWeekStart.getDate() + 7);
-    schedule.games.push(...generateWeekSchedule(nextWeekStart, eligibleUsers));
+    // Week 1 only (Mon–Fri); more weeks added daily by checkAndGenerateNextWeek
+    schedule.games = generateRegularSeasonWeekSchedule(weekStart, eligibleUsers);
 
     saveSchedule(schedule);
-    console.log(`Season (re)initialized. Week starts ${schedule.seasonStart}, ${schedule.games.length} games`);
+    console.log(`Season (re)initialized. Regular season week 1 (Mon–Fri), ${schedule.games.length} games`);
   }
   
   return schedule;
-}
-
-/**
- * Refresh the schedule with current eligible users (full rosters).
- * Regenerates from this week so today and going forward include all full-roster teams.
- */
-function refreshSchedule() {
-  const allUsers = db.getAllUsers();
-  const eligibleUsers = getEligibleUsers(allUsers);
-  console.log(`Schedule refresh: ${eligibleUsers.length}/${allUsers.length} users have full rosters`, eligibleUsers.map(u => u.username || u.id));
-  return initializeSchedule(true);
 }
 
 /**
@@ -499,45 +601,70 @@ function runPendingGames() {
 }
 
 /**
- * Check if we need to generate next week's schedule
+ * Daily: add next regular week, or playoff Saturday, or Super Bowl Sunday
  */
 function checkAndGenerateNextWeek() {
   const schedule = loadSchedule();
   const now = getESTDate();
   const today = formatDate(now);
-  
-  // Get last scheduled date
+  if (!schedule.phase) schedule.phase = 'regular';
+
   const scheduledDates = [...new Set(schedule.games.map(g => g.date))];
   if (scheduledDates.length === 0) return;
-  
+
   const lastDate = scheduledDates.sort().pop();
-  const lastDateObj = new Date(lastDate);
-  const todayObj = new Date(today);
-  
-  // If we're within 2 days of the end of schedule, generate next week
-  const daysRemaining = Math.floor((lastDateObj - todayObj) / (1000 * 60 * 60 * 24));
-  
-  if (daysRemaining <= 2) {
-    const allUsers = db.getAllUsers();
-    // Only include users with full rosters
-    const eligibleUsers = getEligibleUsers(allUsers);
-    
-    console.log(`Next week scheduling: ${eligibleUsers.length}/${allUsers.length} users have full rosters`);
-    
-    if (eligibleUsers.length < 2) {
-      console.log('Not enough users with full rosters for next week');
-      return;
+  const lastDateObj = new Date(lastDate + 'T12:00:00');
+  const todayObj = new Date(today + 'T12:00:00');
+  const daysRemaining = Math.round((lastDateObj - todayObj) / (1000 * 60 * 60 * 24));
+
+  if (daysRemaining > 2) return;
+
+  const allUsers = db.getAllUsers();
+  const eligibleUsers = getEligibleUsers(allUsers);
+  if (eligibleUsers.length < 2) return;
+
+  // Next calendar day after lastDate
+  const nextDay = new Date(lastDateObj);
+  nextDay.setDate(nextDay.getDate() + 1);
+  const nextDayStr = formatDate(nextDay);
+
+  if (schedule.phase === 'regular') {
+    if (schedule.currentWeek < REGULAR_SEASON_WEEKS) {
+      // Next Monday after lastDate (day 0=Sun -> +1, 1=Mon -> +7, ..., 5=Fri -> +3)
+      const dayOfWeek = lastDateObj.getDay();
+      const daysToNextMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7;
+      const nextMonday = new Date(lastDateObj);
+      nextMonday.setDate(nextMonday.getDate() + daysToNextMonday);
+      const newGames = generateRegularSeasonWeekSchedule(nextMonday, eligibleUsers);
+      schedule.games.push(...newGames);
+      schedule.currentWeek++;
+      saveSchedule(schedule);
+      console.log(`Generated regular season week ${schedule.currentWeek} (Mon–Fri)`);
+    } else {
+      // End of regular season: next day is Saturday → playoffs
+      const standings = getStandings(schedule);
+      if (standings.length < 4) {
+        console.log('Not enough teams (4) for playoffs; skipping playoff week');
+        return;
+      }
+      const playoffGames = generatePlayoffSaturday(nextDayStr, standings);
+      schedule.games.push(...playoffGames);
+      schedule.phase = 'playoffs';
+      saveSchedule(schedule);
+      console.log(`Generated playoff Saturday (top 4 by record)`);
     }
-    
-    const nextWeekStart = new Date(lastDateObj);
-    nextWeekStart.setDate(nextWeekStart.getDate() + 1);
-    
-    const newGames = generateWeekSchedule(nextWeekStart, eligibleUsers);
-    schedule.games.push(...newGames);
-    schedule.currentWeek++;
-    
+    return;
+  }
+
+  if (schedule.phase === 'playoffs') {
+    const semis = schedule.games.filter(g => g.phase === 'playoff_semi' && g.status === 'completed');
+    if (semis.length < 2) return;
+    const superBowlGames = generateSuperBowlSunday(nextDayStr, schedule);
+    if (superBowlGames.length === 0) return;
+    schedule.games.push(...superBowlGames);
+    schedule.phase = 'superbowl';
     saveSchedule(schedule);
-    console.log(`Generated week ${schedule.currentWeek} schedule`);
+    console.log('Generated Super Bowl Sunday');
   }
 }
 
@@ -597,8 +724,9 @@ module.exports = {
   loadSchedule,
   saveSchedule,
   initializeSchedule,
-  refreshSchedule,
+  getStandings,
   generateDailySchedule,
+  generateRegularSeasonWeekSchedule,
   generateWeekSchedule,
   getTodaySchedule,
   getTomorrowSchedule,
