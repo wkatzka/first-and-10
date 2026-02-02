@@ -127,11 +127,14 @@ function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+const CIRCLES_PER_PLAY = 6; // formation: one horizontal line of circles (like line of scrimmage)
+
 export default function PlayfieldBackground() {
   const canvasRef = useRef(null);
   const playsRef = useRef([]);
   const rafRef = useRef(null);
   const startTimeRef = useRef(0);
+  const nextBandRef = useRef(0);
 
   const fieldHeightPx = fieldCycleYards * pxPerYard;
 
@@ -165,60 +168,70 @@ export default function PlayfieldBackground() {
 
     startTimeRef.current = performance.now();
 
-    // Spawn plays: circles on yard lines every 20 yards (10, 30, 50, 70, 90), arrows upfield around X's
+    // Play-call: one horizontal line of circles per play; when play is over, next play starts 20 yards upfield
     const BAND_YARDS = [10, 30, 50, 70, 90];
     const ROUTES = [buildBezier, buildButtonhook, buildSlant, buildPost, buildFlag];
 
     const maybeSpawn = (now, w) => {
       const plays = playsRef.current;
 
-      if (plays.length > 14) return;
-      if (Math.random() > 0.10) return;
+      if (plays.length > 0) return;
 
-      const band = Math.floor(Math.random() * BAND_YARDS.length);
+      const band = nextBandRef.current;
+      nextBandRef.current = (nextBandRef.current + 1) % BAND_YARDS.length;
+
       const lineYard = BAND_YARDS[band];
       const lineY = lineYard * pxPerYard;
 
-      const startO = { x: rand(w * 0.2, w * 0.8), y: lineY };
-      const upfieldY = lineY - rand(180, 360);
-      const endO = { x: startO.x + rand(-100, 100), y: upfieldY };
+      const margin = 0.15;
+      const step = (1 - 2 * margin) / Math.max(1, CIRCLES_PER_PLAY - 1);
+      const drawDur = rand(1000, 1400);
+      const t0 = now;
 
-      const avoidX = {
-        x: lerp(startO.x, endO.x, 0.35) + rand(-40, 40),
-        y: lineY - rand(70, 140),
-      };
+      for (let i = 0; i < CIRCLES_PER_PLAY; i++) {
+        const startO = {
+          x: w * (margin + i * step) + rand(-20, 20),
+          y: lineY,
+        };
+        const upfieldY = lineY - rand(200, 340);
+        const endO = { x: startO.x + rand(-90, 90), y: upfieldY };
 
-      const routeIndex = (band + Math.floor(Math.random() * ROUTES.length)) % ROUTES.length;
-      const routeType = ROUTES[routeIndex];
-      let b;
-      if (routeType === buildBezier) {
-        b = buildBezier(startO, endO, avoidX);
-      } else if (routeType === buildPost) {
-        b = buildPost(startO, endO, w / 2);
-      } else if (routeType === buildFlag) {
-        b = buildFlag(startO, endO, w / 2);
-      } else {
-        b = routeType(startO, endO);
+        const avoidX = {
+          x: lerp(startO.x, endO.x, 0.35) + rand(-35, 35),
+          y: lineY - rand(70, 130),
+        };
+
+        const routeType = ROUTES[i % ROUTES.length];
+        let b;
+        if (routeType === buildBezier) {
+          b = buildBezier(startO, endO, avoidX);
+        } else if (routeType === buildPost) {
+          b = buildPost(startO, endO, w / 2);
+        } else if (routeType === buildFlag) {
+          b = buildFlag(startO, endO, w / 2);
+        } else {
+          b = routeType(startO, endO);
+        }
+
+        const color = pick(COLORS.neon);
+
+        plays.push({
+          id: `${t0}-${i}-${Math.random()}`,
+          color,
+          p0: b.p0,
+          p1: b.p1,
+          p2: b.p2,
+          p3: b.p3,
+          avoidX,
+          startO,
+          endO,
+          t0,
+          oIn: 140,
+          drawDur,
+          hold: 260,
+          fadeOut: 240,
+        });
       }
-
-      const color = pick(COLORS.neon);
-
-      plays.push({
-        id: `${now}-${Math.random()}`,
-        color,
-        p0: b.p0,
-        p1: b.p1,
-        p2: b.p2,
-        p3: b.p3,
-        avoidX,
-        startO,
-        endO,
-        t0: now,
-        oIn: 140,
-        drawDur: rand(900, 1400),
-        hold: 260,
-        fadeOut: 240,
-      });
     };
 
     const drawArrowhead = (P, T, color, width) => {
