@@ -187,62 +187,60 @@ export default function PlayfieldBackground() {
       if (lastSpawnTimeRef.current !== 0 && elapsed < SPAWN_INTERVAL_MS) return;
 
       lastSpawnTimeRef.current = now;
-      const band = nextBandRef.current;
-      const lineYard = BAND_YARDS[band];
-      const lineY = lineYard * pxPerYard;
-
-      nextBandRef.current = (nextBandRef.current + 1) % BAND_YARDS.length;
-
-      // After the last 10-yard play finishes, trigger one brief endzone pulse
-      if (band === BAND_YARDS.length - 1) pulseWhenLast10FinishesRef.current = true;
-
+      const t0 = now;
       const margin = 0.15;
       const step = (1 - 2 * margin) / Math.max(1, CIRCLES_PER_PLAY - 1);
-      const t0 = now;
 
-      for (let i = 0; i < CIRCLES_PER_PLAY; i++) {
-        const startO = {
-          x: w * (margin + i * step) + rand(-20, 20),
-          y: lineY,
-        };
-        const upfieldY = lineY - rand(200, 340);
-        const endO = { x: startO.x + rand(-90, 90), y: upfieldY };
+      // Spawn all 5 yard lines at once (10, 30, 50, 30, 10) so arrows run on their lines together
+      for (let band = 0; band < BAND_YARDS.length; band++) {
+        const lineYard = BAND_YARDS[band];
+        const lineY = lineYard * pxPerYard;
+        if (band === BAND_YARDS.length - 1) pulseWhenLast10FinishesRef.current = true;
 
-        const avoidX = {
-          x: lerp(startO.x, endO.x, 0.35) + rand(-35, 35),
-          y: lineY - rand(70, 130),
-        };
+        for (let i = 0; i < CIRCLES_PER_PLAY; i++) {
+          const startO = {
+            x: w * (margin + i * step) + rand(-20, 20),
+            y: lineY,
+          };
+          const upfieldY = lineY - rand(200, 340);
+          const endO = { x: startO.x + rand(-90, 90), y: upfieldY };
 
-        const routeType = ROUTES[i % ROUTES.length];
-        let b;
-        if (routeType === buildBezier) {
-          b = buildBezier(startO, endO, avoidX);
-        } else if (routeType === buildPost) {
-          b = buildPost(startO, endO, w / 2);
-        } else if (routeType === buildFlag) {
-          b = buildFlag(startO, endO, w / 2);
-        } else {
-          b = routeType(startO, endO);
+          const avoidX = {
+            x: lerp(startO.x, endO.x, 0.35) + rand(-35, 35),
+            y: lineY - rand(70, 130),
+          };
+
+          const routeType = ROUTES[(band * CIRCLES_PER_PLAY + i) % ROUTES.length];
+          let b;
+          if (routeType === buildBezier) {
+            b = buildBezier(startO, endO, avoidX);
+          } else if (routeType === buildPost) {
+            b = buildPost(startO, endO, w / 2);
+          } else if (routeType === buildFlag) {
+            b = buildFlag(startO, endO, w / 2);
+          } else {
+            b = routeType(startO, endO);
+          }
+
+          const color = pick(COLORS.neon);
+
+          plays.push({
+            id: `${t0}-${band}-${i}-${Math.random()}`,
+            color,
+            p0: b.p0,
+            p1: b.p1,
+            p2: b.p2,
+            p3: b.p3,
+            avoidX,
+            startO,
+            endO,
+            t0,
+            oIn: 140,
+            drawDur: ARROW_TRAVEL_MS,
+            hold: 0,
+            fadeOut: 300,
+          });
         }
-
-        const color = pick(COLORS.neon);
-
-        plays.push({
-          id: `${t0}-${i}-${Math.random()}`,
-          color,
-          p0: b.p0,
-          p1: b.p1,
-          p2: b.p2,
-          p3: b.p3,
-          avoidX,
-          startO,
-          endO,
-          t0,
-          oIn: 140,
-          drawDur: ARROW_TRAVEL_MS,
-          hold: 0,
-          fadeOut: 300,
-        });
       }
     };
 
@@ -456,18 +454,23 @@ export default function PlayfieldBackground() {
             ctx.font = label === "FIRST & 10" ? "64px CollegeBlock, system-ui, sans-serif" : "48px CollegeBlock, system-ui, sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            // Left sideline: rotate so text faces into the field (top toward center)
-            ctx.save();
-            ctx.translate(40, yPx);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText(String(label), 0, 0);
-            ctx.restore();
-            // Right sideline: rotate so text faces into the field (top toward center)
-            ctx.save();
-            ctx.translate(w - 40, yPx);
-            ctx.rotate(Math.PI / 2);
-            ctx.fillText(String(label), 0, 0);
-            ctx.restore();
+            if (label === "FIRST & 10") {
+              // Endzone text stays horizontal (no rotation)
+              ctx.fillText(String(label), 40, yPx);
+              ctx.fillText(String(label), w - 40, yPx);
+            } else {
+              // Yard numbers: rotate so they face into the field
+              ctx.save();
+              ctx.translate(40, yPx);
+              ctx.rotate(-Math.PI / 2);
+              ctx.fillText(String(label), 0, 0);
+              ctx.restore();
+              ctx.save();
+              ctx.translate(w - 40, yPx);
+              ctx.rotate(Math.PI / 2);
+              ctx.fillText(String(label), 0, 0);
+              ctx.restore();
+            }
 
             if (yardInCycle === 50 && isPrimaryCycle) {
               ctx.font = "92px CollegeBlock, system-ui, sans-serif";
