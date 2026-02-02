@@ -32,6 +32,7 @@ function yardLabel(yardInCycle) {
   if (yardInCycle === ENDZONE_DEPTH_YARDS || yardInCycle === ENDZONE_DEPTH_YARDS + fieldCycleYards) return null;
   if (yardInCycle % yardsPerTick !== 0) return null; // skip 5-yard lines = your “skip a line”
   const fieldYard = yardInCycle - ENDZONE_DEPTH_YARDS;
+  if (fieldYard % 10 !== 0) return null;
   if (fieldYard <= 50) return fieldYard;
   return 100 - fieldYard;
 }
@@ -518,10 +519,7 @@ export default function PlayfieldBackground() {
           const yPx = yard * pxPerYard - baseScroll;
 
           const yardInCycle = yard;
-          const label =
-            yardInCycle === ENDZONE_DEPTH_YARDS || yardInCycle === ENDZONE_DEPTH_YARDS + fieldCycleYards
-              ? "FIRST & 10"
-              : yardLabel(yardInCycle);
+          const label = yardLabel(yardInCycle);
 
           const xStart = 20;
           const xEnd = w - 20;
@@ -533,8 +531,8 @@ export default function PlayfieldBackground() {
             const font = label === "FIRST & 10" ? "64px CollegeBlock, system-ui, sans-serif" : "48px CollegeBlock, system-ui, sans-serif";
             const labelW = measureTextWidth(labelStr, font) || (label === "FIRST & 10" ? 320 : 60);
             const pad = 16;
-            const leftCx = 40;
-            const rightCx = w - 40;
+            const leftCx = label === "FIRST & 10" ? Math.max(120, labelW / 2 + pad) : 40;
+            const rightCx = label === "FIRST & 10" ? w - Math.max(120, labelW / 2 + pad) : w - 40;
             cutouts.push([leftCx - labelW / 2 - pad, leftCx + labelW / 2 + pad]);
             cutouts.push([rightCx - labelW / 2 - pad, rightCx + labelW / 2 + pad]);
           }
