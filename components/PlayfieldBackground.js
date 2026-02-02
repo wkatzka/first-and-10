@@ -209,8 +209,6 @@ export default function PlayfieldBackground() {
   const startTimeRef = useRef(0);
   const nextBandRef = useRef(0);
   const lastSpawnTimeRef = useRef(0);
-  const reduceMotionRef = useRef(false);
-  const hasDrawnStaticRef = useRef(false);
 
   const fieldHeightPx = fieldTotalYards * pxPerYard;
 
@@ -226,38 +224,6 @@ export default function PlayfieldBackground() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const targetFps = 30;
-    const minFrameMs = 1000 / targetFps;
-    let lastDrawNow = 0;
-
-    // Small cached noise texture to avoid per-frame pixel loops.
-    const grainCanvas = document.createElement("canvas");
-    const grainCtx = grainCanvas.getContext("2d", { willReadFrequently: true });
-    let lastGrainGen = 0;
-    const regenGrain = (now) => {
-      if (!grainCtx) return;
-      // Re-generate at a low cadence; enough to look "alive".
-      if (now - lastGrainGen < 1200) return;
-      lastGrainGen = now;
-
-      const gw = 160;
-      const gh = 160;
-      grainCanvas.width = gw;
-      grainCanvas.height = gh;
-
-      const img = grainCtx.createImageData(gw, gh);
-      const d = img.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const v = (Math.random() * 255) | 0;
-        d[i] = v;
-        d[i + 1] = v;
-        d[i + 2] = v;
-        // Keep alpha low; we modulate again when drawing.
-        d[i + 3] = 40;
-      }
-      grainCtx.putImageData(img, 0, 0);
-    };
-
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
       const w = window.innerWidth;
@@ -272,15 +238,6 @@ export default function PlayfieldBackground() {
 
     resize();
     window.addEventListener("resize", resize);
-
-    const mql = window.matchMedia?.("(prefers-reduced-motion: reduce)");
-    const setReduceMotion = (v) => {
-      reduceMotionRef.current = !!v;
-      hasDrawnStaticRef.current = false;
-    };
-    setReduceMotion(mql?.matches);
-    const onMql = (e) => setReduceMotion(e.matches);
-    mql?.addEventListener?.("change", onMql);
 
     startTimeRef.current = performance.now();
 
@@ -424,8 +381,7 @@ export default function PlayfieldBackground() {
       ctx.restore();
 
       // Arrow draw (smooth progressive reveal: more segments + smooth head position)
-      // Fewer segments reduces CPU cost significantly on large screens.
-      const segments = w >= 1200 ? 80 : 110;
+      const segments = 160;
       const headT = eased;
       const segEnd = Math.min(segments, Math.ceil(headT * segments));
 
@@ -655,11 +611,13 @@ export default function PlayfieldBackground() {
       ctx.save();
       ctx.globalCompositeOperation = "overlay";
       ctx.globalAlpha = 0.06;
-      regenGrain(now);
-      if (grainCanvas.width > 0 && grainCanvas.height > 0) {
-        // Scale up a tiny texture; looks like grain but is far cheaper than per-pixel loops.
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(grainCanvas, 0, 0, w, h);
+      const grainStep = 3;
+      for (let y = 0; y < h; y += grainStep) {
+        for (let x = 0; x < w; x += grainStep) {
+          const v = Math.random() * 255;
+          ctx.fillStyle = `rgb(${v},${v},${v})`;
+          ctx.fillRect(x, y, 1, 1);
+        }
       }
       ctx.restore();
 
@@ -682,31 +640,6 @@ export default function PlayfieldBackground() {
     };
 
     const frame = (now) => {
-      // Reduce-motion: draw a single static frame and stop.
-      if (reduceMotionRef.current) {
-        if (!hasDrawnStaticRef.current) {
-          const w = window.innerWidth;
-          const h = window.innerHeight;
-          const scrollPx = 0;
-          drawField(w, h, scrollPx, now);
-          hasDrawnStaticRef.current = true;
-        }
-        return;
-      }
-
-      // If tab is hidden, pause work entirely.
-      if (document.hidden) {
-        rafRef.current = requestAnimationFrame(frame);
-        return;
-      }
-
-      // Throttle draw rate to keep CPU/GPU reasonable.
-      if (lastDrawNow && now - lastDrawNow < minFrameMs) {
-        rafRef.current = requestAnimationFrame(frame);
-        return;
-      }
-      lastDrawNow = now;
-
       const w = window.innerWidth;
       const h = window.innerHeight;
 
@@ -748,7 +681,6 @@ export default function PlayfieldBackground() {
 
     return () => {
       window.removeEventListener("resize", resize);
-      mql?.removeEventListener?.("change", onMql);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [fieldHeightPx, ticks]);
