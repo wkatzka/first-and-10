@@ -407,7 +407,7 @@ export default function PlayfieldBackground() {
 
           if (label != null && label !== "") {
             const labelStr = String(label);
-            const font = label === "FIRST & 10" ? "64px system-ui, sans-serif" : "48px system-ui, sans-serif";
+            const font = label === "FIRST & 10" ? "64px CollegeBlock, system-ui, sans-serif" : "48px CollegeBlock, system-ui, sans-serif";
             const labelW = measureTextWidth(labelStr, font) || (label === "FIRST & 10" ? 320 : 60);
             const pad = 16;
             const leftCx = 40;
@@ -453,7 +453,7 @@ export default function PlayfieldBackground() {
             ctx.fillStyle = COLORS.icyBright;
             ctx.shadowColor = COLORS.icy;
             ctx.shadowBlur = 12;
-            ctx.font = label === "FIRST & 10" ? "64px system-ui, sans-serif" : "48px system-ui, sans-serif";
+            ctx.font = label === "FIRST & 10" ? "64px CollegeBlock, system-ui, sans-serif" : "48px CollegeBlock, system-ui, sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             // Left sideline: rotate so text faces into the field (top toward center)
@@ -470,7 +470,7 @@ export default function PlayfieldBackground() {
             ctx.restore();
 
             if (yardInCycle === 50 && isPrimaryCycle) {
-              ctx.font = "92px system-ui, sans-serif";
+              ctx.font = "92px CollegeBlock, system-ui, sans-serif";
               ctx.shadowBlur = 16;
               ctx.fillText("F10", w / 2, yPx);
             }

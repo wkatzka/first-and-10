@@ -10,6 +10,15 @@
   font-weight: 400;
 }
 
+/* Field background numbers/letters – College Block */
+@font-face {
+  font-family: "CollegeBlock";
+  src: url("/fonts/CollegeBlock-Mzxn.ttf") format("truetype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
 :root {
   /* Tier colors - updated scheme */
   --tier-1: #6B7280;   /* Gray */
