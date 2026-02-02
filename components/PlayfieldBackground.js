@@ -456,8 +456,18 @@ export default function PlayfieldBackground() {
             ctx.font = label === "FIRST & 10" ? "64px system-ui, sans-serif" : "48px system-ui, sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(String(label), 40, yPx);
-            ctx.fillText(String(label), w - 40, yPx);
+            // Left sideline: rotate so text faces into the field (top toward center)
+            ctx.save();
+            ctx.translate(40, yPx);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(String(label), 0, 0);
+            ctx.restore();
+            // Right sideline: rotate so text faces into the field (top toward center)
+            ctx.save();
+            ctx.translate(w - 40, yPx);
+            ctx.rotate(Math.PI / 2);
+            ctx.fillText(String(label), 0, 0);
+            ctx.restore();
 
             if (yardInCycle === 50 && isPrimaryCycle) {
               ctx.font = "92px system-ui, sans-serif";
