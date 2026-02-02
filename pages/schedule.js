@@ -17,6 +17,10 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
   const [simulating, setSimulating] = useState(false);
   const [practiceResult, setPracticeResult] = useState(null);
   const [practiceError, setPracticeError] = useState(null);
+
+  // Refresh schedule (include new full-roster teams)
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState(null);
   
   useEffect(() => {
     if (!user) {
@@ -68,6 +72,28 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
       setPracticeError(err.message || 'Failed to run practice simulation');
     } finally {
       setSimulating(false);
+    }
+  };
+
+  const refreshSchedule = async () => {
+    setRefreshing(true);
+    setRefreshMessage(null);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/schedule/refresh', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Refresh failed');
+      setRefreshMessage(
+        `Schedule refreshed: ${data.eligibleTeams} of ${data.totalTeams} teams (full rosters). Season starts ${data.seasonStart}, ${data.totalGames} games.`
+      );
+      await loadSchedule();
+    } catch (err) {
+      setRefreshMessage(err.message || 'Failed to refresh schedule');
+    } finally {
+      setRefreshing(false);
     }
   };
   
@@ -159,14 +185,28 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
         <div className="max-w-2xl mx-auto f10-panel p-4" style={{ borderColor: 'rgba(0,229,255,0.25)' }}>
           <div className="flex items-start gap-3">
             <span className="text-2xl">📅</span>
-            <div>
+            <div className="flex-1">
               <div className="font-semibold" style={{ color: 'var(--nav-cyan)' }}>Auto-Compete Mode</div>
               <div className="text-sm text-gray-300">
                 Your roster plays automatically at scheduled times. 
                 Make sure your best lineup is set before game time!
               </div>
             </div>
+            <button
+              type="button"
+              onClick={refreshSchedule}
+              disabled={refreshing}
+              className="shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              style={{ backgroundColor: 'rgba(0,229,255,0.15)', border: '1px solid rgba(0,229,255,0.35)', color: 'var(--nav-cyan)' }}
+            >
+              {refreshing ? 'Refreshing...' : 'Refresh schedule'}
+            </button>
           </div>
+          {refreshMessage && (
+            <div className={`mt-3 text-sm ${refreshMessage.startsWith('Schedule refreshed') ? 'text-green-400' : 'text-amber-400'}`}>
+              {refreshMessage}
+            </div>
+          )}
         </div>
         
         {/* Tabs */}

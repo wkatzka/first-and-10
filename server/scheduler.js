@@ -321,6 +321,17 @@ function initializeSchedule(forceReset = false) {
 }
 
 /**
+ * Refresh the schedule with current eligible users (full rosters).
+ * Regenerates the season from next Monday so new teams with full rosters are included.
+ */
+function refreshSchedule() {
+  const allUsers = db.getAllUsers();
+  const eligibleUsers = getEligibleUsers(allUsers);
+  console.log(`Schedule refresh: ${eligibleUsers.length}/${allUsers.length} users have full rosters`);
+  return initializeSchedule(true);
+}
+
+/**
  * Get tomorrow's schedule (released a day in advance)
  */
 function getTomorrowSchedule() {
@@ -574,6 +585,7 @@ module.exports = {
   loadSchedule,
   saveSchedule,
   initializeSchedule,
+  refreshSchedule,
   generateDailySchedule,
   generateWeekSchedule,
   getTodaySchedule,

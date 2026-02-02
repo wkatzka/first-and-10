@@ -1436,6 +1436,20 @@ app.post('/api/schedule/init', authMiddleware, (req, res) => {
   });
 });
 
+// Refresh schedule with current full-roster teams (regenerates from next Monday)
+app.post('/api/schedule/refresh', authMiddleware, (req, res) => {
+  const allUsers = db.getAllUsers();
+  const eligibleUsers = scheduler.getEligibleUsers(allUsers);
+  const schedule = scheduler.refreshSchedule();
+  res.json({
+    message: 'Schedule refreshed with current full-roster teams',
+    eligibleTeams: eligibleUsers.length,
+    totalTeams: allUsers.length,
+    seasonStart: schedule.seasonStart,
+    totalGames: schedule.games.length,
+  });
+});
+
 // Admin: Run pending games now (for testing)
 app.post('/api/schedule/run-now', authMiddleware, (req, res) => {
   const results = scheduler.runPendingGames();
