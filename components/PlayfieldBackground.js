@@ -94,7 +94,6 @@ export default function PlayfieldBackground() {
   const startTimeRef = useRef(0);
 
   const fieldHeightPx = fieldCycleYards * pxPerYard;
-  const glyphsRef = useRef({ ready: false, map: new Map() });
 
   // precompute 5-yard ticks for drawing lines
   const ticks = useMemo(() => {
@@ -108,321 +107,6 @@ export default function PlayfieldBackground() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-
-    const loadImage = (src) =>
-      new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = src;
-      });
-
-    const sampleBg = (imgData) => {
-      // average the 4 corners
-      const { data, width, height } = imgData;
-      const pts = [
-        [0, 0],
-        [width - 1, 0],
-        [0, height - 1],
-        [width - 1, height - 1],
-      ];
-      let r = 0, g = 0, b = 0;
-      for (const [x, y] of pts) {
-        const i = (y * width + x) * 4;
-        r += data[i + 0];
-        g += data[i + 1];
-        b += data[i + 2];
-      }
-      return { r: r / pts.length, g: g / pts.length, b: b / pts.length };
-    };
-
-    const chromaKeyToAlpha = (c, threshold = 52) => {
-      const cctx = c.getContext("2d");
-      if (!cctx) return c;
-      const imgData = cctx.getImageData(0, 0, c.width, c.height);
-      const bg = sampleBg(imgData);
-      const { data } = imgData;
-
-      for (let i = 0; i < data.length; i += 4) {
-        const dr = data[i + 0] - bg.r;
-        const dg = data[i + 1] - bg.g;
-        const db = data[i + 2] - bg.b;
-        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
-        if (dist < threshold) {
-          data[i + 3] = 0; // transparent
-        }
-      }
-
-      cctx.putImageData(imgData, 0, 0);
-      return c;
-    };
-
-    const trimCanvas = (c, alphaMin = 16) => {
-      const cctx = c.getContext("2d");
-      if (!cctx) return c;
-      const img = cctx.getImageData(0, 0, c.width, c.height);
-      const { data, width, height } = img;
-
-      let minX = width, minY = height, maxX = -1, maxY = -1;
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          const a = data[(y * width + x) * 4 + 3];
-          if (a > alphaMin) {
-            if (x < minX) minX = x;
-            if (y < minY) minY = y;
-            if (x > maxX) maxX = x;
-            if (y > maxY) maxY = y;
-          }
-        }
-      }
-
-      if (maxX < minX || maxY < minY) return c; // empty
-
-      const pad = 3;
-      minX = Math.max(0, minX - pad);
-      minY = Math.max(0, minY - pad);
-      maxX = Math.min(width - 1, maxX + pad);
-      maxY = Math.min(height - 1, maxY + pad);
-
-      const tw = maxX - minX + 1;
-      const th = maxY - minY + 1;
-      const out = document.createElement("canvas");
-      out.width = tw;
-      out.height = th;
-      const outCtx = out.getContext("2d");
-      if (!outCtx) return c;
-      outCtx.drawImage(c, minX, minY, tw, th, 0, 0, tw, th);
-      return out;
-    };
-
-    const segmentGlyphs = (rowCanvas, expectedMin = 1) => {
-      // Split glyphs by scanning vertical alpha projection.
-      const rctx = rowCanvas.getContext("2d");
-      if (!rctx) return [];
-      const img = rctx.getImageData(0, 0, rowCanvas.width, rowCanvas.height);
-      const { data, width, height } = img;
-      const colHas = new Array(width).fill(0);
-      for (let x = 0; x < width; x++) {
-        let s = 0;
-        for (let y = 0; y < height; y++) {
-          const a = data[(y * width + x) * 4 + 3];
-          if (a > 10) s++;
-        }
-        colHas[x] = s;
-      }
-
-      const ranges = [];
-      const gapMin = 5;
-      let inRun = false;
-      let runStart = 0;
-      let emptyCount = 0;
-      for (let x = 0; x < width; x++) {
-        const has = colHas[x] > 0;
-        if (has) {
-          if (!inRun) {
-            inRun = true;
-            runStart = x;
-          }
-          emptyCount = 0;
-        } else if (inRun) {
-          emptyCount++;
-          if (emptyCount >= gapMin) {
-            const end = x - emptyCount;
-            if (end - runStart > 6) ranges.push([runStart, end]);
-            inRun = false;
-            emptyCount = 0;
-          }
-        }
-      }
-      if (inRun) {
-        const end = width - 1;
-        if (end - runStart > 6) ranges.push([runStart, end]);
-      }
-
-      if (ranges.length < expectedMin) return [];
-
-      const out = [];
-      for (const [sx0, sx1] of ranges) {
-        const c = document.createElement("canvas");
-        c.width = Math.max(1, sx1 - sx0 + 1);
-        c.height = rowCanvas.height;
-        const cctx = c.getContext("2d");
-        if (!cctx) continue;
-        cctx.drawImage(rowCanvas, sx0, 0, c.width, c.height, 0, 0, c.width, c.height);
-        out.push(trimCanvas(c));
-      }
-      return out;
-    };
-
-    const cropRow = (img, y0, y1, x0, x1) => {
-      const c = document.createElement("canvas");
-      const rowH = Math.max(1, Math.floor(y1 - y0));
-      const rowW = Math.max(1, Math.floor(x1 - x0));
-      c.width = rowW;
-      c.height = rowH;
-      const cctx = c.getContext("2d");
-      if (!cctx) return c;
-      cctx.drawImage(img, x0, y0, rowW, rowH, 0, 0, rowW, rowH);
-      return chromaKeyToAlpha(c);
-    };
-
-    const synthesizeFfromE = (eCanvas) => {
-      // Create F by removing the bottom bar of E.
-      const c = document.createElement("canvas");
-      c.width = eCanvas.width;
-      c.height = eCanvas.height;
-      const cctx = c.getContext("2d");
-      if (!cctx) return eCanvas;
-      cctx.drawImage(eCanvas, 0, 0);
-      const cutY = Math.floor(c.height * 0.72);
-      cctx.clearRect(0, cutY, c.width, c.height - cutY);
-      return trimCanvas(c);
-    };
-
-    const warmGlyphCache = async () => {
-      // These two images come from your provided glyph sheets.
-      // If they fail to load, we fall back to normal canvas text.
-      try {
-        const [sheetImg, zeroImg] = await Promise.all([
-          loadImage("/fonts/f10-glyph-sheet.png"),
-          loadImage("/fonts/f10-glyph-0.png"),
-        ]);
-
-        const map = new Map();
-
-        // Digits 1-9 live on the bottom row of the sheet.
-        // These bounds are tuned for the provided 1024x682 sheet.
-        {
-          const y0 = sheetImg.height * 0.72;
-          const y1 = sheetImg.height * 0.93;
-          const x0 = sheetImg.width * 0.16;
-          const x1 = sheetImg.width * 0.90;
-          const row = cropRow(sheetImg, y0, y1, x0, x1);
-          const digits = segmentGlyphs(row, 7); // should be 9
-          // If segmentation fails, fall back to equal slices
-          const finalDigits =
-            digits.length >= 9
-              ? digits.slice(0, 9)
-              : (() => {
-                  const out = [];
-                  const cellW = row.width / 9;
-                  for (let i = 0; i < 9; i++) {
-                    const c = document.createElement("canvas");
-                    c.width = Math.max(1, Math.floor(cellW));
-                    c.height = row.height;
-                    const cctx = c.getContext("2d");
-                    if (!cctx) continue;
-                    cctx.drawImage(row, i * cellW, 0, cellW, row.height, 0, 0, c.width, c.height);
-                    out.push(trimCanvas(c));
-                  }
-                  return out;
-                })();
-
-          for (let i = 0; i < finalDigits.length; i++) {
-            map.set(String(i + 1), finalDigits[i]);
-          }
-        }
-
-        // 0 image is full-frame on dark background; key it and trim.
-        {
-          const c = document.createElement("canvas");
-          c.width = zeroImg.width;
-          c.height = zeroImg.height;
-          const cctx = c.getContext("2d");
-          if (cctx) {
-            cctx.drawImage(zeroImg, 0, 0);
-            // Trim "0" aggressively so it doesn't look like an extra floating glyph
-            // due to faint background haze around the art.
-            const zero = trimCanvas(chromaKeyToAlpha(c, 28), 90);
-            map.set("0", zero);
-          }
-        }
-
-        // Letters for FIELD text (best-effort from the provided sheet)
-        // We only need: F I R S T & (and space). Sheet lacks F and &, so we synthesize:
-        // - F from E
-        // - & drawn with fallback stroke if missing
-        {
-          const rows = [
-            // row1: ABCDEEGHIJKL
-            { y0: 0.10, y1: 0.28, x0: 0.08, x1: 0.92, order: ["A","B","C","D","E","E","G","H","I","J","K","L"] },
-            // row2: IJKLMMNOQR
-            { y0: 0.32, y1: 0.50, x0: 0.10, x1: 0.90, order: ["I","J","K","L","M","M","N","O","Q","R"] },
-            // row3: OPRSTUWXYZ
-            { y0: 0.54, y1: 0.71, x0: 0.12, x1: 0.92, order: ["O","P","R","S","T","U","W","X","Y","Z"] },
-          ];
-
-          for (const r of rows) {
-            const row = cropRow(sheetImg, sheetImg.height * r.y0, sheetImg.height * r.y1, sheetImg.width * r.x0, sheetImg.width * r.x1);
-            const glyphs = segmentGlyphs(row, Math.min(5, r.order.length));
-            const usable = glyphs.length >= r.order.length ? glyphs.slice(0, r.order.length) : glyphs;
-            for (let i = 0; i < usable.length && i < r.order.length; i++) {
-              const ch = r.order[i];
-              if (!map.has(ch)) map.set(ch, usable[i]);
-            }
-          }
-
-          if (map.has("E") && !map.has("F")) {
-            map.set("F", synthesizeFfromE(map.get("E")));
-          }
-        }
-
-        // IMPORTANT:
-        // The standalone 0 glyph has textured haze and can create a "floating 0"
-        // look when composing "10/20/30..." if its trimmed bounds are too wide.
-        // Prefer using the clean letter "O" as "0" for sideline numbers.
-        if (map.has("O")) {
-          map.set("0", map.get("O"));
-        }
-
-        glyphsRef.current = { ready: map.size >= 10, map };
-      } catch (e) {
-        // ignore; use fallback fillText
-        glyphsRef.current = { ready: false, map: new Map() };
-      }
-    };
-
-    const drawGlyphText = (text, x, y, heightPx, align = "center") => {
-      const { ready, map } = glyphsRef.current;
-      if (!ready) return false;
-
-      const chars = String(text).split("");
-      // Tight spacing so digits like "10" read as a single number.
-      // Numeric labels should be nearly flush; words can breathe a bit.
-      const isNumeric = /^[0-9]+$/.test(String(text));
-      const gap = isNumeric ? 0 : Math.max(0, Math.round(heightPx * 0.015));
-
-      const glyphRuns = chars.map((ch) => {
-        if (ch === " ") return { ch, canvas: null, w: heightPx * 0.28 };
-        const g = map.get(ch) || null;
-        if (!g) return null;
-        const w = (g.width / Math.max(1, g.height)) * heightPx;
-        return { ch, canvas: g, w };
-      });
-
-      if (glyphRuns.some((r) => r === null)) return false;
-
-      const totalW =
-        glyphRuns.reduce((s, r) => s + r.w, 0) + gap * (glyphRuns.length - 1);
-
-      let startX = x;
-      if (align === "center") startX = x - totalW / 2;
-      if (align === "right") startX = x - totalW;
-
-      ctx.save();
-      ctx.imageSmoothingEnabled = true;
-      ctx.globalCompositeOperation = "lighter";
-      let cx = startX;
-      for (let i = 0; i < glyphRuns.length; i++) {
-        const r = glyphRuns[i];
-        if (r.canvas) ctx.drawImage(r.canvas, cx, y - heightPx / 2, r.w, heightPx);
-        cx += r.w + gap;
-      }
-      ctx.restore();
-
-      return true;
-    };
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -440,7 +124,6 @@ export default function PlayfieldBackground() {
     window.addEventListener("resize", resize);
 
     startTimeRef.current = performance.now();
-    warmGlyphCache();
 
     // Spawn plays continuously
     const maybeSpawn = (now, w) => {
@@ -603,26 +286,12 @@ export default function PlayfieldBackground() {
       ctx.fillStyle = COLORS.field;
       ctx.fillRect(0, 0, w, h);
 
-      const measureGlyphWidth = (text, heightPx) => {
-        const { ready, map } = glyphsRef.current;
-        const chars = String(text).split("");
-        const gap = Math.max(0, Math.round(heightPx * 0.015));
-        if (ready) {
-          const widths = [];
-          for (const ch of chars) {
-            if (ch === " ") {
-              widths.push(heightPx * 0.28);
-              continue;
-            }
-            const g = map.get(ch) || null;
-            if (!g) return null;
-            widths.push((g.width / Math.max(1, g.height)) * heightPx);
-          }
-          return widths.reduce((s, ww) => s + ww, 0) + gap * (widths.length - 1);
-        }
-        // reasonable fallback if glyphs not ready
-        const approxChar = heightPx * 0.62;
-        return chars.length * approxChar + gap * (chars.length - 1);
+      const measureTextWidth = (text, font) => {
+        ctx.save();
+        ctx.font = font;
+        const w = ctx.measureText(String(text)).width;
+        ctx.restore();
+        return w;
       };
 
       // draw TWO cycles stacked to avoid any seam
@@ -656,8 +325,7 @@ export default function PlayfieldBackground() {
           // sideline label cutouts
           if (label !== null) {
             const labelStr = String(label);
-            const textH = 48;
-            const labelW = measureGlyphWidth(labelStr, textH) || 60;
+            const labelW = measureTextWidth(labelStr, "48px F10Varsity, system-ui, sans-serif") || 60;
             const pad = 16;
             const leftCx = 40;
             const rightCx = w - 40;
@@ -716,20 +384,13 @@ export default function PlayfieldBackground() {
             ctx.font = `48px F10Varsity, system-ui, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            const okL = drawGlyphText(String(label), 40, yPx, 48, "center");
-            const okR = drawGlyphText(String(label), w - 40, yPx, 48, "center");
-            if (!okL) ctx.fillText(String(label), 40, yPx);
-            if (!okR) ctx.fillText(String(label), w - 40, yPx);
+            ctx.fillText(String(label), 40, yPx);
+            ctx.fillText(String(label), w - 40, yPx);
 
-            if (yardInCycle === 50) {
-              if (isPrimaryCycle) {
-                const okMid = drawGlyphText("F10", w / 2, yPx + 70, 92, "center");
-                if (!okMid) {
-                  ctx.font = `92px F10Varsity, system-ui, sans-serif`;
-                  ctx.shadowBlur = 16;
-                  ctx.fillText("F10", w / 2, yPx + 70);
-                }
-              }
+            if (yardInCycle === 50 && isPrimaryCycle) {
+              ctx.font = `92px F10Varsity, system-ui, sans-serif`;
+              ctx.shadowBlur = 16;
+              ctx.fillText("F10", w / 2, yPx + 70);
             }
             ctx.restore();
           }
@@ -743,8 +404,7 @@ export default function PlayfieldBackground() {
             ctx.font = `64px F10Varsity, system-ui, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            const ok = drawGlyphText("FIRST & 10", w / 2, yPx, 64, "center");
-            if (!ok) ctx.fillText("FIRST & 10", w / 2, yPx);
+            ctx.fillText("FIRST & 10", w / 2, yPx);
             ctx.restore();
           }
         }
