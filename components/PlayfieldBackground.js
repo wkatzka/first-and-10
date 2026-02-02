@@ -13,6 +13,7 @@ const loopMs = 45_000; // 45 second scroll loop (50% slower than 30s)
 const yardsPerTick = 5;
 const BG_DIM = 0.62; // overall background dim (lower = dimmer)
 const SCROLL_DIR = 1; // 1 = bottom->up, -1 = top->down
+const ENDZONE_HEIGHT_PX = 72; // fixed endzone band at top/bottom of viewport
 
 function mod(n, m) {
   return ((n % m) + m) % m;
@@ -150,11 +151,11 @@ export default function PlayfieldBackground() {
     const maybeSpawn = (now, w) => {
       const plays = playsRef.current;
 
-      // keep ~10 active plays
-      if (plays.length > 10) return;
+      // keep ~12 active plays (20% more)
+      if (plays.length > 12) return;
 
-      // random spawn cadence
-      if (Math.random() > 0.12) return;
+      // random spawn cadence (20% more spawns: 0.10 skip)
+      if (Math.random() > 0.10) return;
 
       // spawn in field space across one full cycle so it feels distributed
       const startO = { x: rand(w * 0.18, w * 0.82), y: rand(fieldHeightPx * 0.15, fieldHeightPx * 0.95) };
@@ -355,17 +356,6 @@ export default function PlayfieldBackground() {
             cutouts.push([rightCx - labelW / 2 - pad, rightCx + labelW / 2 + pad]);
           }
 
-          // endzone center text cutout (only one endzone)
-          const isEndzone = isPrimaryCycle && yardInCycle === 5;
-          if (isEndzone) {
-            ctx.save();
-            ctx.font = "64px system-ui, sans-serif";
-            const m = ctx.measureText("FIRST & 10");
-            ctx.restore();
-            const pad = 26;
-            cutouts.push([w / 2 - m.width / 2 - pad, w / 2 + m.width / 2 + pad]);
-          }
-
           // Normalize cutouts into drawable segments
           cutouts = cutouts
             .map(([a, b]) => [Math.max(xStart, a), Math.min(xEnd, b)])
@@ -412,27 +402,37 @@ export default function PlayfieldBackground() {
             if (yardInCycle === 50 && isPrimaryCycle) {
               ctx.font = "92px system-ui, sans-serif";
               ctx.shadowBlur = 16;
-              ctx.fillText("F10", w / 2, yPx + 70);
+              ctx.fillText("F10", w / 2, yPx);
             }
-            ctx.restore();
-          }
-
-          // Endzone text at 5 and 95
-          if (isPrimaryCycle && yardInCycle === 5) {
-            ctx.save();
-            ctx.fillStyle = COLORS.icyBright;
-            ctx.shadowColor = COLORS.icy;
-            ctx.shadowBlur = 16;
-            ctx.font = "64px system-ui, sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("FIRST & 10", w / 2, yPx);
             ctx.restore();
           }
         }
 
         ctx.restore();
       }
+
+      // Fixed endzone outline and "FIRST & 10" at top and bottom (always visible)
+      ctx.save();
+      ctx.strokeStyle = COLORS.icy;
+      ctx.shadowColor = COLORS.icy;
+      ctx.shadowBlur = 8;
+      ctx.lineWidth = 3;
+      ctx.globalCompositeOperation = "lighter";
+      ctx.globalAlpha = 0.6 * BG_DIM;
+      ctx.strokeRect(0, 0, w, ENDZONE_HEIGHT_PX);
+      ctx.strokeRect(0, h - ENDZONE_HEIGHT_PX, w, ENDZONE_HEIGHT_PX);
+      ctx.restore();
+
+      ctx.save();
+      ctx.fillStyle = COLORS.icyBright;
+      ctx.shadowColor = COLORS.icy;
+      ctx.shadowBlur = 16;
+      ctx.font = "64px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("FIRST & 10", w / 2, ENDZONE_HEIGHT_PX / 2);
+      ctx.fillText("FIRST & 10", w / 2, h - ENDZONE_HEIGHT_PX / 2);
+      ctx.restore();
 
       // subtle grain overlay (cheap + nice)
       ctx.save();
