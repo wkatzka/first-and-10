@@ -12,7 +12,7 @@ const fieldCycleYards = 100; // endzone to endzone
 const loopMs = 45_000; // 45 second scroll loop (50% slower than 30s)
 const yardsPerTick = 5;
 const BG_DIM = 0.62; // overall background dim (lower = dimmer)
-const SCROLL_DIR = 1; // 1 = bottom->up, -1 = top->down
+const SCROLL_DIR = -1; // -1 = scroll bottom->up (content moves up)
 const ENDZONE_HEIGHT_PX = 72; // fixed endzone band at top/bottom of viewport
 
 function mod(n, m) {
@@ -101,6 +101,24 @@ function buildSlant(p0, p3) {
   return { p0, p1, p2, p3 };
 }
 
+// Post: upfield then break inward (toward center)
+function buildPost(p0, p3, centerX) {
+  const midY = p0.y + (p3.y - p0.y) * 0.5;
+  const towardCenter = centerX - p0.x;
+  const p1 = { x: p0.x + (p3.x - p0.x) * 0.3 + towardCenter * 0.15, y: p0.y + (p3.y - p0.y) * 0.35 };
+  const p2 = { x: p0.x + (p3.x - p0.x) * 0.7 + towardCenter * 0.35, y: p0.y + (p3.y - p0.y) * 0.75 };
+  return { p0, p1, p2, p3 };
+}
+
+// Flag: upfield then break outward (toward sideline)
+function buildFlag(p0, p3, centerX) {
+  const awayFromCenter = p0.x >= centerX ? 1 : -1;
+  const k = 50 * awayFromCenter;
+  const p1 = { x: p0.x + (p3.x - p0.x) * 0.3 + k * 0.3, y: p0.y + (p3.y - p0.y) * 0.35 };
+  const p2 = { x: p0.x + (p3.x - p0.x) * 0.7 + k * 0.8, y: p0.y + (p3.y - p0.y) * 0.75 };
+  return { p0, p1, p2, p3 };
+}
+
 function rand(min, max) {
   return min + Math.random() * (max - min);
 }
@@ -147,27 +165,42 @@ export default function PlayfieldBackground() {
 
     startTimeRef.current = performance.now();
 
-    // Spawn plays continuously
+    // Spawn plays: circles on yard lines every 20 yards (10, 30, 50, 70, 90), arrows upfield around X's
+    const BAND_YARDS = [10, 30, 50, 70, 90];
+    const ROUTES = [buildBezier, buildButtonhook, buildSlant, buildPost, buildFlag];
+
     const maybeSpawn = (now, w) => {
       const plays = playsRef.current;
 
-      // keep ~12 active plays (20% more)
-      if (plays.length > 12) return;
-
-      // random spawn cadence (20% more spawns: 0.10 skip)
+      if (plays.length > 14) return;
       if (Math.random() > 0.10) return;
 
-      // spawn in field space across one full cycle so it feels distributed
-      const startO = { x: rand(w * 0.18, w * 0.82), y: rand(fieldHeightPx * 0.15, fieldHeightPx * 0.95) };
-      const endO = { x: rand(w * 0.18, w * 0.82), y: startO.y - rand(160, 420) };
+      const band = Math.floor(Math.random() * BAND_YARDS.length);
+      const lineYard = BAND_YARDS[band];
+      const lineY = lineYard * pxPerYard;
+
+      const startO = { x: rand(w * 0.2, w * 0.8), y: lineY };
+      const upfieldY = lineY - rand(180, 360);
+      const endO = { x: startO.x + rand(-100, 100), y: upfieldY };
 
       const avoidX = {
-        x: lerp(startO.x, endO.x, 0.5) + rand(-60, 60),
-        y: lerp(startO.y, endO.y, 0.5) + rand(-60, 60),
+        x: lerp(startO.x, endO.x, 0.35) + rand(-40, 40),
+        y: lineY - rand(70, 140),
       };
 
-      const routeType = pick([buildBezier, buildButtonhook, buildSlant]);
-      const b = routeType === buildBezier ? buildBezier(startO, endO, avoidX) : routeType(startO, endO);
+      const routeIndex = (band + Math.floor(Math.random() * ROUTES.length)) % ROUTES.length;
+      const routeType = ROUTES[routeIndex];
+      let b;
+      if (routeType === buildBezier) {
+        b = buildBezier(startO, endO, avoidX);
+      } else if (routeType === buildPost) {
+        b = buildPost(startO, endO, w / 2);
+      } else if (routeType === buildFlag) {
+        b = buildFlag(startO, endO, w / 2);
+      } else {
+        b = routeType(startO, endO);
+      }
+
       const color = pick(COLORS.neon);
 
       plays.push({
