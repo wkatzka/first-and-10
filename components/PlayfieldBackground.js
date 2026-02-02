@@ -192,7 +192,7 @@ export default function PlayfieldBackground() {
 
       const margin = 0.15;
       const step = (1 - 2 * margin) / Math.max(1, CIRCLES_PER_PLAY - 1);
-      const drawDur = rand(1000, 1400);
+      const drawDur = rand(1500, 2100);
       const t0 = now;
 
       for (let i = 0; i < CIRCLES_PER_PLAY; i++) {
@@ -389,19 +389,21 @@ export default function PlayfieldBackground() {
         for (const yard of ticks) {
           const yPx = yard * pxPerYard - baseScroll;
 
-          const yardInCycle = yard; // 0..100 in this local cycle
-          const label = yardLabel(yardInCycle === 100 ? 0 : yardInCycle); // treat 100 as 0 seam
+          const yardInCycle = yard;
+          const label =
+            yardInCycle === 0 || yardInCycle === 100
+              ? "FIRST & 10"
+              : yardLabel(yardInCycle);
 
-          // yard line (cut around labels so lines don't slice through numbers/text)
           const xStart = 20;
           const xEnd = w - 20;
           const segments = [];
           let cutouts = [];
 
-          // sideline label cutouts
-          if (label !== null) {
+          if (label != null && label !== "") {
             const labelStr = String(label);
-            const labelW = measureTextWidth(labelStr, "48px system-ui, sans-serif") || 60;
+            const font = label === "FIRST & 10" ? "64px system-ui, sans-serif" : "48px system-ui, sans-serif";
+            const labelW = measureTextWidth(labelStr, font) || (label === "FIRST & 10" ? 320 : 60);
             const pad = 16;
             const leftCx = 40;
             const rightCx = w - 40;
@@ -441,12 +443,12 @@ export default function PlayfieldBackground() {
             ctx.stroke();
           }
 
-          if (label !== null) {
+          if (label != null && label !== "") {
             ctx.save();
             ctx.fillStyle = COLORS.icyBright;
             ctx.shadowColor = COLORS.icy;
             ctx.shadowBlur = 12;
-            ctx.font = "48px system-ui, sans-serif";
+            ctx.font = label === "FIRST & 10" ? "64px system-ui, sans-serif" : "48px system-ui, sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(String(label), 40, yPx);
@@ -477,17 +479,6 @@ export default function PlayfieldBackground() {
       ctx.globalAlpha = (isPulsing ? 0.9 : 0.6) * BG_DIM;
       ctx.strokeRect(0, 0, w, ENDZONE_HEIGHT_PX);
       ctx.strokeRect(0, h - ENDZONE_HEIGHT_PX, w, ENDZONE_HEIGHT_PX);
-      ctx.restore();
-
-      ctx.save();
-      ctx.fillStyle = COLORS.icyBright;
-      ctx.shadowColor = COLORS.icy;
-      ctx.shadowBlur = 16;
-      ctx.font = "64px system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("FIRST & 10", w / 2, ENDZONE_HEIGHT_PX / 2);
-      ctx.fillText("FIRST & 10", w / 2, h - ENDZONE_HEIGHT_PX / 2);
       ctx.restore();
 
       // subtle grain overlay (cheap + nice)
@@ -527,7 +518,8 @@ export default function PlayfieldBackground() {
       const h = window.innerHeight;
 
       const t = (now - startTimeRef.current) % loopMs;
-      const scrollPx = SCROLL_DIR * (t / loopMs) * fieldHeightPx;
+      const scrollPhase = ((10 * pxPerYard - h / 2) % fieldHeightPx + fieldHeightPx) % fieldHeightPx;
+      const scrollPx = scrollPhase + SCROLL_DIR * (t / loopMs) * fieldHeightPx;
 
       const plays = playsRef.current;
       const endzoneTop = 10 * pxPerYard;
