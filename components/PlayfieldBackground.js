@@ -128,6 +128,11 @@ function pick(arr) {
 }
 
 const CIRCLES_PER_PLAY = 6; // formation: one horizontal line of circles (like line of scrimmage)
+const SPAWN_INTERVAL_MS = 4000; // new play every 4 seconds
+const ARROW_TRAVEL_MS = 4000;   // arrows take 4s to travel and disappear
+
+// 5 plays per cycle: 10 → 30 → 50 → 30 → 10
+const BAND_YARDS = [10, 30, 50, 30, 10];
 
 export default function PlayfieldBackground() {
   const canvasRef = useRef(null);
@@ -135,7 +140,9 @@ export default function PlayfieldBackground() {
   const rafRef = useRef(null);
   const startTimeRef = useRef(0);
   const nextBandRef = useRef(0);
+  const lastSpawnTimeRef = useRef(0);
   const endzonePulseRef = useRef(null);
+  const pulseWhenLast10FinishesRef = useRef(false);
 
   const fieldHeightPx = fieldCycleYards * pxPerYard;
 
@@ -169,30 +176,28 @@ export default function PlayfieldBackground() {
 
     startTimeRef.current = performance.now();
 
-    // Play-call: one horizontal line of circles per play; when play is over, next play starts 20 yards upfield
-    const BAND_YARDS = [10, 30, 50, 70, 90];
     const ROUTES = [buildBezier, buildButtonhook, buildSlant, buildPost, buildFlag];
 
-    const maybeSpawn = (now, w, h, scrollPx) => {
+    const maybeSpawn = (now, w, h) => {
       const plays = playsRef.current;
 
       if (plays.length > 0) return;
 
+      const elapsed = now - lastSpawnTimeRef.current;
+      if (lastSpawnTimeRef.current !== 0 && elapsed < SPAWN_INTERVAL_MS) return;
+
+      lastSpawnTimeRef.current = now;
       const band = nextBandRef.current;
       const lineYard = BAND_YARDS[band];
       const lineY = lineYard * pxPerYard;
 
-      const baseScroll = mod(scrollPx, fieldHeightPx);
-      const targetBaseScroll = ((lineY - h / 2) % fieldHeightPx + fieldHeightPx) % fieldHeightPx;
-      let dist = Math.abs(baseScroll - targetBaseScroll);
-      dist = Math.min(dist, fieldHeightPx - dist);
-      if (dist >= 70) return;
-
       nextBandRef.current = (nextBandRef.current + 1) % BAND_YARDS.length;
+
+      // After the last 10-yard play finishes, trigger one brief endzone pulse
+      if (band === BAND_YARDS.length - 1) pulseWhenLast10FinishesRef.current = true;
 
       const margin = 0.15;
       const step = (1 - 2 * margin) / Math.max(1, CIRCLES_PER_PLAY - 1);
-      const drawDur = rand(1500, 2100);
       const t0 = now;
 
       for (let i = 0; i < CIRCLES_PER_PLAY; i++) {
@@ -234,9 +239,9 @@ export default function PlayfieldBackground() {
           endO,
           t0,
           oIn: 140,
-          drawDur,
-          hold: 260,
-          fadeOut: 240,
+          drawDur: ARROW_TRAVEL_MS,
+          hold: 0,
+          fadeOut: 300,
         });
       }
     };
@@ -521,29 +526,19 @@ export default function PlayfieldBackground() {
       const scrollPhase = ((10 * pxPerYard - h / 2) % fieldHeightPx + fieldHeightPx) % fieldHeightPx;
       const scrollPx = scrollPhase + SCROLL_DIR * (t / loopMs) * fieldHeightPx;
 
-      const plays = playsRef.current;
-      const endzoneTop = 10 * pxPerYard;
-      const endzoneBottom = 90 * pxPerYard;
-      for (const p of plays) {
-        const dt = now - p.t0;
-        const drawT = (dt - p.oIn) / p.drawDur;
-        const u = Math.min(1, Math.max(0, drawT));
-        const eased = easeOutCubic(u);
-        const head = bezierPoint(p.p0, p.p1, p.p2, p.p3, eased);
-        if (head.y < endzoneTop || head.y > endzoneBottom) {
-          endzonePulseRef.current = now;
-          break;
-        }
-      }
-
       drawField(w, h, scrollPx, now);
 
-      maybeSpawn(now, w, h, scrollPx);
+      maybeSpawn(now, w, h);
 
+      const hadPlays = playsRef.current.length > 0;
       playsRef.current = playsRef.current.filter((p) => {
         const life = p.oIn + p.drawDur + p.hold + p.fadeOut;
         return now - p.t0 < life;
       });
+      if (hadPlays && playsRef.current.length === 0 && pulseWhenLast10FinishesRef.current) {
+        endzonePulseRef.current = now;
+        pulseWhenLast10FinishesRef.current = false;
+      }
 
       // draw plays twice (stacked) so they remain continuous across seam
       for (const seamOffset of [0, fieldHeightPx]) {
