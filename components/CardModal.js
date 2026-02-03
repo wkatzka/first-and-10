@@ -89,6 +89,8 @@ export default function CardModal({ card, onClose }) {
   };
 
   const traitLabel = (k) => {
+    // Position-specific label tweaks for clarity
+    if (card?.position === 'QB' && k === 'volume') return 'Pass Volume';
     const map = {
       accuracy: 'Accuracy',
       riskControl: 'Risk Control',
