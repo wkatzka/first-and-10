@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { Graduate } from 'next/font/google';
 import '../styles/globals.css';
 import { getMe, setToken, getActiveConferences, getUnreadCount } from '../lib/api';
 import PressConference, { PressConferenceBadge } from '../components/PressConference';
 import PlayfieldBackground from '../components/PlayfieldBackground';
+
+const graduate = Graduate({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 export default function App({ Component, pageProps }) {
   const [user, setUser] = useState(null);
@@ -119,6 +126,14 @@ export default function App({ Component, pageProps }) {
   
   return (
     <>
+      {/* Preload font used by canvas background */}
+      <span
+        className={graduate.className}
+        aria-hidden="true"
+        style={{ position: 'fixed', left: '-9999px', top: '-9999px' }}
+      >
+        .
+      </span>
       <PlayfieldBackground />
       <Component 
         {...pageProps} 
