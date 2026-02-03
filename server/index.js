@@ -17,6 +17,7 @@ const cardImageGenerator = require('./card-image-generator');
 const pressConference = require('./press-conference');
 const messages = require('./messages');
 const imageRegenQueue = require('./image-regen-queue');
+const { buildEngineForCard } = require('./game-engine/player-traits');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -589,6 +590,22 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
         return res.status(500).json({ error: 'Could not mint a full pack. Please try again.' });
       }
       
+      // Attach stat-derived engine traits (for UI + simulation nuance)
+      const engine = buildEngineForCard({
+        player_name: mintedCard.player || mintedCard.player_name,
+        season: mintedCard.season,
+        position: mintedCard.position,
+        tier: mintedCard.tier,
+        composite_score: mintedCard.composite_score,
+      });
+      if (engine) {
+        mintedCard.engine_v = engine.engine_v;
+        mintedCard.engine_era = engine.engine_era;
+        mintedCard.engine_percentiles = engine.engine_percentiles;
+        mintedCard.engine_traits = engine.engine_traits;
+        mintedCard.engine_inferred = engine.engine_inferred;
+      }
+
       // Get formatted stats for card back
       mintedCard.stats = cardImageGenerator.getFormattedStats(mintedCard);
       
@@ -689,6 +706,21 @@ app.post('/api/packs/open-single', authMiddleware, async (req, res) => {
       return res.status(500).json({ error: 'Could not mint a single-card pack. Please try again.' });
     }
       
+    const engine = buildEngineForCard({
+      player_name: mintedCard.player || mintedCard.player_name,
+      season: mintedCard.season,
+      position: mintedCard.position,
+      tier: mintedCard.tier,
+      composite_score: mintedCard.composite_score,
+    });
+    if (engine) {
+      mintedCard.engine_v = engine.engine_v;
+      mintedCard.engine_era = engine.engine_era;
+      mintedCard.engine_percentiles = engine.engine_percentiles;
+      mintedCard.engine_traits = engine.engine_traits;
+      mintedCard.engine_inferred = engine.engine_inferred;
+    }
+
     mintedCard.stats = cardImageGenerator.getFormattedStats(mintedCard);
       
     let imageUrl;
@@ -786,6 +818,21 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
           return res.status(500).json({ error: 'Could not mint all packs due to mint collisions. Please try again.' });
         }
         
+        const engine = buildEngineForCard({
+          player_name: mintedCard.player || mintedCard.player_name,
+          season: mintedCard.season,
+          position: mintedCard.position,
+          tier: mintedCard.tier,
+          composite_score: mintedCard.composite_score,
+        });
+        if (engine) {
+          mintedCard.engine_v = engine.engine_v;
+          mintedCard.engine_era = engine.engine_era;
+          mintedCard.engine_percentiles = engine.engine_percentiles;
+          mintedCard.engine_traits = engine.engine_traits;
+          mintedCard.engine_inferred = engine.engine_inferred;
+        }
+
         // Get formatted stats for card back
         mintedCard.stats = cardImageGenerator.getFormattedStats(mintedCard);
         

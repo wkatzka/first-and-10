@@ -94,6 +94,12 @@ function runMigrations(db) {
     const traitsChanged = backfillCardTraitsV1(db);
     if (traitsChanged) changed = true;
   }
+
+  // Migration: ensure season stat lines exist for every card (idempotent)
+  if (!db.migrations.card_stats_v1) {
+    const statsChanged = backfillCardStatsV1(db);
+    if (statsChanged) changed = true;
+  }
   
   if (changed) {
     saveDb(db);
@@ -151,6 +157,76 @@ function backfillCardTraitsV1(db) {
   db.migrations.card_traits_v1 = true;
   console.log(`Traits migration: updated ${updated} cards (skipped ${skipped})`);
   return updated > 0 || true;
+}
+
+function backfillCardStatsV1(db) {
+  if (db.migrations?.card_stats_v1) return false;
+  if (!Array.isArray(db.cards) || db.cards.length === 0) {
+    db.migrations.card_stats_v1 = true;
+    return true;
+  }
+
+  let packs = null;
+  let cardImageGenerator = null;
+  try {
+    packs = require('./packs');
+    cardImageGenerator = require('./card-image-generator');
+  } catch (e) {
+    console.error('Stats migration: failed to load helpers:', e?.message || e);
+    return false;
+  }
+
+  const isArrayStats = (s) => Array.isArray(s) && s.length > 0;
+  const isObjectStats = (s) => !!s && typeof s === 'object' && !Array.isArray(s) && Object.keys(s).length > 0;
+
+  let updated = 0;
+  let skipped = 0;
+
+  for (const card of db.cards) {
+    if (isArrayStats(card.stats)) {
+      skipped++;
+      continue;
+    }
+
+    // Try to locate normalized player record so we can generate consistent season stat lines.
+    let p = null;
+    try {
+      p = packs.getPlayerByKey(`${card.player_name}_${card.season}`);
+      if (!p) {
+        const results = packs.searchPlayers(String(card.player_name || ''), 50) || [];
+        p = results.find(r =>
+          Number(r.season) === Number(card.season) &&
+          String(r.position || r.pos_group || '').toUpperCase() === String(card.position || '').toUpperCase()
+        ) || null;
+      }
+    } catch {
+      p = null;
+    }
+
+    if (p) {
+      card.stats = cardImageGenerator.getFormattedStats(p);
+      updated++;
+      continue;
+    }
+
+    // Fallback: convert any existing object stats to an array format so UI is consistent.
+    if (isObjectStats(card.stats)) {
+      card.stats = Object.entries(card.stats)
+        .filter(([, v]) => v != null && v !== '' && v !== 0)
+        .map(([k, v]) => ({
+          label: String(k).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          value: v,
+        }));
+      updated++;
+      continue;
+    }
+
+    skipped++;
+  }
+
+  db.migrations.card_stats_v1 = true;
+  console.log(`Stats migration: updated ${updated} cards (skipped ${skipped})`);
+  return true;
 }
 
 // Save database

@@ -7,6 +7,45 @@
 const fs = require('fs');
 const path = require('path');
 const { isCardMinted, mintCard, getAvailabilityStats } = require('./minting-ledger');
+const cardImageGenerator = require('./card-image-generator');
+
+let buildEngineForCard = null;
+function getBuildEngineForCard() {
+  if (buildEngineForCard) return buildEngineForCard;
+  try {
+    ({ buildEngineForCard } = require('./game-engine/player-traits'));
+  } catch (e) {
+    buildEngineForCard = null;
+  }
+  return buildEngineForCard;
+}
+
+function enrichPlayerForUi(p) {
+  if (!p) return p;
+  const fn = getBuildEngineForCard();
+  const engine = fn ? fn({
+    player_name: p.player || p.player_name,
+    player: p.player || p.player_name,
+    season: p.season,
+    position: p.position || p.pos_group || p.pos,
+    tier: p.tier,
+    composite_score: p.composite_score,
+  }) : null;
+
+  // Attach stats lines for UI display (CardModal understands arrays)
+  const stats = cardImageGenerator.getFormattedStats(p);
+  return {
+    ...p,
+    stats,
+    ...(engine ? {
+      engine_v: engine.engine_v,
+      engine_era: engine.engine_era,
+      engine_percentiles: engine.engine_percentiles,
+      engine_traits: engine.engine_traits,
+      engine_inferred: engine.engine_inferred,
+    } : {}),
+  };
+}
 
 // Load normalized players
 const PLAYERS_PATH = path.join(__dirname, './game-engine/data/normalized_players.json');
@@ -398,7 +437,8 @@ function searchPlayers(query, limit = 20) {
   
   return allPlayers
     .filter(p => p.player.toLowerCase().includes(lowerQuery))
-    .slice(0, limit);
+    .slice(0, limit)
+    .map(enrichPlayerForUi);
 }
 
 /**
@@ -407,10 +447,11 @@ function searchPlayers(query, limit = 20) {
 function getPlayerByKey(playerKey) {
   loadPlayers();
   
-  return allPlayers.find(p => 
+  const found = allPlayers.find(p => 
     `${p.player}_${p.season}` === playerKey || 
     p.player_key === playerKey
   );
+  return enrichPlayerForUi(found);
 }
 
 module.exports = {
