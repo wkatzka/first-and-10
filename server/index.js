@@ -99,6 +99,113 @@ function authMiddleware(req, res, next) {
   next();
 }
 
+// Admin auth (for safe production DB inspection)
+function adminMiddleware(req, res, next) {
+  const expected = process.env.ADMIN_KEY;
+  if (!expected) {
+    return res.status(500).json({ error: 'ADMIN_KEY not configured on server' });
+  }
+
+  const provided = req.headers['x-admin-key'];
+  if (!provided || provided !== expected) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  next();
+}
+
+function findUserCaseInsensitive(username) {
+  const raw = db.getDb();
+  const needle = String(username || '').toLowerCase();
+  return raw.users.find(u => String(u.username || '').toLowerCase() === needle) || null;
+}
+
+function getRosterStatus(userId) {
+  const required = [
+    'qb_card_id', 'rb_card_id',
+    'wr1_card_id', 'wr2_card_id', 'te_card_id',
+    'ol_card_id', 'dl_card_id', 'lb_card_id',
+    'db1_card_id', 'db2_card_id',
+    'k_card_id',
+  ];
+
+  const full = db.getFullRoster(userId);
+  const roster = full?.roster || null;
+  const cards = full?.cards || {};
+
+  const missingSlots = [];
+  for (const key of required) {
+    const cardId = roster?.[key];
+    const card = cards?.[key];
+    if (!cardId || !card) missingSlots.push(key);
+  }
+
+  return {
+    fullRoster: missingSlots.length === 0,
+    missingSlots,
+    roster,
+  };
+}
+
+// =============================================================================
+// ADMIN (read-only)
+// =============================================================================
+
+// Look up a user by username (case-insensitive) and roster status
+app.get('/api/admin/user', adminMiddleware, (req, res) => {
+  const username = req.query.username;
+  if (!username) {
+    return res.status(400).json({ error: 'username query param required' });
+  }
+
+  const user = findUserCaseInsensitive(username);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const raw = db.getDb();
+  const cardCount = raw.cards.filter(c => c.user_id === user.id).length;
+  const rosterStatus = getRosterStatus(user.id);
+
+  res.json({
+    user: {
+      id: user.id,
+      username: user.username,
+      team_name: user.team_name,
+      created_at: user.created_at,
+      packs_opened: user.packs_opened,
+      max_packs: user.max_packs,
+      card_count: cardCount,
+    },
+    roster: rosterStatus.roster,
+    rosterStatus: {
+      fullRoster: rosterStatus.fullRoster,
+      missingSlots: rosterStatus.missingSlots,
+    },
+  });
+});
+
+// Convenience endpoint: just whether they have a full roster
+app.get('/api/admin/has-full-roster', adminMiddleware, (req, res) => {
+  const username = req.query.username;
+  if (!username) {
+    return res.status(400).json({ error: 'username query param required' });
+  }
+
+  const user = findUserCaseInsensitive(username);
+  if (!user) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  const rosterStatus = getRosterStatus(user.id);
+  res.json({
+    username: user.username,
+    userId: user.id,
+    fullRoster: rosterStatus.fullRoster,
+    missingSlots: rosterStatus.missingSlots,
+  });
+});
+
 // =============================================================================
 // AUTH ROUTES
 // =============================================================================
