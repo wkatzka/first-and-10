@@ -531,10 +531,17 @@ export default function PlayfieldBackground() {
             const font = label === "FIRST & 10" ? "64px CollegeBlock, system-ui, sans-serif" : "48px CollegeBlock, system-ui, sans-serif";
             const labelW = measureTextWidth(labelStr, font) || (label === "FIRST & 10" ? 320 : 60);
             const pad = 16;
-            const leftCx = label === "FIRST & 10" ? Math.max(120, labelW / 2 + pad) : 40;
-            const rightCx = label === "FIRST & 10" ? w - Math.max(120, labelW / 2 + pad) : w - 40;
-            cutouts.push([leftCx - labelW / 2 - pad, leftCx + labelW / 2 + pad]);
-            cutouts.push([rightCx - labelW / 2 - pad, rightCx + labelW / 2 + pad]);
+            if (label === "FIRST & 10") {
+              // Center endzone text cutout
+              const cx = w / 2;
+              cutouts.push([cx - labelW / 2 - pad, cx + labelW / 2 + pad]);
+            } else {
+              // Yard numbers: cut out both sidelines
+              const leftCx = 40;
+              const rightCx = w - 40;
+              cutouts.push([leftCx - labelW / 2 - pad, leftCx + labelW / 2 + pad]);
+              cutouts.push([rightCx - labelW / 2 - pad, rightCx + labelW / 2 + pad]);
+            }
           }
 
           // Normalize cutouts into drawable segments
@@ -579,8 +586,7 @@ export default function PlayfieldBackground() {
             ctx.textBaseline = "middle";
             if (label === "FIRST & 10") {
               // Endzone text stays horizontal (no rotation)
-              ctx.fillText(String(label), 40, yPx);
-              ctx.fillText(String(label), w - 40, yPx);
+              ctx.fillText(String(label), w / 2, yPx);
             } else {
               // Yard numbers: rotate so they face into the field
               ctx.save();
