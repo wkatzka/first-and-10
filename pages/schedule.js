@@ -95,6 +95,8 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
   const renderGameCard = (game, showDate = false) => {
     const isMyGame = game.homeUserId === user?.id || game.awayUserId === user?.id;
     const amHome = game.homeUserId === user?.id;
+    const reportId = game.dbGameId;
+    const canOpenReport = !!reportId && (game.status === 'completed' || game.status === 'forfeit');
     
     return (
       <div
@@ -118,7 +120,13 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
           {/* VS / Score */}
           <div className="px-4 text-center">
             {game.status === 'completed' ? (
-              <div className="text-xl font-bold">
+              <button
+                type="button"
+                disabled={!canOpenReport}
+                onClick={() => router.push(`/post-game/${reportId}`)}
+                className={`text-xl font-bold ${canOpenReport ? 'cursor-pointer hover:opacity-90' : 'cursor-default'} transition-opacity`}
+                title={canOpenReport ? 'View post-game report' : 'Post-game report not available'}
+              >
                 <span className={game.result?.winner === 'home' ? 'text-green-400' : 'text-white'}>
                   {game.result?.homeScore}
                 </span>
@@ -126,11 +134,20 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                 <span className={game.result?.winner === 'away' ? 'text-green-400' : 'text-white'}>
                   {game.result?.awayScore}
                 </span>
-              </div>
+              </button>
             ) : (
               <div className="text-gray-500">vs</div>
             )}
             <div className="text-xs mt-1">{formatGameStatus(game)}</div>
+            {canOpenReport && (
+              <button
+                type="button"
+                onClick={() => router.push(`/post-game/${reportId}`)}
+                className="mt-2 text-[11px] text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
+              >
+                Post-game report
+              </button>
+            )}
           </div>
           
           {/* Away Team */}
