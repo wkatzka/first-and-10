@@ -698,7 +698,10 @@ export default function PlayfieldBackground() {
 
       const t = (now - startTimeRef.current) % loopMs;
       // Start aligned to the 0-yard line (goal line) rather than mid-field.
-      const scrollPhase = mod(ENDZONE_DEPTH_YARDS * pxPerYard, fieldHeightPx);
+      // Keep scrollPx in a wrapped-positive range so play overlays (which don't mod)
+      // remain visible throughout the loop.
+      // We align the 0-yard line to the top via the "seamOffset" copy.
+      const scrollPhase = fieldHeightPx + ENDZONE_DEPTH_YARDS * pxPerYard;
       const scrollPx = scrollPhase + SCROLL_DIR * (t / loopMs) * fieldHeightPx;
 
       drawField(w, h, scrollPx, now);
