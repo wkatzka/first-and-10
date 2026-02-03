@@ -149,7 +149,13 @@ function simulatePassPlay(offense, defense, situation) {
   
   // Step 3.5: Check for scramble (dual-threat QBs)
   const playstyle = offense.ratings.offense.config;
-  if (protection.pressured && roll() < playstyle.scrambleChance) {
+  // Scramble chance scales with QB mobility trait (0-100).
+  const qbMobTrait = qb?.engine_traits?.mobility;
+  const mobTrait = typeof qbMobTrait === 'number' ? qbMobTrait : Number(qbMobTrait);
+  const mobMult = Number.isFinite(mobTrait) ? Math.max(0.5, Math.min(1.6, 0.5 + mobTrait / 100)) : 1.0;
+  const scrambleChance = Math.min(0.60, playstyle.scrambleChance * mobMult);
+
+  if (protection.pressured && roll() < scrambleChance) {
     const scrambleResult = calculateQBRun(qb, avgTier([...dls, ...lbs]), false);
     return {
       type: 'pass',
@@ -166,7 +172,7 @@ function simulatePassPlay(offense, defense, situation) {
   const throwResult = calculateThrow(qb, protection.pressured, coverage.separation, passType);
   
   // Step 5: Catch attempt
-  const catchResult = calculateCatch(wr, db, throwResult.accuracy, coverage.separation, passType);
+  const catchResult = calculateCatch(wr, db, qb, throwResult.accuracy, coverage.separation, passType);
   
   if (catchResult.caught) {
     return {

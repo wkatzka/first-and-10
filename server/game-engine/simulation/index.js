@@ -8,7 +8,7 @@
  *   const result = simulateGame(homeRoster, awayRoster);
  */
 
-const { simulateGame } = require('./game');
+const { simulateGame: simulateGameCore } = require('./game');
 const { calculateTeamRatings, classifyQBPlaystyle } = require('./playstyle');
 const { TIERS, QB_PLAYSTYLES } = require('./constants');
 const {
@@ -31,6 +31,75 @@ const {
 // =============================================================================
 // ROSTER BUILDING HELPERS
 // =============================================================================
+
+// Within-tier variance (0 = none). Keep this < 0.5 to ensure
+// worst of tier T stays above best of tier T-1.
+// Keep small so tier boundaries remain meaningful; most within-tier differentiation
+// should come from position traits applied directly to play probabilities.
+const WITHIN_TIER_MAX_OFFSET = 0.10;
+
+function clamp(n, lo, hi) {
+  return Math.max(lo, Math.min(hi, n));
+}
+
+function avgTraitScore(engineTraits) {
+  if (!engineTraits || typeof engineTraits !== 'object') return null;
+  const vals = Object.values(engineTraits)
+    .map(v => (typeof v === 'number' ? v : Number(v)))
+    .filter(n => Number.isFinite(n));
+  if (vals.length === 0) return null;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+function effectiveTierForPlayer(p) {
+  const baseTier = typeof p?.tier === 'number' ? p.tier : Number(p?.tier);
+  const t = Number.isFinite(baseTier) ? baseTier : 5;
+
+  // Prefer engine-derived traits (already era-adjusted percentiles mapped to 0-100).
+  let score = avgTraitScore(p?.engine_traits);
+
+  // Fallback to composite_score (0-100-ish in this project).
+  if (score == null) {
+    const cs = typeof p?.composite_score === 'number' ? p.composite_score : Number(p?.composite_score);
+    if (Number.isFinite(cs)) score = clamp(cs, 0, 100);
+  }
+
+  if (score == null) score = 50;
+  const offset = WITHIN_TIER_MAX_OFFSET * ((score - 50) / 50);
+  return clamp(t + offset, 1, 10);
+}
+
+function applyEffectiveTiersToRoster(roster) {
+  if (!roster) return roster;
+  const clonePlayer = (p) => {
+    if (!p) return p;
+    const eff = effectiveTierForPlayer(p);
+    return { ...p, tier_base: p.tier, tier: eff };
+  };
+  const cloneArr = (arr) => (Array.isArray(arr) ? arr.map(clonePlayer) : arr);
+  return {
+    ...roster,
+    QB: clonePlayer(roster.QB),
+    TE: clonePlayer(roster.TE),
+    K: clonePlayer(roster.K),
+    P: clonePlayer(roster.P),
+    RBs: cloneArr(roster.RBs),
+    WRs: cloneArr(roster.WRs),
+    OLs: cloneArr(roster.OLs),
+    DLs: cloneArr(roster.DLs),
+    LBs: cloneArr(roster.LBs),
+    DBs: cloneArr(roster.DBs),
+  };
+}
+
+/**
+ * Simulation wrapper that applies within-tier variance.
+ */
+function simulateGame(homeRoster, awayRoster, options) {
+  const home = applyEffectiveTiersToRoster(homeRoster);
+  const away = applyEffectiveTiersToRoster(awayRoster);
+  return simulateGameCore(home, away, options);
+}
 
 /**
  * Build a roster object from an array of player cards

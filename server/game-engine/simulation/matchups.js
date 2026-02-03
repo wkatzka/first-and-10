@@ -127,8 +127,19 @@ function calculateThrow(qb, pressured, separation, passType = 'medium') {
   const qbRating = tierToRating(qbTier);
   const outcomes = PLAY_OUTCOMES.PASS;
   
-  // Base accuracy from QB rating (60-95%)
-  let accuracy = 0.55 + (qbRating * 0.40);
+  // Base accuracy from QB rating (62.6% to 95%)
+  // Keep tier as the primary driver, with traits adding nuance.
+  let accuracy = 0.50 + (qbRating * 0.45);
+
+  // QB stat-derived trait: accuracy (0-100). This is era-adjusted, so it adds
+  // within-tier differentiation without breaking tier boundaries.
+  const qbAccTrait = qb?.engine_traits?.accuracy;
+  const accTrait = typeof qbAccTrait === 'number' ? qbAccTrait : Number(qbAccTrait);
+  if (Number.isFinite(accTrait)) {
+    // Max +/- 2 percentage points around baseline (keeps within-tier differentiation
+    // without allowing lower tiers to outplay higher tiers on average).
+    accuracy += ((accTrait - 50) / 50) * 0.02;
+  }
   
   // Pressure penalty
   if (pressured) {
@@ -166,7 +177,7 @@ function calculateThrow(qb, pressured, separation, passType = 'medium') {
  * @param {string} separation - Coverage separation
  * @returns {object} - { caught, intercepted, passDefended, yards }
  */
-function calculateCatch(wr, db, throwAccuracy, separation, passType = 'medium') {
+function calculateCatch(wr, db, qb, throwAccuracy, separation, passType = 'medium') {
   const wrTier = wr?.tier || 5;
   const dbTier = db?.tier || 5;
   const outcomes = PLAY_OUTCOMES.PASS;
@@ -213,7 +224,15 @@ function calculateCatch(wr, db, throwAccuracy, separation, passType = 'medium') 
   }
   
   // Not caught - check for interception
-  const intChance = outcomes.INT_BASE + (dbTier - wrTier) * outcomes.INT_COVERAGE_BONUS;
+  let intChance = outcomes.INT_BASE + (dbTier - wrTier) * outcomes.INT_COVERAGE_BONUS;
+  // QB stat-derived trait: riskControl (0-100). Higher reduces INTs.
+  const qbRcTrait = qb?.engine_traits?.riskControl;
+  const rcTrait = typeof qbRcTrait === 'number' ? qbRcTrait : Number(qbRcTrait);
+  if (Number.isFinite(rcTrait)) {
+    // Up to ~10% reduction at max, ~10% increase at min (bounded).
+    const mult = 1 - ((rcTrait - 50) / 50) * 0.10;
+    intChance *= Math.max(0.90, Math.min(1.10, mult));
+  }
   if (roll() < Math.max(0.01, Math.min(0.15, intChance))) {
     return { caught: false, intercepted: true, passDefended: false, yards: 0 };
   }

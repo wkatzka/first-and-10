@@ -15,6 +15,10 @@ const { simulateGame, buildRoster } = require('./game-engine/simulation');
 function cardToPlayer(card) {
   if (!card) return null;
   
+  const stats = (card.stats && typeof card.stats === 'object' && !Array.isArray(card.stats))
+    ? card.stats
+    : {};
+
   return {
     name: card.player_name,
     player: card.player_name,
@@ -23,7 +27,15 @@ function cardToPlayer(card) {
     position: card.position,
     tier: card.tier,
     composite_score: card.composite_score,
-    stats: card.stats || {},
+    // Keep full stat object (for UI/debug), but also spread known stat keys to top-level
+    // so the simulation can use season stats consistently.
+    stats,
+    ...stats,
+    // Engine-derived traits/percentiles (era-adjusted, 0-100)
+    engine_v: card.engine_v,
+    engine_era: card.engine_era,
+    engine_traits: card.engine_traits,
+    engine_percentiles: card.engine_percentiles,
   };
 }
 

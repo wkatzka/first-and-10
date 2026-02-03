@@ -39,7 +39,17 @@ const TIERS = {
 
 // Convert tier to a 0-1 scale for probability calculations
 function tierToRating(tier) {
-  return TIERS[tier]?.multiplier || 0.50;
+  const t = typeof tier === 'number' ? tier : Number(tier);
+  if (!Number.isFinite(t)) return 0.50;
+  // Support fractional tiers by interpolating adjacent multipliers.
+  const clamped = Math.max(1, Math.min(10, t));
+  const lo = Math.floor(clamped);
+  const hi = Math.ceil(clamped);
+  if (lo === hi) return TIERS[lo]?.multiplier || 0.50;
+  const a = TIERS[lo]?.multiplier ?? 0.50;
+  const b = TIERS[hi]?.multiplier ?? 0.50;
+  const u = clamped - lo;
+  return a + (b - a) * u;
 }
 
 // =============================================================================
