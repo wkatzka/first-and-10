@@ -18,7 +18,7 @@ const COLORS = {
 const pxPerYard = 18;
 const ENDZONE_DEPTH_YARDS = 10;
 const fieldCycleYards = 100;
-const fieldTotalYards = ENDZONE_DEPTH_YARDS + fieldCycleYards + ENDZONE_DEPTH_YARDS; // 120
+const fieldTotalYards = ENDZONE_DEPTH_YARDS + fieldCycleYards; // 110 (single endzone + field)
 const yardsPerTick = 5;
 const BG_DIM = 0.62;
 
@@ -28,7 +28,6 @@ function mod(n, m) {
 
 function yardLabel(yardInCycle) {
   if (yardInCycle === ENDZONE_DEPTH_YARDS / 2) return 'FIRST & 10';
-  if (yardInCycle === ENDZONE_DEPTH_YARDS + fieldCycleYards + ENDZONE_DEPTH_YARDS / 2) return 'FIRST & 10';
   if (yardInCycle < ENDZONE_DEPTH_YARDS || yardInCycle >= ENDZONE_DEPTH_YARDS + fieldCycleYards) return null;
   if (yardInCycle === ENDZONE_DEPTH_YARDS || yardInCycle === ENDZONE_DEPTH_YARDS + fieldCycleYards) return null;
   if (yardInCycle % yardsPerTick !== 0) return null;

@@ -10,7 +10,8 @@ const COLORS = {
 const pxPerYard = 18; // tune for density
 const ENDZONE_DEPTH_YARDS = 10; // 10 yards of endzone before 0 and after 100
 const fieldCycleYards = 100; // playing field only (0–100)
-const fieldTotalYards = ENDZONE_DEPTH_YARDS + fieldCycleYards + ENDZONE_DEPTH_YARDS; // 120: endzone(10) + field(100) + endzone(10)
+// Single-endzone loop: top endzone (10) + field (100) = 110 yards total
+const fieldTotalYards = ENDZONE_DEPTH_YARDS + fieldCycleYards; // 110
 const MAX_ARROW_YARDS = 12; // arrows don't extend more than this many yards upfield
 const loopMs = 54_000; // 54 second scroll loop (20% slower than 45s)
 const yardsPerTick = 5;
@@ -25,7 +26,7 @@ function mod(n, m) {
 }
 
 function yardLabel(yardInCycle) {
-  // positionInCycle 0..120: 0-10 endzone, 10=goal, 20-110 field, 110=goal, 110-120 endzone
+  // positionInCycle 0..110: 0-10 endzone, 10=goal, 10-110 field
   if (yardInCycle === ENDZONE_DEPTH_YARDS / 2) return "FIRST & 10";
   if (yardInCycle < ENDZONE_DEPTH_YARDS || yardInCycle >= ENDZONE_DEPTH_YARDS + fieldCycleYards) return null;
   if (yardInCycle === ENDZONE_DEPTH_YARDS || yardInCycle === ENDZONE_DEPTH_YARDS + fieldCycleYards) return null;
@@ -700,7 +701,8 @@ export default function PlayfieldBackground() {
       const paused = !!dbg.paused;
 
       const t = (now - startTimeRef.current) % loopMs;
-      const scrollPhase = ((20 * pxPerYard - h / 2) % fieldHeightPx + fieldHeightPx) % fieldHeightPx;
+      // Start aligned to the 0-yard line (goal line) rather than mid-field.
+      const scrollPhase = mod(ENDZONE_DEPTH_YARDS * pxPerYard, fieldHeightPx);
       const scrollPx = scrollPhase + SCROLL_DIR * (t / loopMs) * fieldHeightPx;
 
       drawField(w, h, scrollPx, now);
