@@ -17,9 +17,11 @@ const loopMs = 54_000; // 54 second scroll loop (20% slower than 45s)
 const yardsPerTick = 5;
 const BG_DIM = 0.62; // overall background dim (lower = dimmer)
 const SCROLL_DIR = -1; // -1 = scroll bottom->up (content moves up)
-const ENDZONE_CYCLE_MS = 3000; // dot trace + double pulse loop
-const ENDZONE_DOT_TRAVEL_MS = 2000; // dots trace outline then collide
-const ENDZONE_PULSE_MS = 500; // each of the two pulses
+const ENDZONE_DOT_TRAVEL_MS = 2000; // dots trace outline
+const ENDZONE_PULSE_OFF_MS = 180; // after trace: brief "off" pause
+const ENDZONE_FLASH_MS = 180; // flash cadence
+const ENDZONE_FLASH_COUNT = 4; // on/off/on/off after the off pause
+const ENDZONE_CYCLE_MS = ENDZONE_DOT_TRAVEL_MS + ENDZONE_PULSE_OFF_MS + ENDZONE_FLASH_COUNT * ENDZONE_FLASH_MS;
 
 function mod(n, m) {
   return ((n % m) + m) % m;
@@ -456,12 +458,19 @@ export default function PlayfieldBackground() {
     const drawEndzoneWithDots = (rectX, rectY, rectW, rectH, phase) => {
       const W = rectW;
       const H = rectH;
-      const pulsePhase = phase - ENDZONE_DOT_TRAVEL_MS;
-      const isPulsing = pulsePhase >= 0 && pulsePhase < 2 * ENDZONE_PULSE_MS;
-      const pulse1 = pulsePhase >= 0 && pulsePhase < ENDZONE_PULSE_MS;
-      const pulse2 = pulsePhase >= ENDZONE_PULSE_MS && pulsePhase < 2 * ENDZONE_PULSE_MS;
-      const pulseT = pulse1 ? pulsePhase / ENDZONE_PULSE_MS : pulse2 ? (pulsePhase - ENDZONE_PULSE_MS) / ENDZONE_PULSE_MS : 0;
-      const pulseGlow = isPulsing ? (Math.sin(pulseT * Math.PI) * 0.5 + 0.5) : 0;
+      const afterTrace = phase - ENDZONE_DOT_TRAVEL_MS;
+      let flashOn = false;
+      if (afterTrace >= 0) {
+        if (afterTrace < ENDZONE_PULSE_OFF_MS) {
+          flashOn = false; // explicit off-pulse
+        } else {
+          const p = afterTrace - ENDZONE_PULSE_OFF_MS;
+          if (p >= 0 && p < ENDZONE_FLASH_COUNT * ENDZONE_FLASH_MS) {
+            const idx = Math.floor(p / ENDZONE_FLASH_MS);
+            flashOn = idx % 2 === 0; // on, off, on, off
+          }
+        }
+      }
 
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
@@ -469,44 +478,56 @@ export default function PlayfieldBackground() {
       ctx.fillStyle = "rgba(143, 217, 255, 0.08)";
       ctx.fillRect(rectX, rectY, W, H);
 
+      // Permanent bright trail (match former max pulse brightness)
       ctx.strokeStyle = COLORS.icy;
       ctx.shadowColor = COLORS.icy;
-      if (isPulsing) {
-        ctx.shadowBlur = 12 + pulseGlow * 20;
-        ctx.lineWidth = 2 + pulseGlow * 3;
-        ctx.globalAlpha = (0.5 + pulseGlow * 0.4) * BG_DIM;
-      } else {
-        ctx.shadowBlur = 6;
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = 0.4 * BG_DIM;
-      }
+      ctx.shadowBlur = 32;
+      ctx.lineWidth = 5;
+      ctx.globalAlpha = 0.9 * BG_DIM;
       ctx.strokeRect(rectX, rectY, W, H);
+
+      // Post-trace flash sequence (off, then on/off/on/off)
+      if (afterTrace >= 0 && flashOn) {
+        ctx.save();
+        ctx.globalAlpha = 1.0 * BG_DIM;
+        ctx.shadowBlur = 48;
+        ctx.lineWidth = 7;
+        ctx.strokeRect(rectX, rectY, W, H);
+        ctx.restore();
+      }
 
       if (phase < ENDZONE_DOT_TRAVEL_MS) {
         const t = Math.min(1, phase / ENDZONE_DOT_TRAVEL_MS);
-        const t1 = Math.min(1, t * 2);
-        const t2 = t > 0.5 ? (t - 0.5) * 2 : 0;
-        const dotR = 6;
+        const dotCoreR = 3; // half size (was 6)
+        const dotGlowR = 10; // soft glow radius
         const dotPos = (localX, localY) => {
+          const cx = rectX + localX;
+          const cy = rectY + localY;
+          const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, dotGlowR);
+          g.addColorStop(0, "rgba(199,238,255,0.98)");
+          g.addColorStop(dotCoreR / dotGlowR, "rgba(143,217,255,0.78)");
+          g.addColorStop(1, "rgba(143,217,255,0)");
+          ctx.fillStyle = g;
           ctx.beginPath();
-          ctx.arc(rectX + localX, rectY + localY, dotR, 0, Math.PI * 2);
-          ctx.fillStyle = COLORS.icyBright;
-          ctx.shadowColor = COLORS.icy;
-          ctx.shadowBlur = 16;
+          ctx.arc(cx, cy, dotGlowR, 0, Math.PI * 2);
           ctx.fill();
         };
-        ctx.globalAlpha = 0.95 * BG_DIM;
-        if (t1 <= 1) {
-          dotPos(W / 2 - (W / 2) * t1, 0);
-          dotPos(W / 2 + (W / 2) * t1, 0);
-          dotPos(W / 2 - (W / 2) * t1, H);
-          dotPos(W / 2 + (W / 2) * t1, H);
+
+        ctx.globalAlpha = 1.0 * BG_DIM;
+        if (t <= 0.5) {
+          // Phase 1: from middle to corners along top and bottom edges
+          const s = t * 2;
+          dotPos(W / 2 - (W / 2) * s, 0);
+          dotPos(W / 2 + (W / 2) * s, 0);
+          dotPos(W / 2 - (W / 2) * s, H);
+          dotPos(W / 2 + (W / 2) * s, H);
         } else {
-          const s = t2;
-          dotPos(0, (H / 2) * s);
-          dotPos(W, (H / 2) * s);
-          dotPos(0, H - (H / 2) * s);
-          dotPos(W, H - (H / 2) * s);
+          // Phase 2: once at corners, travel down/up the vertical edges
+          const s = (t - 0.5) * 2;
+          dotPos(0, H * s);          // down left edge from top-left
+          dotPos(W, H * s);          // down right edge from top-right
+          dotPos(0, H * (1 - s));    // up left edge from bottom-left
+          dotPos(W, H * (1 - s));    // up right edge from bottom-right
         }
       }
 
