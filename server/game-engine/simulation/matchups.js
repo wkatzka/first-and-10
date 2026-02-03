@@ -127,18 +127,18 @@ function calculateThrow(qb, pressured, separation, passType = 'medium') {
   const qbRating = tierToRating(qbTier);
   const outcomes = PLAY_OUTCOMES.PASS;
   
-  // Base accuracy from QB rating (62.6% to 95%)
+  // Base accuracy from QB rating (63.4% to 98%)
   // Keep tier as the primary driver, with traits adding nuance.
-  let accuracy = 0.50 + (qbRating * 0.45);
+  let accuracy = 0.50 + (qbRating * 0.48);
 
   // QB stat-derived trait: accuracy (0-100). This is era-adjusted, so it adds
   // within-tier differentiation without breaking tier boundaries.
   const qbAccTrait = qb?.engine_traits?.accuracy;
   const accTrait = typeof qbAccTrait === 'number' ? qbAccTrait : Number(qbAccTrait);
   if (Number.isFinite(accTrait)) {
-    // Max +/- 2 percentage points around baseline (keeps within-tier differentiation
+    // Max +/- 1 percentage point around baseline (keeps within-tier differentiation
     // without allowing lower tiers to outplay higher tiers on average).
-    accuracy += ((accTrait - 50) / 50) * 0.02;
+    accuracy += ((accTrait - 50) / 50) * 0.002;
   }
   
   // Pressure penalty
@@ -229,9 +229,8 @@ function calculateCatch(wr, db, qb, throwAccuracy, separation, passType = 'mediu
   const qbRcTrait = qb?.engine_traits?.riskControl;
   const rcTrait = typeof qbRcTrait === 'number' ? qbRcTrait : Number(qbRcTrait);
   if (Number.isFinite(rcTrait)) {
-    // Up to ~10% reduction at max, ~10% increase at min (bounded).
-    const mult = 1 - ((rcTrait - 50) / 50) * 0.10;
-    intChance *= Math.max(0.90, Math.min(1.10, mult));
+    const mult = 1 - ((rcTrait - 50) / 50) * 0.01;
+    intChance *= Math.max(0.99, Math.min(1.01, mult));
   }
   if (roll() < Math.max(0.01, Math.min(0.15, intChance))) {
     return { caught: false, intercepted: true, passDefended: false, yards: 0 };

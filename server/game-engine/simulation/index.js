@@ -34,9 +34,11 @@ const {
 
 // Within-tier variance (0 = none). Keep this < 0.5 to ensure
 // worst of tier T stays above best of tier T-1.
-// Keep small so tier boundaries remain meaningful; most within-tier differentiation
-// should come from position traits applied directly to play probabilities.
-const WITHIN_TIER_MAX_OFFSET = 0.10;
+// Within-tier variance. This shifts a player's effective tier slightly based on
+// their stat-derived traits (era-adjusted). Tune this so worst of tier T remains
+// only modestly better than best of tier T-1 (target ~5% edge), while keeping
+// within-tier extremes meaningfully different.
+const WITHIN_TIER_MAX_OFFSET = 0.02;
 
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));

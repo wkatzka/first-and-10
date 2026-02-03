@@ -59,7 +59,7 @@ function mkRoster({ baseTier = 5, qbTier = baseTier, qbScore = 50, oppTier = bas
   };
 }
 
-function runMatchup({ label, makeHome, makeAway, games = 600 } = {}) {
+function runMatchup({ label, makeHome, makeAway, games = 5000 } = {}) {
   let homeWins = 0;
   let awayWins = 0;
   let ties = 0;
