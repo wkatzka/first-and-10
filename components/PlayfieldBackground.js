@@ -696,13 +696,6 @@ export default function PlayfieldBackground() {
       const w = window.innerWidth;
       const h = window.innerHeight;
 
-      // Debug options are only honored when explicitly enabled (so they don't
-      // accidentally persist across normal site navigation).
-      const dbgRaw = (window.__F10_BG_OPTS && typeof window.__F10_BG_OPTS === "object") ? window.__F10_BG_OPTS : {};
-      const dbg = dbgRaw && dbgRaw.enabled ? dbgRaw : {};
-      const hidePlays = !!dbg.hidePlays;
-      const paused = !!dbg.paused;
-
       const t = (now - startTimeRef.current) % loopMs;
       // Start aligned to the 0-yard line (goal line) rather than mid-field.
       const scrollPhase = mod(ENDZONE_DEPTH_YARDS * pxPerYard, fieldHeightPx);
@@ -710,38 +703,29 @@ export default function PlayfieldBackground() {
 
       drawField(w, h, scrollPx, now);
 
-      if (hidePlays) {
-        playsRef.current = [];
-      } else {
-        maybeSpawn(now, w, h);
+      maybeSpawn(now, w, h);
 
-        playsRef.current = playsRef.current.filter((p) => {
-          const life = p.oIn + p.drawDur + p.hold + p.fadeOut;
-          return now - p.t0 < life;
-        });
-        // draw plays twice (stacked) so they remain continuous across seam
-        for (const seamOffset of [0, fieldHeightPx]) {
-          const plays = playsRef.current;
-          for (const p of plays) {
-            // draw shifted copy
-            const shifted = {
-              ...p,
-              p0: { x: p.p0.x, y: p.p0.y + seamOffset },
-              p1: { x: p.p1.x, y: p.p1.y + seamOffset },
-              p2: { x: p.p2.x, y: p.p2.y + seamOffset },
-              p3: { x: p.p3.x, y: p.p3.y + seamOffset },
-              avoidX: { x: p.avoidX.x, y: p.avoidX.y + seamOffset },
-              startO: { x: p.startO.x, y: p.startO.y + seamOffset },
-              endO: { x: p.endO.x, y: p.endO.y + seamOffset },
-            };
-            drawPlay(shifted, now, scrollPx);
-          }
+      playsRef.current = playsRef.current.filter((p) => {
+        const life = p.oIn + p.drawDur + p.hold + p.fadeOut;
+        return now - p.t0 < life;
+      });
+      // draw plays twice (stacked) so they remain continuous across seam
+      for (const seamOffset of [0, fieldHeightPx]) {
+        const plays = playsRef.current;
+        for (const p of plays) {
+          // draw shifted copy
+          const shifted = {
+            ...p,
+            p0: { x: p.p0.x, y: p.p0.y + seamOffset },
+            p1: { x: p.p1.x, y: p.p1.y + seamOffset },
+            p2: { x: p.p2.x, y: p.p2.y + seamOffset },
+            p3: { x: p.p3.x, y: p.p3.y + seamOffset },
+            avoidX: { x: p.avoidX.x, y: p.avoidX.y + seamOffset },
+            startO: { x: p.startO.x, y: p.startO.y + seamOffset },
+            endO: { x: p.endO.x, y: p.endO.y + seamOffset },
+          };
+          drawPlay(shifted, now, scrollPx);
         }
-      }
-
-      if (paused) {
-        // Freeze on the current frame (used by /background-capture only).
-        return;
       }
 
       rafRef.current = requestAnimationFrame(frame);
