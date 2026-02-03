@@ -696,7 +696,10 @@ export default function PlayfieldBackground() {
       const w = window.innerWidth;
       const h = window.innerHeight;
 
-      const dbg = (window.__F10_BG_OPTS && typeof window.__F10_BG_OPTS === "object") ? window.__F10_BG_OPTS : {};
+      // Debug options are only honored when explicitly enabled (so they don't
+      // accidentally persist across normal site navigation).
+      const dbgRaw = (window.__F10_BG_OPTS && typeof window.__F10_BG_OPTS === "object") ? window.__F10_BG_OPTS : {};
+      const dbg = dbgRaw && dbgRaw.enabled ? dbgRaw : {};
       const hidePlays = !!dbg.hidePlays;
       const paused = !!dbg.paused;
 
@@ -736,12 +739,12 @@ export default function PlayfieldBackground() {
         }
       }
 
-      rafRef.current = requestAnimationFrame(frame);
       if (paused) {
-        // If paused, immediately cancel the queued next frame so the current image "freezes".
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
+        // Freeze on the current frame (used by /background-capture only).
+        return;
       }
+
+      rafRef.current = requestAnimationFrame(frame);
     };
 
     rafRef.current = requestAnimationFrame(frame);

@@ -31,6 +31,7 @@ export default function BackgroundCapture({ user, onLogout, unreadMessages }) {
     try {
       window.__F10_BG_OPTS = {
         ...(window.__F10_BG_OPTS || {}),
+        enabled: true,
         hidePlays: !!hidePlays,
         paused: false, // ensure it draws at least one more frame
       };
@@ -61,7 +62,7 @@ export default function BackgroundCapture({ user, onLogout, unreadMessages }) {
   };
 
   const unfreeze = async () => {
-    window.__F10_BG_OPTS = { ...(window.__F10_BG_OPTS || {}), paused: false };
+    window.__F10_BG_OPTS = { ...(window.__F10_BG_OPTS || {}), enabled: true, paused: false };
     // Kick the animation loop back on by forcing a resize event (effect has RAF running, but if paused it cancels; resize causes no restart)
     // Easiest: reload the page to restore normal behavior.
     router.reload();
