@@ -76,6 +76,39 @@ function norm(v) {
   return { x: v.x / d, y: v.y / d };
 }
 
+function drawOutlinedText(ctx, text, x, y, opts) {
+  const {
+    font,
+    fillStyle,
+    strokeStyle = "rgba(0,0,0,0.75)",
+    lineWidth = 10,
+    shadowColor,
+    shadowBlur = 12,
+    globalAlpha,
+  } = opts || {};
+
+  ctx.save();
+  if (typeof globalAlpha === "number") ctx.globalAlpha = globalAlpha;
+  if (font) ctx.font = font;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // Outline first (no glow) for crisp varsity edges
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = strokeStyle;
+  ctx.lineJoin = "round";
+  ctx.miterLimit = 2;
+  ctx.lineWidth = lineWidth;
+  ctx.strokeText(String(text), x, y);
+
+  // Fill with glow
+  if (shadowColor) ctx.shadowColor = shadowColor;
+  ctx.shadowBlur = shadowBlur;
+  if (fillStyle) ctx.fillStyle = fillStyle;
+  ctx.fillText(String(text), x, y);
+  ctx.restore();
+}
+
 // Build a simple “curve around X” cubic bezier
 function buildBezier(p0, p3, avoid) {
   const dx = p3.x - p0.x;
@@ -583,29 +616,43 @@ export default function PlayfieldBackground() {
             ctx.shadowColor = COLORS.icy;
             ctx.shadowBlur = 12;
             ctx.font = label === "FIRST & 10" ? "64px Graduate, CollegeBlock, system-ui, sans-serif" : "48px CollegeBlock, system-ui, sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
             if (label === "FIRST & 10") {
               // Endzone text stays horizontal (no rotation)
-              ctx.fillText(String(label), w / 2, yPx);
+              drawOutlinedText(ctx, label, w / 2, yPx, {
+                font: "64px Graduate, CollegeBlock, system-ui, sans-serif",
+                fillStyle: COLORS.icyBright,
+                shadowColor: COLORS.icy,
+                shadowBlur: 16,
+                strokeStyle: "rgba(0,0,0,0.72)",
+                lineWidth: 12,
+              });
             } else {
               // Yard numbers: rotate so they face into the field
               ctx.save();
               ctx.translate(40, yPx);
               ctx.rotate(-Math.PI / 2);
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
               ctx.fillText(String(label), 0, 0);
               ctx.restore();
               ctx.save();
               ctx.translate(w - 40, yPx);
               ctx.rotate(Math.PI / 2);
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
               ctx.fillText(String(label), 0, 0);
               ctx.restore();
             }
 
             if (yardInCycle === ENDZONE_DEPTH_YARDS + 50 && isPrimaryCycle) {
-              ctx.font = "92px Graduate, CollegeBlock, system-ui, sans-serif";
-              ctx.shadowBlur = 16;
-              ctx.fillText("F10", w / 2, yPx);
+              drawOutlinedText(ctx, "F10", w / 2, yPx, {
+                font: "92px Graduate, CollegeBlock, system-ui, sans-serif",
+                fillStyle: COLORS.icyBright,
+                shadowColor: COLORS.icy,
+                shadowBlur: 18,
+                strokeStyle: "rgba(0,0,0,0.72)",
+                lineWidth: 14,
+              });
             }
             ctx.restore();
           }
