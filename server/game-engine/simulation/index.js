@@ -38,7 +38,7 @@ const {
 // their stat-derived traits (era-adjusted). Tune this so worst of tier T remains
 // only modestly better than best of tier T-1 (target ~5% edge), while keeping
 // within-tier extremes meaningfully different.
-const WITHIN_TIER_MAX_OFFSET = 0.02;
+const WITHIN_TIER_MAX_OFFSET = 0.01;
 
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
