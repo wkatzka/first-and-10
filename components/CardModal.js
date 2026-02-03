@@ -242,13 +242,27 @@ export default function CardModal({ card, onClose }) {
               {/* Engine Impact */}
               {engineTraits && engineTraitList().length > 0 && (
                 <div className="mb-3 p-2 rounded-lg bg-white/5 border border-white/10">
-                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">
-                    Engine Impact
-                    {card.engine_era ? (
-                      <span className="ml-2 text-gray-600 normal-case tracking-normal">
-                        (vs {card.engine_era})
-                      </span>
-                    ) : null}
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="text-xs text-gray-500 uppercase tracking-wider">
+                      Engine Impact
+                      {card.engine_era ? (
+                        <span className="ml-2 text-gray-600 normal-case tracking-normal">
+                          (vs {card.engine_era})
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* Info button → rules */}
+                    <a
+                      href="/how-to-play#engine-impact"
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-bold text-white/80 hover:text-white transition-colors"
+                      style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
+                      aria-label="What do these bars mean?"
+                      title="What do these bars mean?"
+                    >
+                      i
+                    </a>
                   </div>
                   <div className="space-y-1.5">
                     {engineTraitList().slice(0, 4).map(({ key, value }) => (

@@ -96,7 +96,7 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
         </section>
 
         {/* Engine Impact Glossary */}
-        <section className="f10-panel p-6 mb-6">
+        <section id="engine-impact" className="f10-panel p-6 mb-6">
           <h2 className="text-xl f10-title mb-4" style={{ color: 'var(--nav-cyan)' }}>Engine Impact (What the Bars Mean)</h2>
           <p className="f10-subtitle text-sm mb-4">
             On the back of cards, <strong className="text-white">Engine Impact</strong> shows how that player grades
@@ -106,50 +106,50 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
             <div>
               <h3 className="text-white font-semibold mb-2">Quarterback (QB)</h3>
               <ul className="space-y-1 ml-4 text-gray-400">
-                <li>• <strong className="text-white">Accuracy</strong> — Higher completion quality; performs better under neutral conditions.</li>
-                <li>• <strong className="text-white">Risk Control</strong> — Protects the ball; reduces interceptions and drive-killers.</li>
-                <li>• <strong className="text-white">Mobility</strong> — Adds scramble upside when pressured; can turn sacks into gains.</li>
-                <li>• <strong className="text-white">Volume</strong> — More pass volume; benefits more from strong receivers in pass-heavy styles.</li>
+                <li>• <strong className="text-white">Accuracy</strong> — Impact: boosts on-target throws and completion success. Derived from: passing efficiency (yards/attempt proxy) versus era peers.</li>
+                <li>• <strong className="text-white">Risk Control</strong> — Impact: fewer drive-killers (INTs). Derived from: interception rate (lower INT/G = higher score), era-adjusted.</li>
+                <li>• <strong className="text-white">Mobility</strong> — Impact: more productive scrambles when pressured. Derived from: rushing yards per game versus era QBs.</li>
+                <li>• <strong className="text-white">Pass Volume</strong> — Impact: stronger in pass-heavy scripts and benefits more from elite WRs. Derived from: pass attempts per game versus era QBs.</li>
               </ul>
             </div>
 
             <div>
               <h3 className="text-white font-semibold mb-2">Wide Receiver / Tight End (WR / TE)</h3>
               <ul className="space-y-1 ml-4 text-gray-400">
-                <li>• <strong className="text-white">Hands</strong> — Reliability on targets; increases catch success.</li>
-                <li>• <strong className="text-white">Explosive</strong> — Big-play ability (yards per catch); creates chunk gains.</li>
-                <li>• <strong className="text-white">TD Threat</strong> — Scoring impact; higher chance to turn drives into touchdowns.</li>
+                <li>• <strong className="text-white">Hands</strong> — Impact: higher catch reliability. Derived from: reception volume per game (usage/reliability proxy) versus era peers.</li>
+                <li>• <strong className="text-white">Explosive</strong> — Impact: more chunk gains. Derived from: yards per catch versus era peers.</li>
+                <li>• <strong className="text-white">TD Threat</strong> — Impact: more red-zone/finish ability. Derived from: receiving TD rate versus era peers.</li>
               </ul>
             </div>
 
             <div>
               <h3 className="text-white font-semibold mb-2">Running Back (RB)</h3>
               <ul className="space-y-1 ml-4 text-gray-400">
-                <li>• <strong className="text-white">Power Run</strong> — Consistent rushing output; better into run-defense matchups.</li>
-                <li>• <strong className="text-white">Breakaway</strong> — Efficiency/big-run upside; higher chance of 15+ yard runs.</li>
-                <li>• <strong className="text-white">Receiving</strong> — Adds value in the pass game; helps when pass looks are strong.</li>
-                <li>• <strong className="text-white">Workhorse</strong> — Sustains the ground game; steadier production across drives.</li>
+                <li>• <strong className="text-white">Power Run</strong> — Impact: steadier rushing production. Derived from: rushing yards per game versus era RBs.</li>
+                <li>• <strong className="text-white">Breakaway</strong> — Impact: more long runs/chunk plays. Derived from: rushing efficiency (yards/attempt proxy) versus era RBs.</li>
+                <li>• <strong className="text-white">Receiving</strong> — Impact: more value on passing downs. Derived from: receiving yards per game versus era RBs.</li>
+                <li>• <strong className="text-white">Workhorse</strong> — Impact: sustains drives with consistent touches. Derived from: rushing attempts per game versus era RBs.</li>
               </ul>
             </div>
 
             <div>
               <h3 className="text-white font-semibold mb-2">Defense (DL / LB / DB)</h3>
               <ul className="space-y-1 ml-4 text-gray-400">
-                <li>• <strong className="text-white">Pressure</strong> (DL) — Disrupts QBs; more sacks/pressure leads to worse throws.</li>
-                <li>• <strong className="text-white">Run Stop</strong> (DL/LB) — Stuff runs; lowers rushing efficiency.</li>
-                <li>• <strong className="text-white">Coverage</strong> (LB/DB) — Wins routes; forces incompletions and tighter windows.</li>
-                <li>• <strong className="text-white">Ballhawk</strong> (DB) — Creates turnovers; higher interception likelihood.</li>
-                <li>• <strong className="text-white">Tackling</strong> (DB) — Limits extra yards and breaks fewer big plays.</li>
-                <li>• <strong className="text-white">Playmaking</strong> (LB) — Splash plays (turnovers/impact moments) from the middle level.</li>
+                <li>• <strong className="text-white">Pressure</strong> (DL) — Impact: disrupts QBs and forces worse throws. Derived from: disruption proxy (forced fumbles per game) versus era DL.</li>
+                <li>• <strong className="text-white">Run Stop</strong> (DL/LB) — Impact: lowers run efficiency. Derived from: tackles per game versus era defenders (run involvement proxy).</li>
+                <li>• <strong className="text-white">Coverage</strong> (LB/DB) — Impact: tighter windows and more incompletions. Derived from: passes defended per game versus era defenders.</li>
+                <li>• <strong className="text-white">Ballhawk</strong> (DB) — Impact: more INT chances. Derived from: interceptions per game versus era DB.</li>
+                <li>• <strong className="text-white">Tackling</strong> (DB) — Impact: fewer extra yards after contact. Derived from: tackles per game versus era DB.</li>
+                <li>• <strong className="text-white">Playmaking</strong> (LB) — Impact: splash moments/turnovers. Derived from: INT rate proxy versus era LBs.</li>
               </ul>
             </div>
 
             <div>
               <h3 className="text-white font-semibold mb-2">Kicker (K)</h3>
               <ul className="space-y-1 ml-4 text-gray-400">
-                <li>• <strong className="text-white">Accuracy</strong> — Converts more field goals overall.</li>
-                <li>• <strong className="text-white">Range</strong> — Better at longer attempts; more “clutch” makes from distance.</li>
-                <li>• <strong className="text-white">XP</strong> — Extra point reliability (small, but can matter in close games).</li>
+                <li>• <strong className="text-white">Accuracy</strong> — Impact: more FGs made. Derived from: field goal % versus era kickers.</li>
+                <li>• <strong className="text-white">Range</strong> — Impact: more makes from distance. Derived from: field goals made per game (volume proxy) versus era kickers.</li>
+                <li>• <strong className="text-white">XP</strong> — Impact: extra point reliability. Derived from: extra points made per game versus era kickers.</li>
               </ul>
             </div>
 
