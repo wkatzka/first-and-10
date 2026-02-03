@@ -27,7 +27,6 @@ function mod(n, m) {
 function yardLabel(yardInCycle) {
   // positionInCycle 0..120: 0-10 endzone, 10=goal, 20-110 field, 110=goal, 110-120 endzone
   if (yardInCycle === ENDZONE_DEPTH_YARDS / 2) return "FIRST & 10";
-  if (yardInCycle === ENDZONE_DEPTH_YARDS + fieldCycleYards + ENDZONE_DEPTH_YARDS / 2) return "FIRST & 10";
   if (yardInCycle < ENDZONE_DEPTH_YARDS || yardInCycle >= ENDZONE_DEPTH_YARDS + fieldCycleYards) return null;
   if (yardInCycle === ENDZONE_DEPTH_YARDS || yardInCycle === ENDZONE_DEPTH_YARDS + fieldCycleYards) return null;
   if (yardInCycle % yardsPerTick !== 0) return null; // skip 5-yard lines = your “skip a line”
@@ -535,7 +534,6 @@ export default function PlayfieldBackground() {
         const endzonePhase = (now % ENDZONE_CYCLE_MS);
         const endzoneH = ENDZONE_DEPTH_YARDS * pxPerYard;
         drawEndzoneWithDots(0, 0 - baseScroll, w, endzoneH, endzonePhase);
-        drawEndzoneWithDots(0, (ENDZONE_DEPTH_YARDS + fieldCycleYards) * pxPerYard - baseScroll, w, endzoneH, endzonePhase);
 
         // yard lines + hashes + numbers
         ctx.save();

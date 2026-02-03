@@ -104,7 +104,6 @@ export default function FieldStill({ user, onLogout, unreadMessages }) {
     ctx.shadowBlur = 10;
     ctx.lineWidth = 2;
     ctx.strokeRect(0, 0, w, endzoneH);
-    ctx.strokeRect(0, h - endzoneH, w, endzoneH);
     ctx.restore();
 
     // Yard lines + numbers
