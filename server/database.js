@@ -444,6 +444,21 @@ function getUserByUsername(username) {
   };
 }
 
+function getUserByUsernameCaseInsensitive(username) {
+  const db = getDb();
+  const needle = String(username || '').toLowerCase();
+  const user = db.users.find(u => String(u.username || '').toLowerCase() === needle);
+  if (!user) return null;
+  return {
+    id: user.id,
+    username: user.username,
+    team_name: user.team_name,
+    packs_opened: user.packs_opened,
+    max_packs: user.max_packs,
+    created_at: user.created_at,
+  };
+}
+
 function getAllUsers() {
   const db = getDb();
   return db.users.map(u => ({
@@ -799,6 +814,7 @@ const raw = {
   authenticateUser,
   getUser,
   getUserByUsername,
+  getUserByUsernameCaseInsensitive,
   getAllUsers,
   incrementPacksOpened,
   updateTeamName,
