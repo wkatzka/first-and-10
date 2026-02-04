@@ -53,11 +53,9 @@ function shuffleCopy(arr) {
  * @param {number} userId - User ID to check
  * @returns {boolean} - True if roster is complete
  */
-function hasFullRoster(userId) {
-  const full = db.getFullRoster(userId);
+async function hasFullRoster(userId) {
+  const full = await db.getFullRoster(userId);
   if (!full || !full.roster || !full.cards) return false;
-
-  // Roster record has slot keys (qb_card_id, etc.); cards must exist for each
   for (const key of REQUIRED_SLOT_KEYS) {
     const cardId = full.roster[key];
     const card = full.cards[key];
@@ -66,13 +64,10 @@ function hasFullRoster(userId) {
   return true;
 }
 
-/**
- * Filter users to only include those with full rosters
- * @param {array} users - Array of user objects
- * @returns {array} - Filtered users with full rosters
- */
-function getEligibleUsers(users) {
-  return users.filter(user => hasFullRoster(user.id));
+async function getEligibleUsers(users) {
+  const list = Array.isArray(users) ? users : [];
+  const results = await Promise.all(list.map(async (user) => ({ user, ok: await hasFullRoster(user.id) })));
+  return results.filter(r => r.ok).map(r => r.user);
 }
 
 /**
@@ -174,9 +169,9 @@ function generateMatchups(userIds) {
  * Compute standings from completed games (regular season only).
  * Returns array of { userId, wins, losses, user } sorted by wins desc, then losses asc.
  */
-function getStandings(schedule) {
+async function getStandings(schedule) {
   const wins = new Map();
-  const users = db.getAllUsers();
+  const users = await db.getAllUsers();
   const userMap = {};
   for (const u of users) userMap[u.id] = u;
 
@@ -409,12 +404,10 @@ function generateSuperBowlSunday(sundayDateStr, schedule) {
 /**
  * Initialize or update the season schedule
  */
-function initializeSchedule(forceReset = false) {
+async function initializeSchedule(forceReset = false) {
   let schedule = loadSchedule();
-  const allUsers = db.getAllUsers();
-  
-  // Only include users with full rosters
-  const eligibleUsers = getEligibleUsers(allUsers);
+  const allUsers = await db.getAllUsers();
+  const eligibleUsers = await getEligibleUsers(allUsers);
   
   console.log(`Scheduling: ${eligibleUsers.length}/${allUsers.length} users have full rosters`);
   
@@ -486,7 +479,7 @@ function getGamesToRun() {
 /**
  * Run a scheduled game
  */
-function runScheduledGame(game) {
+async function runScheduledGame(game) {
   const schedule = loadSchedule();
   
   // Find the game in schedule
@@ -505,8 +498,8 @@ function runScheduledGame(game) {
   }
   
   // Get rosters
-  const homeRoster = db.getFullRoster(game.homeUserId);
-  const awayRoster = db.getFullRoster(game.awayUserId);
+  const homeRoster = await db.getFullRoster(game.homeUserId);
+  const awayRoster = await db.getFullRoster(game.awayUserId);
   
   // Check if rosters are set
   if (!homeRoster || Object.keys(homeRoster.cards).length === 0) {
@@ -519,8 +512,7 @@ function runScheduledGame(game) {
     };
     saveSchedule(schedule);
     
-    // Record forfeit in DB
-    db.recordGame(game.homeUserId, game.awayUserId, 0, 1, game.awayUserId, []);
+    await db.recordGame(game.homeUserId, game.awayUserId, 0, 1, game.awayUserId, []);
     return schedule.games[gameIndex].result;
   }
   
@@ -534,7 +526,7 @@ function runScheduledGame(game) {
     };
     saveSchedule(schedule);
     
-    db.recordGame(game.homeUserId, game.awayUserId, 1, 0, game.homeUserId, []);
+    await db.recordGame(game.homeUserId, game.awayUserId, 1, 0, game.homeUserId, []);
     return schedule.games[gameIndex].result;
   }
   
@@ -558,8 +550,7 @@ function runScheduledGame(game) {
       winner: winnerId === game.homeUserId ? 'home' : winnerId === game.awayUserId ? 'away' : 'tie',
     };
     
-    // Record in database
-    const gameId = db.recordGame(
+    const gameId = await db.recordGame(
       game.homeUserId,
       game.awayUserId,
       result.homeScore,
@@ -586,24 +577,21 @@ function runScheduledGame(game) {
 /**
  * Run all pending games for the current time slot
  */
-function runPendingGames() {
+async function runPendingGames() {
   const games = getGamesToRun();
   const results = [];
-  
   console.log(`Running ${games.length} pending games...`);
-  
   for (const game of games) {
-    const result = runScheduledGame(game);
+    const result = await runScheduledGame(game);
     results.push({ gameId: game.id, result });
   }
-  
   return results;
 }
 
 /**
  * Daily: add next regular week, or playoff Saturday, or Super Bowl Sunday
  */
-function checkAndGenerateNextWeek() {
+async function checkAndGenerateNextWeek() {
   const schedule = loadSchedule();
   const now = getESTDate();
   const today = formatDate(now);
@@ -619,8 +607,8 @@ function checkAndGenerateNextWeek() {
 
   if (daysRemaining > 2) return;
 
-  const allUsers = db.getAllUsers();
-  const eligibleUsers = getEligibleUsers(allUsers);
+  const allUsers = await db.getAllUsers();
+  const eligibleUsers = await getEligibleUsers(allUsers);
   if (eligibleUsers.length < 2) return;
 
   // Next calendar day after lastDate
@@ -641,8 +629,7 @@ function checkAndGenerateNextWeek() {
       saveSchedule(schedule);
       console.log(`Generated regular season week ${schedule.currentWeek} (Mon–Fri)`);
     } else {
-      // End of regular season: next day is Saturday → playoffs
-      const standings = getStandings(schedule);
+      const standings = await getStandings(schedule);
       if (standings.length < 4) {
         console.log('Not enough teams (4) for playoffs; skipping playoff week');
         return;
@@ -671,9 +658,9 @@ function checkAndGenerateNextWeek() {
 /**
  * Get full schedule with user details
  */
-function getScheduleWithDetails() {
+async function getScheduleWithDetails() {
   const schedule = loadSchedule();
-  const users = db.getAllUsers();
+  const users = await db.getAllUsers();
   const userMap = {};
   
   for (const user of users) {
@@ -695,9 +682,7 @@ function getScheduleWithDetails() {
  */
 function startScheduler() {
   console.log('Game scheduler started');
-  
-  // Initialize schedule if needed
-  initializeSchedule();
+  initializeSchedule().catch(err => console.error('Schedule init error:', err));
   
   // Check every minute for games to run
   setInterval(() => {
@@ -707,17 +692,13 @@ function startScheduler() {
     // Run games at the top of each game hour (7 PM, 9 PM)
     if (minute === 0 && GAME_TIMES.includes(now.getHours())) {
       console.log(`Game time! Running scheduled games at ${now.getHours()}:00 EST`);
-      runPendingGames();
+      runPendingGames().catch(err => console.error('runPendingGames error:', err));
     }
-    
-    // Check for next week schedule generation at midnight
     if (now.getHours() === 0 && minute === 0) {
-      checkAndGenerateNextWeek();
+      checkAndGenerateNextWeek().catch(err => console.error('checkAndGenerateNextWeek error:', err));
     }
-  }, 60000); // Check every minute
-  
-  // Also run any pending games on startup
-  runPendingGames();
+  }, 60000);
+  runPendingGames().catch(err => console.error('runPendingGames error:', err));
 }
 
 module.exports = {
