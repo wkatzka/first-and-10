@@ -20,7 +20,17 @@ const pressConference = require('./press-conference');
 const messages = require('./messages');
 const imageRegenQueue = require('./image-regen-queue');
 const { buildEngineForCard } = require('./game-engine/player-traits');
-const packFulfillment = require('./pack-fulfillment');
+let packFulfillment;
+try {
+  packFulfillment = require('./pack-fulfillment');
+} catch (e) {
+  packFulfillment = {
+    start: () => Promise.resolve(),
+    getPackStatus: () => Promise.resolve(null),
+    getPacksForWallet: () => Promise.resolve([]),
+    pollForEvents: () => Promise.resolve(),
+  };
+}
 
 const app = express();
 const PORT = process.env.PORT || 4000;
