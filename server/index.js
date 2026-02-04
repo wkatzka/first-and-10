@@ -1102,6 +1102,24 @@ app.get('/api/roster', authMiddleware, async (req, res) => {
   res.json(fullRoster);
 });
 
+// Tier cap for roster building (sum of all 11 starter tiers)
+const TIER_CAP = 75;
+
+// Helper to calculate tier sum from roster cards
+function calculateRosterTierSum(cards) {
+  if (!cards) return 0;
+  const slotIds = [
+    'qb_card_id', 'rb_card_id', 'wr1_card_id', 'wr2_card_id', 'te_card_id',
+    'ol_card_id', 'dl_card_id', 'lb_card_id', 'db1_card_id', 'db2_card_id', 'k_card_id'
+  ];
+  let sum = 0;
+  for (const slotId of slotIds) {
+    const card = cards[slotId];
+    if (card?.tier) sum += card.tier;
+  }
+  return sum;
+}
+
 // Update roster slot
 app.put('/api/roster', authMiddleware, async (req, res) => {
   try {
@@ -1111,14 +1129,32 @@ app.put('/api/roster', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Invalid slots data' });
     }
     
-    // Verify all cards belong to user
+    // Get current roster to check tier cap
+    const currentRoster = await db.getFullRoster(req.user.id);
+    const currentCards = currentRoster?.cards || {};
+    
+    // Build a preview of the new roster to check tier cap
+    const newCards = { ...currentCards };
     for (const [slot, cardId] of Object.entries(slots)) {
       if (cardId !== null) {
         const card = await db.getCard(cardId);
         if (!card || card.user_id !== req.user.id) {
           return res.status(400).json({ error: `Card ${cardId} not found or not owned` });
         }
+        newCards[slot] = card;
+      } else {
+        newCards[slot] = null;
       }
+    }
+    
+    // Check tier cap
+    const newTierSum = calculateRosterTierSum(newCards);
+    if (newTierSum > TIER_CAP) {
+      return res.status(400).json({ 
+        error: `Roster exceeds tier cap of ${TIER_CAP}. Current: ${newTierSum}`,
+        tierSum: newTierSum,
+        tierCap: TIER_CAP
+      });
     }
     
     await db.updateRoster(req.user.id, slots);
@@ -1130,6 +1166,7 @@ app.put('/api/roster', authMiddleware, async (req, res) => {
 });
 
 // Auto-fill roster with best available cards (optional strategy: balanced | pass_heavy | run_heavy)
+// Respects tier cap by picking best cards that fit under the cap
 app.post('/api/roster/auto-fill', authMiddleware, async (req, res) => {
   try {
     const cards = await db.getUserCards(req.user.id);
@@ -1139,7 +1176,7 @@ app.post('/api/roster/auto-fill', authMiddleware, async (req, res) => {
     const defenseStrategy = ['coverage_shell', 'run_stuff', 'base_defense'].includes(req.body?.defenseStrategy)
       ? req.body.defenseStrategy
       : 'base_defense';
-    const slots = gameEngine.autoFillRoster(cards, strategy, defenseStrategy);
+    const slots = gameEngine.autoFillRoster(cards, strategy, defenseStrategy, TIER_CAP);
     await db.updateRoster(req.user.id, slots);
     const fullRoster = await db.getFullRoster(req.user.id);
     res.json(fullRoster);

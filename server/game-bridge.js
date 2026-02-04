@@ -181,12 +181,13 @@ function defaultScore(card) {
 }
 
 /**
- * Auto-fill roster slots with best available cards.
+ * Auto-fill roster slots with best available cards, respecting tier cap.
  * @param {Array} cards - user's cards
  * @param {string} strategy - 'balanced' | 'pass_heavy' | 'run_heavy' (offense)
  * @param {string} defenseStrategy - 'coverage_shell' | 'run_stuff' | 'base_defense' (defense slot bias)
+ * @param {number} tierCap - Maximum total tier sum allowed (default: no cap)
  */
-function autoFillRoster(cards, strategy = 'balanced', defenseStrategy = 'base_defense') {
+function autoFillRoster(cards, strategy = 'balanced', defenseStrategy = 'base_defense', tierCap = null) {
   const slots = {};
   const byPosition = {};
   for (const card of cards) {
@@ -301,6 +302,75 @@ function autoFillRoster(cards, strategy = 'balanced', defenseStrategy = 'base_de
 
   const ks = (byPosition['K'] || []).sort(defaultSort);
   if (ks[0]) slots.k_card_id = ks[0].id;
+
+  // If tier cap is set, check and adjust if over
+  if (tierCap !== null) {
+    // Build a map of slot -> card for easier manipulation
+    const cardMap = {};
+    for (const card of cards) {
+      cardMap[card.id] = card;
+    }
+    
+    // Calculate current tier sum
+    const getTierSum = () => {
+      let sum = 0;
+      for (const cardId of Object.values(slots)) {
+        if (cardId && cardMap[cardId]) sum += cardMap[cardId].tier;
+      }
+      return sum;
+    };
+    
+    // If over cap, downgrade positions starting from least impactful
+    // Priority order for downgrading: K, DB2, DB1, LB, DL, OL, TE, WR2, WR1, RB, QB (QB last)
+    const downgradeOrder = ['k_card_id', 'db2_card_id', 'db1_card_id', 'lb_card_id', 'dl_card_id', 
+                            'ol_card_id', 'te_card_id', 'wr2_card_id', 'wr1_card_id', 'rb_card_id', 'qb_card_id'];
+    
+    const slotToPosition = {
+      qb_card_id: 'QB', rb_card_id: 'RB', wr1_card_id: 'WR', wr2_card_id: 'WR',
+      te_card_id: 'TE', ol_card_id: 'OL', dl_card_id: 'DL', lb_card_id: 'LB',
+      db1_card_id: 'DB', db2_card_id: 'DB', k_card_id: 'K'
+    };
+    
+    while (getTierSum() > tierCap) {
+      let downgraded = false;
+      
+      for (const slotId of downgradeOrder) {
+        const currentCardId = slots[slotId];
+        if (!currentCardId) continue;
+        
+        const currentCard = cardMap[currentCardId];
+        if (!currentCard) continue;
+        
+        const position = slotToPosition[slotId];
+        const positionCards = byPosition[position] || [];
+        
+        // Find a lower tier card for this position
+        const lowerTierCards = positionCards
+          .filter(c => c.tier < currentCard.tier && c.id !== currentCardId)
+          .sort((a, b) => b.tier - a.tier); // Highest tier among lower options
+        
+        // For slots with 2 cards (WR, DB), check if the card is already used in the other slot
+        const usedCardIds = new Set(Object.values(slots));
+        const available = lowerTierCards.filter(c => !usedCardIds.has(c.id) || c.id === currentCardId);
+        
+        if (available.length > 0) {
+          slots[slotId] = available[0].id;
+          downgraded = true;
+          break;
+        }
+      }
+      
+      if (!downgraded) {
+        // Can't downgrade any further, remove the lowest priority card entirely
+        for (const slotId of downgradeOrder) {
+          if (slots[slotId]) {
+            delete slots[slotId];
+            break;
+          }
+        }
+      }
+    }
+  }
 
   return slots;
 }

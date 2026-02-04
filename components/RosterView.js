@@ -3,6 +3,9 @@ import { useRouter } from 'next/router';
 import ChalkPlayDiagram from './ChalkPlayDiagram';
 import { getRoster, getCards, updateRoster } from '../lib/api';
 
+// Tier cap for roster building
+const TIER_CAP = 75;
+
 // 11-player roster: QB, RB, WR×2, TE, OL, DL, LB, DB×2, K
 const ROSTER_LAYOUT = [
   { section: 'Offense', slots: [
@@ -24,6 +27,21 @@ const ROSTER_LAYOUT = [
   ]},
 ];
 
+// Calculate tier sum from roster
+function calculateTierSum(rosterCards) {
+  if (!rosterCards) return 0;
+  let sum = 0;
+  const slotIds = [
+    'qb_card_id', 'rb_card_id', 'wr1_card_id', 'wr2_card_id', 'te_card_id',
+    'ol_card_id', 'dl_card_id', 'lb_card_id', 'db1_card_id', 'db2_card_id', 'k_card_id'
+  ];
+  for (const slotId of slotIds) {
+    const card = rosterCards[slotId];
+    if (card?.tier) sum += card.tier;
+  }
+  return sum;
+}
+
 export default function RosterView({ user, diagramSide = 'offense', refreshTrigger = 0 }) {
   const router = useRouter();
   const [roster, setRoster] = useState(null);
@@ -31,6 +49,7 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [showCapWarning, setShowCapWarning] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -59,6 +78,19 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
 
   const handleCardSelect = async (card) => {
     if (!selectedSlot) return;
+
+    // Check if this would exceed the tier cap
+    if (card) {
+      const currentCards = roster?.cards || {};
+      const currentCardInSlot = currentCards[selectedSlot.id];
+      const currentTierInSlot = currentCardInSlot?.tier || 0;
+      const newTierSum = calculateTierSum(currentCards) - currentTierInSlot + card.tier;
+      
+      if (newTierSum > TIER_CAP) {
+        setShowCapWarning(true);
+        return;
+      }
+    }
 
     setSaving(true);
     try {
@@ -90,16 +122,74 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
 
   if (!user) return null;
 
+  // Calculate current tier sum
+  const tierSum = calculateTierSum(roster?.cards);
+  const isOverCap = tierSum > TIER_CAP;
+
   return (
     <div className="space-y-6 relative">
       {loading ? (
         <div className="text-center text-gray-400 py-12">Loading roster...</div>
       ) : (
-        <ChalkPlayDiagram
-          mode={diagramSide}
-          roster={roster}
-          onSlotClick={handleSlotClick}
-        />
+        <>
+          <ChalkPlayDiagram
+            mode={diagramSide}
+            roster={roster}
+            onSlotClick={handleSlotClick}
+          />
+          
+          {/* Tier Cap Display - positioned in endzone corners */}
+          <div 
+            className="fixed left-4 top-4 z-10 px-3 py-1.5 rounded-lg text-sm font-bold"
+            style={{ 
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              border: '1px solid rgba(255,255,255,0.2)',
+            }}
+          >
+            <span className="text-gray-400">Tier Cap = </span>
+            <span className="text-white">{TIER_CAP}</span>
+          </div>
+          
+          <div 
+            className="fixed right-4 top-4 z-10 px-3 py-1.5 rounded-lg text-sm font-bold"
+            style={{ 
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              border: `1px solid ${isOverCap ? 'rgba(239,68,68,0.5)' : 'rgba(34,197,94,0.5)'}`,
+            }}
+          >
+            <span className="text-gray-400">Tier Sum = </span>
+            <span style={{ color: isOverCap ? '#ef4444' : '#22c55e' }}>{tierSum}</span>
+          </div>
+        </>
+      )}
+
+      {/* Tier Cap Warning Modal */}
+      {showCapWarning && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowCapWarning(false)}
+        >
+          <div
+            className="f10-panel p-6 max-w-sm w-full text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-4xl mb-4">⚠️</div>
+            <h3 className="text-xl font-bold text-white mb-3">Over Tier Cap</h3>
+            <p className="text-gray-300 mb-4">
+              Adding this player would put your roster over the tier cap of {TIER_CAP}.
+            </p>
+            <p className="text-gray-400 text-sm mb-6">
+              Remove or swap players with lower tiers to make room.
+            </p>
+            <button
+              onClick={() => setShowCapWarning(false)}
+              className="w-full py-3 rounded-xl font-bold text-white transition-colors"
+              style={{ backgroundColor: '#3b82f6' }}
+            >
+              Got it
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Card Selection Modal */}
