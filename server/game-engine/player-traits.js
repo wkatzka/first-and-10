@@ -330,37 +330,55 @@ function buildEngineForCard({ player_name, player, season, position, tier, compo
   }
 
   // Map percentiles -> UI-friendly engine traits (0-100)
+  // New 3-element system designed for clear matchup comparisons
   const traits = {};
   if (pos === 'QB') {
-    traits.accuracy = clamp100(pctPack.efficiency ?? 50);
-    traits.volume = clamp100(pctPack.volume ?? 50);
-    traits.mobility = clamp100(pctPack.mobility ?? 50);
-    traits.riskControl = clamp100(100 - (pctPack.risk ?? 50)); // lower INTs => higher control
-  } else if (pos === 'WR' || pos === 'TE') {
-    traits.hands = clamp100(pctPack.volume ?? 50);
-    traits.explosive = clamp100(pctPack.explosiveness ?? (pctPack.yards ?? 50));
-    traits.tdThreat = clamp100(pctPack.td ?? 50);
+    // Arm: passing accuracy/efficiency, Legs: mobility/scramble, Poise: decision-making under pressure
+    traits.arm = clamp100(pctPack.efficiency ?? 50);
+    traits.legs = clamp100(pctPack.mobility ?? 50);
+    traits.poise = clamp100(100 - (pctPack.risk ?? 50)); // lower INTs => higher poise
+  } else if (pos === 'WR') {
+    // Separation: gets open, Catch: hands/contested catches, YAC: yards after catch
+    traits.separation = clamp100(pctPack.volume ?? 50); // high volume = gets open often
+    traits.catch = clamp100(pctPack.td ?? (pctPack.volume ?? 50)); // TD threat implies catching ability
+    traits.yac = clamp100(pctPack.explosiveness ?? (pctPack.yards ?? 50)); // yards/catch = YAC potential
+  } else if (pos === 'TE') {
+    // Catch: receiving ability, Block: run/pass protection, YAC: after catch
+    traits.catch = clamp100(pctPack.volume ?? 50);
+    traits.block = clamp100(pctPack.td ?? 50); // TEs who score often are used in blocking schemes too
+    traits.yac = clamp100(pctPack.explosiveness ?? (pctPack.yards ?? 50));
   } else if (pos === 'RB') {
-    traits.powerRun = clamp100(pctPack.rush ?? 50);
-    traits.workhorse = clamp100(pctPack.workload ?? 50);
-    traits.breakaway = clamp100(pctPack.efficiency ?? 50);
-    traits.receiving = clamp100(pctPack.receiving ?? 50);
+    // Power: between tackles, Speed: outside/breakaway, Hands: receiving ability
+    traits.power = clamp100(pctPack.rush ?? (pctPack.workload ?? 50));
+    traits.speed = clamp100(pctPack.efficiency ?? 50); // yards/carry = breakaway ability
+    traits.hands = clamp100(pctPack.receiving ?? 50);
+  } else if (pos === 'OL') {
+    // PassPro: protects QB, RunBlock: opens holes, Anchor: vs power rush
+    // OL stats are sparse, derive from tier/composite
+    const base = pctPack.overall ?? (tier != null ? clamp100((Number(tier) / 11) * 100) : 50);
+    traits.passPro = clamp100(base + (Math.random() * 10 - 5)); // slight variation
+    traits.runBlock = clamp100(base + (Math.random() * 10 - 5));
+    traits.anchor = clamp100(base + (Math.random() * 10 - 5));
   } else if (pos === 'DL') {
-    traits.pressure = clamp100(pctPack.disruption ?? 50);
-    traits.runStop = clamp100(pctPack.tackling ?? 50);
-    traits.coverage = clamp100(pctPack.coverage ?? 50);
+    // PassRush: pressure QB, RunStuff: stop RB, Contain: edge control
+    traits.passRush = clamp100(pctPack.disruption ?? 50);
+    traits.runStuff = clamp100(pctPack.tackling ?? 50);
+    traits.contain = clamp100(pctPack.coverage ?? 50);
   } else if (pos === 'LB') {
-    traits.runStop = clamp100(pctPack.tackling ?? 50);
-    traits.coverage = clamp100(pctPack.coverage ?? 50);
-    traits.playmaking = clamp100(pctPack.ballhawk ?? 50);
+    // RunD: tackle RB, PassD: coverage, Blitz: rushing QB
+    traits.runD = clamp100(pctPack.tackling ?? 50);
+    traits.passD = clamp100(pctPack.coverage ?? 50);
+    traits.blitz = clamp100(pctPack.ballhawk ?? (pctPack.disruption ?? 50)); // playmaking/disruption
   } else if (pos === 'DB') {
+    // Coverage: shadow WR, BallSkills: INTs, Tackling: limit YAC
     traits.coverage = clamp100(pctPack.coverage ?? 50);
-    traits.ballhawk = clamp100(pctPack.ballhawk ?? 50);
+    traits.ballSkills = clamp100(pctPack.ballhawk ?? 50);
     traits.tackling = clamp100(pctPack.tackling ?? 50);
   } else if (pos === 'K') {
+    // Accuracy: FG %, Range: distance, Clutch: pressure kicks
     traits.accuracy = clamp100(pctPack.fgPct ?? 50);
     traits.range = clamp100(pctPack.fgMade ?? 50);
-    traits.extraPoints = clamp100(pctPack.xpMade ?? 50);
+    traits.clutch = clamp100(pctPack.xpMade ?? 50); // XP consistency as clutch proxy
   }
 
   return {

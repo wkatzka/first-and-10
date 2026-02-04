@@ -78,41 +78,96 @@ export default function CardModal({ card, onClose }) {
       .map(k => ({ key: k, value: Math.round(Number(engineTraits[k])) }));
 
     // Order matters (show the “most strategic” first)
-    if (pos === 'QB') return pickKeys(['accuracy', 'riskControl', 'mobility', 'volume']);
-    if (pos === 'WR' || pos === 'TE') return pickKeys(['hands', 'explosive', 'tdThreat']);
-    if (pos === 'RB') return pickKeys(['powerRun', 'breakaway', 'receiving', 'workhorse']);
-    if (pos === 'DL') return pickKeys(['pressure', 'runStop', 'coverage']);
-    if (pos === 'LB') return pickKeys(['runStop', 'coverage', 'playmaking']);
-    if (pos === 'DB') return pickKeys(['coverage', 'ballhawk', 'tackling']);
-    if (pos === 'K') return pickKeys(['accuracy', 'range', 'extraPoints']);
+    if (pos === 'QB') return pickKeys(['arm', 'legs', 'poise']);
+    if (pos === 'WR') return pickKeys(['separation', 'catch', 'yac']);
+    if (pos === 'TE') return pickKeys(['catch', 'block', 'yac']);
+    if (pos === 'RB') return pickKeys(['power', 'speed', 'hands']);
+    if (pos === 'OL') return pickKeys(['passPro', 'runBlock', 'anchor']);
+    if (pos === 'DL') return pickKeys(['passRush', 'runStuff', 'contain']);
+    if (pos === 'LB') return pickKeys(['runD', 'passD', 'blitz']);
+    if (pos === 'DB') return pickKeys(['coverage', 'ballSkills', 'tackling']);
+    if (pos === 'K') return pickKeys(['accuracy', 'range', 'clutch']);
     return pickKeys(Object.keys(engineTraits));
   };
 
   const traitLabel = (k) => {
-    // Position-specific label tweaks for clarity
-    if (card?.position === 'QB' && k === 'volume') return 'Pass Volume';
     const map = {
-      accuracy: 'Accuracy',
-      riskControl: 'Risk Control',
-      mobility: 'Mobility',
-      volume: 'Volume',
+      // QB
+      arm: 'Arm',
+      legs: 'Legs', 
+      poise: 'Poise',
+      // WR
+      separation: 'Separation',
+      catch: 'Catch',
+      yac: 'YAC',
+      // TE
+      block: 'Block',
+      // RB
+      power: 'Power',
+      speed: 'Speed',
       hands: 'Hands',
-      explosive: 'Explosive',
-      tdThreat: 'TD Threat',
-      powerRun: 'Power Run',
-      breakaway: 'Breakaway',
-      receiving: 'Receiving',
-      workhorse: 'Workhorse',
-      pressure: 'Pressure',
-      runStop: 'Run Stop',
+      // OL
+      passPro: 'Pass Pro',
+      runBlock: 'Run Block',
+      anchor: 'Anchor',
+      // DL
+      passRush: 'Pass Rush',
+      runStuff: 'Run Stuff',
+      contain: 'Contain',
+      // LB
+      runD: 'Run D',
+      passD: 'Pass D',
+      blitz: 'Blitz',
+      // DB
       coverage: 'Coverage',
-      playmaking: 'Playmaking',
-      ballhawk: 'Ballhawk',
+      ballSkills: 'Ball Skills',
       tackling: 'Tackling',
+      // K
+      accuracy: 'Accuracy',
       range: 'Range',
-      extraPoints: 'XP',
+      clutch: 'Clutch',
     };
     return map[k] || k;
+  };
+
+  const traitExplanation = (k) => {
+    const explanations = {
+      // QB
+      arm: 'Accuracy & deep ball',
+      legs: 'Mobility & scramble',
+      poise: 'Decisions under pressure',
+      // WR
+      separation: 'Gets open vs coverage',
+      catch: 'Contested catch ability',
+      yac: 'Yards after catch',
+      // TE
+      block: 'Blocking for run/pass',
+      // RB
+      power: 'Between the tackles',
+      speed: 'Outside runs & breakaway',
+      hands: 'Receiving out of backfield',
+      // OL
+      passPro: 'Protects QB from rush',
+      runBlock: 'Opens holes for RB',
+      anchor: 'Holds vs power moves',
+      // DL
+      passRush: 'Pressure on QB',
+      runStuff: 'Stops RB at line',
+      contain: 'Controls the edge',
+      // LB
+      runD: 'Tackles RB in box',
+      passD: 'Covers TE/RB',
+      blitz: 'Rushing the QB',
+      // DB
+      coverage: 'Shadows WR routes',
+      ballSkills: 'Intercepts passes',
+      tackling: 'Limits YAC',
+      // K
+      accuracy: 'FG percentage',
+      range: 'Distance capability',
+      clutch: 'Pressure kicks',
+    };
+    return explanations[k] || '';
   };
   
   return (
@@ -241,57 +296,52 @@ export default function CardModal({ card, onClose }) {
                 </p>
               </div>
 
-              {/* Engine Impact */}
+              {/* Player Traits - 3 elements with explanations */}
               {engineTraits && engineTraitList().length > 0 && (
                 <div className="mb-3 p-2 rounded-lg bg-white/5 border border-white/10">
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <div className="text-xs text-gray-500 uppercase tracking-wider">
-                      Engine Impact
-                      {card.engine_era ? (
-                        <span className="ml-2 text-gray-600 normal-case tracking-normal">
-                          (vs {card.engine_era})
-                        </span>
-                      ) : null}
+                      Player Attributes
                     </div>
 
                     {/* Info button → rules */}
                     <a
-                      href="/how-to-play#engine-impact"
+                      href="/how-to-play#matchups"
                       onClick={(e) => e.stopPropagation()}
                       className="w-6 h-6 rounded-full flex items-center justify-center text-[12px] font-bold text-white/80 hover:text-white transition-colors"
                       style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}
-                      aria-label="What do these bars mean?"
-                      title="What do these bars mean?"
+                      aria-label="How matchups work"
+                      title="How matchups work"
                     >
-                      i
+                      ?
                     </a>
                   </div>
-                  <div className="space-y-1.5">
-                    {engineTraitList().slice(0, 4).map(({ key, value }) => (
-                      <div key={key} className="flex items-center gap-2">
-                        <div className="w-24 text-[11px] text-gray-300">
-                          {traitLabel(key)}
+                  <div className="space-y-2">
+                    {engineTraitList().slice(0, 3).map(({ key, value }) => (
+                      <div key={key}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 text-[11px] font-semibold text-white">
+                            {traitLabel(key)}
+                          </div>
+                          <div className="flex-1 h-2.5 rounded bg-white/10 overflow-hidden">
+                            <div
+                              className="h-full rounded"
+                              style={{
+                                width: `${Math.max(3, Math.min(100, value))}%`,
+                                background: `linear-gradient(90deg, ${tierColor} 0%, ${posColor} 100%)`,
+                              }}
+                            />
+                          </div>
+                          <div className="w-8 text-right text-[11px] font-bold" style={{ color: tierColor }}>
+                            {value}
+                          </div>
                         </div>
-                        <div className="flex-1 h-2 rounded bg-white/10 overflow-hidden">
-                          <div
-                            className="h-full rounded"
-                            style={{
-                              width: `${Math.max(3, Math.min(100, value))}%`,
-                              background: `linear-gradient(90deg, ${tierColor} 0%, ${posColor} 100%)`,
-                            }}
-                          />
-                        </div>
-                        <div className="w-10 text-right text-[11px] font-bold" style={{ color: tierColor }}>
-                          {value}
+                        <div className="text-[10px] text-gray-500 ml-0 mt-0.5">
+                          {traitExplanation(key)}
                         </div>
                       </div>
                     ))}
                   </div>
-                  {card.engine_inferred && Object.keys(card.engine_inferred).length > 0 && (
-                    <div className="mt-2 text-[11px] text-gray-500">
-                      Some traits are estimated from era peers.
-                    </div>
-                  )}
                 </div>
               )}
               

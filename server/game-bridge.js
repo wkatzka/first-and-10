@@ -203,20 +203,20 @@ function autoFillRoster(cards, strategy = 'balanced', defenseStrategy = 'base_de
 
   const defaultSort = (a, b) => (defaultScore(b) - defaultScore(a));
 
-  // QB
+  // QB - arm (accuracy), legs (mobility), poise (decisions)
   const qbs = byPosition['QB'] || [];
   if (qbs.length) {
     if (strategy === 'pass_heavy') {
       qbs.sort((a, b) => {
-        const scoreA = (trait(a, 'accuracy') + trait(a, 'volume')) / 2;
-        const scoreB = (trait(b, 'accuracy') + trait(b, 'volume')) / 2;
+        const scoreA = (trait(a, 'arm') + trait(a, 'poise')) / 2;
+        const scoreB = (trait(b, 'arm') + trait(b, 'poise')) / 2;
         if (scoreB !== scoreA) return scoreB - scoreA;
         return defaultSort(a, b);
       });
     } else if (strategy === 'run_heavy') {
       qbs.sort((a, b) => {
-        const scoreA = trait(a, 'mobility');
-        const scoreB = trait(b, 'mobility');
+        const scoreA = trait(a, 'legs');
+        const scoreB = trait(b, 'legs');
         if (scoreB !== scoreA) return scoreB - scoreA;
         return defaultSort(a, b);
       });
@@ -226,13 +226,13 @@ function autoFillRoster(cards, strategy = 'balanced', defenseStrategy = 'base_de
     slots.qb_card_id = qbs[0].id;
   }
 
-  // RB
+  // RB - power (between tackles), speed (outside/breakaway), hands (receiving)
   const rbs = byPosition['RB'] || [];
   if (rbs.length) {
     if (strategy === 'run_heavy') {
       rbs.sort((a, b) => {
-        const scoreA = (trait(a, 'powerRun') + trait(a, 'breakaway') + trait(a, 'workhorse')) / 3;
-        const scoreB = (trait(b, 'powerRun') + trait(b, 'breakaway') + trait(b, 'workhorse')) / 3;
+        const scoreA = (trait(a, 'power') + trait(a, 'speed')) / 2;
+        const scoreB = (trait(b, 'power') + trait(b, 'speed')) / 2;
         if (scoreB !== scoreA) return scoreB - scoreA;
         return defaultSort(a, b);
       });
@@ -242,13 +242,13 @@ function autoFillRoster(cards, strategy = 'balanced', defenseStrategy = 'base_de
     slots.rb_card_id = rbs[0].id;
   }
 
-  // WRs – pass_heavy favors receiving traits
+  // WRs - separation (gets open), catch (contested), yac (yards after catch)
   const wrs = byPosition['WR'] || [];
   if (wrs.length) {
     if (strategy === 'pass_heavy') {
       wrs.sort((a, b) => {
-        const scoreA = (trait(a, 'hands') + trait(a, 'explosive') + trait(a, 'tdThreat')) / 3;
-        const scoreB = (trait(b, 'hands') + trait(b, 'explosive') + trait(b, 'tdThreat')) / 3;
+        const scoreA = (trait(a, 'separation') + trait(a, 'catch') + trait(a, 'yac')) / 3;
+        const scoreB = (trait(b, 'separation') + trait(b, 'catch') + trait(b, 'yac')) / 3;
         if (scoreB !== scoreA) return scoreB - scoreA;
         return defaultSort(a, b);
       });
@@ -259,13 +259,21 @@ function autoFillRoster(cards, strategy = 'balanced', defenseStrategy = 'base_de
     if (wrs[1]) slots.wr2_card_id = wrs[1].id;
   }
 
-  // TE
+  // TE - catch (receiving), block (protection), yac (after catch)
   const tes = byPosition['TE'] || [];
   if (tes.length) {
     if (strategy === 'pass_heavy') {
       tes.sort((a, b) => {
-        const scoreA = (trait(a, 'hands') + trait(a, 'explosive') + trait(a, 'tdThreat')) / 3;
-        const scoreB = (trait(b, 'hands') + trait(b, 'explosive') + trait(b, 'tdThreat')) / 3;
+        const scoreA = (trait(a, 'catch') + trait(a, 'yac')) / 2;
+        const scoreB = (trait(b, 'catch') + trait(b, 'yac')) / 2;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return defaultSort(a, b);
+      });
+    } else if (strategy === 'run_heavy') {
+      // For run heavy, prioritize blocking TEs
+      tes.sort((a, b) => {
+        const scoreA = trait(a, 'block');
+        const scoreB = trait(b, 'block');
         if (scoreB !== scoreA) return scoreB - scoreA;
         return defaultSort(a, b);
       });

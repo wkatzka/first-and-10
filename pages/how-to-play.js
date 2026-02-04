@@ -103,67 +103,124 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
           </div>
         </section>
 
-        {/* Engine Impact Glossary */}
-        <section id="engine-impact" className="f10-panel p-6 mb-6">
-          <h2 className="text-xl f10-title mb-4" style={{ color: 'var(--nav-cyan)' }}>Engine Impact (What the Bars Mean)</h2>
+        {/* Player Attributes & Matchups */}
+        <section id="matchups" className="f10-panel p-6 mb-6">
+          <h2 className="text-xl f10-title mb-4" style={{ color: 'var(--nav-cyan)' }}>Player Attributes & Matchups</h2>
           <p className="f10-subtitle text-sm mb-4">
-            On the back of cards, <strong className="text-white">Engine Impact</strong> shows how that player grades
-            versus other players from the same era and position (0–100). Higher is better.
+            Every player has <strong className="text-white">3 key attributes</strong> (0–100) that determine how they perform.
+            Compare your players attributes against opponents to make strategic roster decisions.
           </p>
+          
+          {/* How to Read Matchups */}
+          <div className="p-3 rounded-xl mb-4" style={{ background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.18)' }}>
+            <div className="font-semibold text-white mb-2">How Matchups Work</div>
+            <p className="text-sm text-gray-300">
+              When your offense faces their defense, compare the relevant attributes:
+            </p>
+            <ul className="text-sm text-gray-400 mt-2 space-y-1">
+              <li>• <span className="text-blue-400">Your WR Separation</span> vs <span className="text-orange-400">Their DB Coverage</span> — Who wins routes?</li>
+              <li>• <span className="text-green-400">Your RB Power</span> vs <span className="text-pink-400">Their LB Run D</span> — Can you run up the middle?</li>
+              <li>• <span className="text-red-400">Your QB Arm</span> vs <span className="text-purple-400">Their DB Ball Skills</span> — Risk of interceptions?</li>
+            </ul>
+          </div>
+
           <div className="space-y-4 text-gray-300 text-sm">
             <div>
-              <h3 className="text-white font-semibold mb-2">Quarterback (QB)</h3>
-              <ul className="space-y-1 ml-4 text-gray-400">
-                <li>• <strong className="text-white">Accuracy</strong> — Impact: boosts on-target throws and completion success. Derived from: passing efficiency (yards/attempt proxy) versus era peers.</li>
-                <li>• <strong className="text-white">Risk Control</strong> — Impact: fewer drive-killers (INTs). Derived from: interception rate (lower INT/G = higher score), era-adjusted.</li>
-                <li>• <strong className="text-white">Mobility</strong> — Impact: more productive scrambles when pressured. Derived from: rushing yards per game versus era QBs.</li>
-                <li>• <strong className="text-white">Pass Volume</strong> — Impact: stronger in pass-heavy scripts and benefits more from elite WRs. Derived from: pass attempts per game versus era QBs.</li>
-              </ul>
+              <h3 className="text-white font-semibold mb-2">Offense</h3>
+              <div className="space-y-3 ml-2">
+                <div>
+                  <div className="text-cyan-400 font-medium">QB — Quarterback</div>
+                  <ul className="text-gray-400 text-xs space-y-0.5 mt-1">
+                    <li><strong className="text-white">Arm</strong> — Accuracy & deep ball. Countered by DB Coverage.</li>
+                    <li><strong className="text-white">Legs</strong> — Mobility & scramble. Countered by DL Contain.</li>
+                    <li><strong className="text-white">Poise</strong> — Decisions under pressure. Reduces INT risk vs Ball Skills.</li>
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-cyan-400 font-medium">RB — Running Back</div>
+                  <ul className="text-gray-400 text-xs space-y-0.5 mt-1">
+                    <li><strong className="text-white">Power</strong> — Between the tackles. Countered by LB Run D.</li>
+                    <li><strong className="text-white">Speed</strong> — Outside runs & breakaway. Countered by DL Contain.</li>
+                    <li><strong className="text-white">Hands</strong> — Receiving ability. Countered by LB Pass D.</li>
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-cyan-400 font-medium">WR — Wide Receiver</div>
+                  <ul className="text-gray-400 text-xs space-y-0.5 mt-1">
+                    <li><strong className="text-white">Separation</strong> — Gets open vs coverage. Countered by DB Coverage.</li>
+                    <li><strong className="text-white">Catch</strong> — Contested catch ability. Countered by DB Ball Skills.</li>
+                    <li><strong className="text-white">YAC</strong> — Yards after catch. Countered by DB Tackling.</li>
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-cyan-400 font-medium">TE — Tight End</div>
+                  <ul className="text-gray-400 text-xs space-y-0.5 mt-1">
+                    <li><strong className="text-white">Catch</strong> — Receiving ability. Countered by LB Pass D.</li>
+                    <li><strong className="text-white">Block</strong> — Run/pass protection. Helps RB Power & QB Poise.</li>
+                    <li><strong className="text-white">YAC</strong> — After catch yards. Countered by LB Run D.</li>
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-cyan-400 font-medium">OL — Offensive Line</div>
+                  <ul className="text-gray-400 text-xs space-y-0.5 mt-1">
+                    <li><strong className="text-white">Pass Pro</strong> — Protects QB from rush. Countered by DL Pass Rush.</li>
+                    <li><strong className="text-white">Run Block</strong> — Opens holes for RB. Countered by DL Run Stuff.</li>
+                    <li><strong className="text-white">Anchor</strong> — Holds vs power moves. Countered by DL Pass Rush.</li>
+                  </ul>
+                </div>
+              </div>
             </div>
 
             <div>
-              <h3 className="text-white font-semibold mb-2">Wide Receiver / Tight End (WR / TE)</h3>
-              <ul className="space-y-1 ml-4 text-gray-400">
-                <li>• <strong className="text-white">Hands</strong> — Impact: higher catch reliability. Derived from: reception volume per game (usage/reliability proxy) versus era peers.</li>
-                <li>• <strong className="text-white">Explosive</strong> — Impact: more chunk gains. Derived from: yards per catch versus era peers.</li>
-                <li>• <strong className="text-white">TD Threat</strong> — Impact: more red-zone/finish ability. Derived from: receiving TD rate versus era peers.</li>
-              </ul>
+              <h3 className="text-white font-semibold mb-2">Defense</h3>
+              <div className="space-y-3 ml-2">
+                <div>
+                  <div className="text-orange-400 font-medium">DL — Defensive Line</div>
+                  <ul className="text-gray-400 text-xs space-y-0.5 mt-1">
+                    <li><strong className="text-white">Pass Rush</strong> — Pressure on QB. Counters OL Pass Pro & Anchor.</li>
+                    <li><strong className="text-white">Run Stuff</strong> — Stops RB at line. Counters OL Run Block.</li>
+                    <li><strong className="text-white">Contain</strong> — Controls the edge. Counters QB Legs & RB Speed.</li>
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-orange-400 font-medium">LB — Linebacker</div>
+                  <ul className="text-gray-400 text-xs space-y-0.5 mt-1">
+                    <li><strong className="text-white">Run D</strong> — Tackles RB in box. Counters RB Power & TE YAC.</li>
+                    <li><strong className="text-white">Pass D</strong> — Covers TE/RB. Counters TE Catch & RB Hands.</li>
+                    <li><strong className="text-white">Blitz</strong> — Rushing the QB. Adds pressure, counters OL.</li>
+                  </ul>
+                </div>
+                <div>
+                  <div className="text-orange-400 font-medium">DB — Defensive Back</div>
+                  <ul className="text-gray-400 text-xs space-y-0.5 mt-1">
+                    <li><strong className="text-white">Coverage</strong> — Shadows WR routes. Counters WR Separation & QB Arm.</li>
+                    <li><strong className="text-white">Ball Skills</strong> — Intercepts passes. Counters WR Catch & risky throws.</li>
+                    <li><strong className="text-white">Tackling</strong> — Limits YAC. Counters WR YAC after catch.</li>
+                  </ul>
+                </div>
+              </div>
             </div>
 
             <div>
-              <h3 className="text-white font-semibold mb-2">Running Back (RB)</h3>
-              <ul className="space-y-1 ml-4 text-gray-400">
-                <li>• <strong className="text-white">Power Run</strong> — Impact: steadier rushing production. Derived from: rushing yards per game versus era RBs.</li>
-                <li>• <strong className="text-white">Breakaway</strong> — Impact: more long runs/chunk plays. Derived from: rushing efficiency (yards/attempt proxy) versus era RBs.</li>
-                <li>• <strong className="text-white">Receiving</strong> — Impact: more value on passing downs. Derived from: receiving yards per game versus era RBs.</li>
-                <li>• <strong className="text-white">Workhorse</strong> — Impact: sustains drives with consistent touches. Derived from: rushing attempts per game versus era RBs.</li>
-              </ul>
+              <h3 className="text-white font-semibold mb-2">Special Teams</h3>
+              <div className="ml-2">
+                <div className="text-yellow-400 font-medium">K — Kicker</div>
+                <ul className="text-gray-400 text-xs space-y-0.5 mt-1">
+                  <li><strong className="text-white">Accuracy</strong> — FG percentage. Higher = more made kicks.</li>
+                  <li><strong className="text-white">Range</strong> — Distance capability. Enables long FG attempts.</li>
+                  <li><strong className="text-white">Clutch</strong> — Pressure kicks. Matters in close games.</li>
+                </ul>
+              </div>
             </div>
 
-            <div>
-              <h3 className="text-white font-semibold mb-2">Defense (DL / LB / DB)</h3>
-              <ul className="space-y-1 ml-4 text-gray-400">
-                <li>• <strong className="text-white">Pressure</strong> (DL) — Impact: disrupts QBs and forces worse throws. Derived from: disruption proxy (forced fumbles per game) versus era DL.</li>
-                <li>• <strong className="text-white">Run Stop</strong> (DL/LB) — Impact: lowers run efficiency. Derived from: tackles per game versus era defenders (run involvement proxy).</li>
-                <li>• <strong className="text-white">Coverage</strong> (LB/DB) — Impact: tighter windows and more incompletions. Derived from: passes defended per game versus era defenders.</li>
-                <li>• <strong className="text-white">Ballhawk</strong> (DB) — Impact: more INT chances. Derived from: interceptions per game versus era DB.</li>
-                <li>• <strong className="text-white">Tackling</strong> (DB) — Impact: fewer extra yards after contact. Derived from: tackles per game versus era DB.</li>
-                <li>• <strong className="text-white">Playmaking</strong> (LB) — Impact: splash moments/turnovers. Derived from: INT rate proxy versus era LBs.</li>
+            {/* Strategy Connection */}
+            <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+              <div className="font-semibold text-white mb-2">Strategy Tips</div>
+              <ul className="text-gray-400 text-xs space-y-1">
+                <li>🎯 <strong className="text-white">Pass Heavy:</strong> Prioritize QB Arm, WR Separation, OL Pass Pro</li>
+                <li>🏃 <strong className="text-white">Run Heavy:</strong> Prioritize RB Power/Speed, OL Run Block, TE Block</li>
+                <li>⚖️ <strong className="text-white">Balanced:</strong> Look for versatile players with even attributes</li>
               </ul>
-            </div>
-
-            <div>
-              <h3 className="text-white font-semibold mb-2">Kicker (K)</h3>
-              <ul className="space-y-1 ml-4 text-gray-400">
-                <li>• <strong className="text-white">Accuracy</strong> — Impact: more FGs made. Derived from: field goal % versus era kickers.</li>
-                <li>• <strong className="text-white">Range</strong> — Impact: more makes from distance. Derived from: field goals made per game (volume proxy) versus era kickers.</li>
-                <li>• <strong className="text-white">XP</strong> — Impact: extra point reliability. Derived from: extra points made per game versus era kickers.</li>
-              </ul>
-            </div>
-
-            <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-gray-400">
-              <strong className="text-white">Note:</strong> When a specific historical stat is missing, the engine estimates
-              that trait using the player’s other available stats versus era peers (so strong “partial” stat profiles can still rate strong).
             </div>
           </div>
         </section>
