@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import ChalkPlayDiagram from './ChalkPlayDiagram';
+import CardModal from './CardModal';
 import { getRoster, getCards, updateRoster } from '../lib/api';
 
 // Tier caps for roster building (separate for offense and defense)
@@ -59,6 +60,8 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
   const [saving, setSaving] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [showCapWarning, setShowCapWarning] = useState(false);
+  const [tappedSlot, setTappedSlot] = useState(null); // For the View/Swap popup
+  const [viewingCard, setViewingCard] = useState(null); // For full card modal
 
   useEffect(() => {
     if (!user) return;
@@ -82,7 +85,23 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
   };
 
   const handleSlotClick = (slot) => {
-    setSelectedSlot(slot);
+    // Show action popup (View Card / Swap)
+    setTappedSlot(slot);
+  };
+
+  const handleViewCard = () => {
+    if (!tappedSlot) return;
+    const card = roster?.cards?.[tappedSlot.id];
+    if (card) {
+      setViewingCard(card);
+    }
+    setTappedSlot(null);
+  };
+
+  const handleSwap = () => {
+    if (!tappedSlot) return;
+    setSelectedSlot(tappedSlot);
+    setTappedSlot(null);
   };
 
   const handleCardSelect = async (card) => {
@@ -223,6 +242,75 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
             </button>
           </div>
         </div>
+      )}
+
+      {/* Slot Action Popup (View Card / Swap) */}
+      {tappedSlot && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50"
+          onClick={() => setTappedSlot(null)}
+        >
+          <div
+            className="f10-panel p-5 max-w-xs w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Show card info if there's a card in the slot */}
+            {roster?.cards?.[tappedSlot.id] ? (
+              <>
+                <div className="text-center mb-4">
+                  <div className="text-gray-400 text-sm">{tappedSlot.label}</div>
+                  <div className="text-white font-bold text-lg">
+                    {roster.cards[tappedSlot.id].player_name || roster.cards[tappedSlot.id].player}
+                  </div>
+                  <div className="text-sm" style={{ color: roster.cards[tappedSlot.id].tier >= 9 ? '#EAB308' : roster.cards[tappedSlot.id].tier >= 7 ? '#A855F7' : '#3B82F6' }}>
+                    Tier {roster.cards[tappedSlot.id].tier}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <button
+                    onClick={handleViewCard}
+                    className="w-full py-3 rounded-xl font-semibold text-white transition-all active:scale-95"
+                    style={{ background: 'rgba(59,130,246,0.2)', border: '1px solid rgba(59,130,246,0.4)' }}
+                  >
+                    👁️ View Card
+                  </button>
+                  <button
+                    onClick={handleSwap}
+                    className="w-full py-3 rounded-xl font-semibold text-white transition-all active:scale-95"
+                    style={{ background: 'rgba(168,85,247,0.2)', border: '1px solid rgba(168,85,247,0.4)' }}
+                  >
+                    🔄 Swap Player
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-center mb-4">
+                  <div className="text-gray-400 text-sm">Empty Slot</div>
+                  <div className="text-white font-bold text-lg">{tappedSlot.label}</div>
+                </div>
+                <button
+                  onClick={handleSwap}
+                  className="w-full py-3 rounded-xl font-semibold text-white transition-all active:scale-95"
+                  style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid rgba(34,197,94,0.4)' }}
+                >
+                  ➕ Add Player
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => setTappedSlot(null)}
+              className="w-full mt-3 py-2 text-gray-400 hover:text-white transition-colors text-sm"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Full Card View Modal */}
+      {viewingCard && (
+        <CardModal card={viewingCard} onClose={() => setViewingCard(null)} />
       )}
 
       {/* Card Selection Modal */}
