@@ -73,11 +73,34 @@ export default function CardModal({ card, onClose }) {
     if (!engineTraits) return [];
     const pos = card.position;
 
-    const pickKeys = (keys) => keys
-      .filter(k => engineTraits[k] != null && Number.isFinite(Number(engineTraits[k])))
-      .map(k => ({ key: k, value: Math.round(Number(engineTraits[k])) }));
+    // Map old trait names to new trait names for backward compatibility
+    const oldToNew = {
+      accuracy: 'arm', mobility: 'legs', riskControl: 'poise', volume: 'arm',
+      hands: 'separation', explosive: 'yac', tdThreat: 'catch',
+      powerRun: 'power', breakaway: 'speed', receiving: 'hands', workhorse: 'power',
+      pressure: 'passRush', runStop: 'runStuff',
+      playmaking: 'blitz',
+      ballhawk: 'ballSkills',
+      extraPoints: 'clutch',
+    };
 
-    // Order matters (show the “most strategic” first)
+    // Get value for a trait, checking new name first, then old names
+    const getTraitValue = (newName) => {
+      if (engineTraits[newName] != null) return engineTraits[newName];
+      for (const [oldName, mappedNew] of Object.entries(oldToNew)) {
+        if (mappedNew === newName && engineTraits[oldName] != null) {
+          return engineTraits[oldName];
+        }
+      }
+      return null;
+    };
+
+    const pickKeys = (keys) => keys
+      .map(k => ({ key: k, value: getTraitValue(k) }))
+      .filter(({ value }) => value != null && Number.isFinite(Number(value)))
+      .map(({ key, value }) => ({ key, value: Math.round(Number(value)) }));
+
+    // New 3-element system per position
     if (pos === 'QB') return pickKeys(['arm', 'legs', 'poise']);
     if (pos === 'WR') return pickKeys(['separation', 'catch', 'yac']);
     if (pos === 'TE') return pickKeys(['catch', 'block', 'yac']);
