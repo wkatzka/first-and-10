@@ -1791,23 +1791,28 @@ app.post('/api/admin/grant-single-card-pack', adminAuth, async (req, res) => {
   }
 });
 
-// Admin: Grant one Hall of Fame (tier 11) card to a user
+// Admin: Grant one Hall of Fame (tier 11) card to a user (optional: position e.g. 'WR')
 app.post('/api/admin/grant-hof-card', adminAuth, async (req, res) => {
   try {
-    const { username } = req.body;
+    const { username, position } = req.body;
     if (!username) return res.status(400).json({ error: 'username required' });
     const user = await db.getUserByUsernameCaseInsensitive(username);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     let hofPlayer = null;
-    for (let attempt = 0; attempt < 50; attempt++) {
-      const p = await packs.pickRandomPlayerFromTier(11);
-      if (p && (p.tier === 11 || p.isHOF) && (await mintingLedger.isCardMinted(p)) === false) {
-        hofPlayer = p;
-        break;
+    if (position) {
+      hofPlayer = await packs.pickRandomPlayerFromTierAndPosition(11, position);
+    }
+    if (!hofPlayer) {
+      for (let attempt = 0; attempt < 50; attempt++) {
+        const p = await packs.pickRandomPlayerFromTier(11);
+        if (p && (p.tier === 11 || p.isHOF) && (await mintingLedger.isCardMinted(p)) === false) {
+          hofPlayer = p;
+          break;
+        }
       }
     }
-    if (!hofPlayer) return res.status(500).json({ error: 'No unminted Hall of Fame player available' });
+    if (!hofPlayer) return res.status(500).json({ error: position ? `No unminted HOF ${position} available` : 'No unminted Hall of Fame player available' });
 
     await mintingLedger.mintCard(hofPlayer, user.id);
     const mintedCard = { ...hofPlayer, player_name: hofPlayer.player || hofPlayer.player_name };

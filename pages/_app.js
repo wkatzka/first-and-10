@@ -6,7 +6,8 @@ import { getMe, setToken, getActiveConferences, getUnreadCount } from '../lib/ap
 import PressConference, { PressConferenceBadge } from '../components/PressConference';
 import PlayfieldBackground from '../components/PlayfieldBackground';
 import StaticFieldBackground from '../components/StaticFieldBackground';
-import { isLive } from '../lib/env';
+import { isLive, cryptoShopEnabled } from '../lib/env';
+import { WalletProvider } from '../lib/Web3AuthContext';
 
 const graduate = Graduate({
   weight: '400',
@@ -126,7 +127,7 @@ export default function App({ Component, pageProps }) {
     );
   }
   
-  return (
+  const content = (
     <>
       {/* Preload font used by canvas background */}
       <span
@@ -164,4 +165,6 @@ export default function App({ Component, pageProps }) {
       )}
     </>
   );
+
+  return cryptoShopEnabled ? <WalletProvider>{content}</WalletProvider> : content;
 }

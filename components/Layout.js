@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import { cryptoShopEnabled } from '../lib/env';
 
 export default function Layout({ children, user, onLogout, unreadMessages = 0 }) {
   const router = useRouter();
@@ -7,6 +8,7 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
   const NAV = {
     team: { color: '#00e5ff' },
     packs: { color: '#ff0080' },
+    shop: { color: '#f59e0b' },
     league: { color: '#a855f7' },
     schedule: { color: '#ffe600' },
     rules: { color: '#00ff7f' },
@@ -40,25 +42,24 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
         <path d="M4 24 Q16 6 28 24" stroke={stroke} strokeWidth="2.5" fill="none" strokeDasharray="4 3" strokeLinecap="round" />
       </svg>
     ),
+    shop: (stroke) => (
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M6 12 L8 26 L24 26 L26 12 M6 12 L16 6 L26 12" stroke={stroke} strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
   };
 
-  // Desktop navigation items
-  const navItems = [
+  const baseNavItems = [
     { href: '/team', label: 'My Team', variant: 'team' },
     { href: '/cards', label: 'Cards', variant: 'packs' },
+    ...(cryptoShopEnabled ? [{ href: '/shop', label: 'Shop', variant: 'shop' }] : []),
     { href: '/league', label: 'League', variant: 'league', badge: unreadMessages },
     { href: '/schedule', label: 'Schedule', variant: 'schedule' },
     { href: '/how-to-play', label: 'Rules', variant: 'rules' },
   ];
-  
-  // Mobile bottom nav: Cards & League left, My Team center, Schedule & Rules right
-  const mobileNavItems = [
-    { href: '/cards', label: 'Cards', variant: 'packs' },
-    { href: '/league', label: 'League', variant: 'league', badge: unreadMessages },
-    { href: '/team', label: 'My Team', variant: 'team' },
-    { href: '/schedule', label: 'Schedule', variant: 'schedule' },
-    { href: '/how-to-play', label: 'Rules', variant: 'rules' },
-  ];
+
+  const navItems = baseNavItems;
+  const mobileNavItems = baseNavItems;
   
   return (
     <div className="f10-app-shell pb-20 md:pb-0">

@@ -235,6 +235,27 @@ function pickRandomPlayerFromTier(tier, maxAttempts = 100) {
 }
 
 /**
+ * Pick a random unminted player from a tier and position (e.g. tier 11 + WR).
+ */
+async function pickRandomPlayerFromTierAndPosition(tier, position, maxAttempts = 100) {
+  loadPlayers();
+  const tierPlayers = playersByTier[tier];
+  if (!tierPlayers || tierPlayers.length === 0) return null;
+  const posPlayers = tierPlayers.filter(p => (p.position || p.pos_group || p.pos) === position);
+  if (!posPlayers.length) return null;
+  for (let i = 0; i < maxAttempts; i++) {
+    const player = posPlayers[Math.floor(Math.random() * posPlayers.length)];
+    if (!(await isCardMinted(player))) return player;
+  }
+  const available = [];
+  for (const p of posPlayers) {
+    if (!(await isCardMinted(p))) available.push(p);
+  }
+  if (available.length > 0) return available[Math.floor(Math.random() * available.length)];
+  return null;
+}
+
+/**
  * Pick any available (unminted) player
  */
 function pickAnyAvailablePlayer() {
@@ -461,6 +482,7 @@ module.exports = {
   openStarterPack,
   pickRandomTier,
   pickRandomPlayerFromTier,
+  pickRandomPlayerFromTierAndPosition,
   pickRandomPlayerFromPosition,
   pickAnyAvailablePlayer,
   getPackStats,
