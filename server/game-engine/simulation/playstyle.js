@@ -174,6 +174,7 @@ function avgTier(players) {
 
 /**
  * Calculate offensive ratings considering QB playstyle synergies and strategy boosts
+ * Updated for 11-slot roster: single RB, single OL (WRs still array of 2)
  * @param {object} roster - Full team roster
  * @param {object} ratingMults - Optional position rating multipliers from strategy matchup
  * @returns {object} - Offensive ratings
@@ -190,18 +191,23 @@ function calculateOffensiveRatings(roster, ratingMults = null) {
   const mults = ratingMults || { QB: 1.0, WR: 1.0, RB: 1.0, TE: 1.0, OL: 1.0 };
   
   // Calculate boosted ratings (0-1.1 scale) instead of raw tiers
+  // Handle both old (array) and new (single player) roster formats
   const qbRating = getBoostedRating(qb, mults.QB);
   const wrAvgRating = avgBoostedRating(roster.WRs || [], mults.WR);
-  const rbAvgRating = avgBoostedRating(roster.RBs || [], mults.RB);
+  const rbRating = roster.RB 
+    ? getBoostedRating(roster.RB, mults.RB) 
+    : avgBoostedRating(roster.RBs || [], mults.RB); // fallback for old format
   const teRating = getBoostedRating(roster.TE, mults.TE);
-  const olAvgRating = avgBoostedRating(roster.OLs || [], mults.OL);
+  const olRating = roster.OL 
+    ? getBoostedRating(roster.OL, mults.OL)
+    : avgBoostedRating(roster.OLs || [], mults.OL); // fallback for old format
   
   // Keep tier values for synergy checks (use base tiers, not boosted)
   const qbTier = qb.tier || 5;
   const wrAvgTier = avgTier(roster.WRs || []);
-  const rbAvgTier = avgTier(roster.RBs || []);
+  const rbTier = roster.RB?.tier || avgTier(roster.RBs || []) || 5;
   const teAvgTier = roster.TE?.tier || 5;
-  const olAvgTier = avgTier(roster.OLs || []) || 5;
+  const olTier = roster.OL?.tier || avgTier(roster.OLs || []) || 5;
   
   // Calculate pass game rating using boosted ratings (scale to 1-12 range)
   // Rating is 0-1.1, multiply by 12 to get 0-13.2 range, similar to tier-based calc
@@ -218,10 +224,10 @@ function calculateOffensiveRatings(roster, ratingMults = null) {
   passRating += (teRating * 12 - 5) * 0.1;
   
   // OL affects time in pocket
-  const protectionRating = olAvgRating * 12;
+  const protectionRating = olRating * 12;
   
   // Calculate run game rating using boosted ratings
-  let runRating = (rbAvgRating * 12) * 0.5 + (olAvgRating * 12) * 0.5;
+  let runRating = (rbRating * 12) * 0.5 + (olRating * 12) * 0.5;
   
   // Dual-threat QB contributes to run game
   if (config.rushContribution > 0) {
@@ -237,9 +243,9 @@ function calculateOffensiveRatings(roster, ratingMults = null) {
     protectionRating,
     qbTier,
     wrAvgTier,
-    rbAvgTier,
+    rbTier,
     teAvgTier,
-    olAvgTier,
+    olTier,
     style,
     config,
     // Include boost info for display
@@ -249,6 +255,7 @@ function calculateOffensiveRatings(roster, ratingMults = null) {
 
 /**
  * Calculate defensive ratings with optional strategy boosts
+ * Updated for 11-slot roster: single DL, single LB (DBs still array of 2)
  * @param {object} roster - Full team roster
  * @param {object} ratingMults - Optional position rating multipliers from strategy matchup
  * @returns {object} - Defensive ratings
@@ -258,18 +265,23 @@ function calculateDefensiveRatings(roster, ratingMults = null) {
   const mults = ratingMults || { DL: 1.0, LB: 1.0, DB: 1.0 };
   
   // Calculate boosted ratings (0-1.1 scale)
-  const dlAvgRating = avgBoostedRating(roster.DLs || [], mults.DL);
-  const lbAvgRating = avgBoostedRating(roster.LBs || [], mults.LB);
+  // Handle both old (array) and new (single player) roster formats
+  const dlRating = roster.DL 
+    ? getBoostedRating(roster.DL, mults.DL)
+    : avgBoostedRating(roster.DLs || [], mults.DL); // fallback for old format
+  const lbRating = roster.LB
+    ? getBoostedRating(roster.LB, mults.LB)
+    : avgBoostedRating(roster.LBs || [], mults.LB); // fallback for old format
   const dbAvgRating = avgBoostedRating(roster.DBs || [], mults.DB);
   
   // Keep tier values for strategy derivation
-  const dlAvgTier = avgTier(roster.DLs || []) || 5;
-  const lbAvgTier = avgTier(roster.LBs || []) || 5;
+  const dlTier = roster.DL?.tier || avgTier(roster.DLs || []) || 5;
+  const lbTier = roster.LB?.tier || avgTier(roster.LBs || []) || 5;
   const dbAvgTier = avgTier(roster.DBs || []) || 5;
   
   // Scale ratings to tier-equivalent (multiply by ~12 to match old scale)
-  const dlScaled = dlAvgRating * 12;
-  const lbScaled = lbAvgRating * 12;
+  const dlScaled = dlRating * 12;
+  const lbScaled = lbRating * 12;
   const dbScaled = dbAvgRating * 12;
   
   // Pass defense: DBs most important, then pass rush
@@ -289,8 +301,8 @@ function calculateDefensiveRatings(roster, ratingMults = null) {
     runDefenseRating,
     passRushRating,
     coverageRating,
-    dlAvgTier,
-    lbAvgTier,
+    dlAvgTier: dlTier,   // Keep old name for compatibility
+    lbAvgTier: lbTier,
     dbAvgTier,
     // Include boost info for display
     ratingMults: mults,

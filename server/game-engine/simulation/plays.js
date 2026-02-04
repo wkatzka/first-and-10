@@ -119,12 +119,16 @@ function simulatePassPlay(offense, defense, situation) {
   const qb = offense.roster.QB;
   const wrs = offense.roster.WRs || [];
   const te = offense.roster.TE;
-  const olTier = avgTier(offense.roster.OLs);
+  // Handle both single OL (new format) and OLs array (old format)
+  const olTier = offense.roster.OL?.tier || avgTier(offense.roster.OLs) || 5;
   
-  const dls = defense.roster.DLs || [];
-  const lbs = defense.roster.LBs || [];
+  // Handle both single DL/LB (new format) and arrays (old format)
+  const dlTier = defense.roster.DL?.tier || avgTier(defense.roster.DLs) || 5;
+  const lbTier = defense.roster.LB?.tier || avgTier(defense.roster.LBs) || 5;
   const dbs = defense.roster.DBs || [];
-  const dlTier = avgTier(dls);
+  // Create arrays for functions that need them
+  const dls = defense.roster.DL ? [defense.roster.DL] : (defense.roster.DLs || []);
+  const lbs = defense.roster.LB ? [defense.roster.LB] : (defense.roster.LBs || []);
   
   // Step 1: Pass protection
   const protection = calculateProtection(olTier, dlTier);
@@ -235,14 +239,14 @@ function simulateRunPlay(offense, defense, situation) {
     'run'
   );
 
-  const rbs = offense.roster.RBs || [];
-  const rb = rbs[Math.floor(roll() * rbs.length)] || { tier: 5, player: 'RB' };
-  const olTier = avgTier(offense.roster.OLs);
+  // Handle both single RB (new format) and RBs array (old format)
+  const rb = offense.roster.RB || (offense.roster.RBs || [])[0] || { tier: 5, player: 'RB' };
+  // Handle both single OL (new format) and OLs array (old format)
+  const olTier = offense.roster.OL?.tier || avgTier(offense.roster.OLs) || 5;
   
-  const dls = defense.roster.DLs || [];
-  const lbs = defense.roster.LBs || [];
-  const dlTier = avgTier(dls);
-  const lbTier = avgTier(lbs);
+  // Handle both single DL/LB (new format) and arrays (old format)
+  const dlTier = defense.roster.DL?.tier || avgTier(defense.roster.DLs) || 5;
+  const lbTier = defense.roster.LB?.tier || avgTier(defense.roster.LBs) || 5;
   
   // Step 1: Run blocking
   const blocking = calculateRunBlocking(olTier, dlTier);

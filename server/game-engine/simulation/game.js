@@ -27,6 +27,7 @@ const { roll } = require('./matchups');
 /**
  * Apply rating multipliers directly to roster player tiers
  * This ensures the boosted tiers are used in play simulation
+ * Updated for 11-slot roster: single RB, OL, DL, LB (WRs, DBs still arrays)
  */
 function applyRosterBoosts(roster, multipliers) {
   const boostTier = (player, posKey) => {
@@ -46,15 +47,22 @@ function applyRosterBoosts(roster, multipliers) {
   return {
     ...roster,
     QB: boostTier(roster.QB, 'QB'),
-    RBs: boostArray(roster.RBs, 'RB'),
+    // Handle both old (RBs array) and new (single RB) formats
+    RB: roster.RB ? boostTier(roster.RB, 'RB') : undefined,
+    RBs: roster.RBs ? boostArray(roster.RBs, 'RB') : undefined,
     WRs: boostArray(roster.WRs, 'WR'),
     TE: boostTier(roster.TE, 'TE'),
-    OLs: boostArray(roster.OLs, 'OL'),
-    DLs: boostArray(roster.DLs, 'DL'),
-    LBs: boostArray(roster.LBs, 'LB'),
+    // Handle both old (OLs array) and new (single OL) formats
+    OL: roster.OL ? boostTier(roster.OL, 'OL') : undefined,
+    OLs: roster.OLs ? boostArray(roster.OLs, 'OL') : undefined,
+    // Handle both old (DLs array) and new (single DL) formats
+    DL: roster.DL ? boostTier(roster.DL, 'DL') : undefined,
+    DLs: roster.DLs ? boostArray(roster.DLs, 'DL') : undefined,
+    // Handle both old (LBs array) and new (single LB) formats
+    LB: roster.LB ? boostTier(roster.LB, 'LB') : undefined,
+    LBs: roster.LBs ? boostArray(roster.LBs, 'LB') : undefined,
     DBs: boostArray(roster.DBs, 'DB'),
     K: boostTier(roster.K, 'K'),
-    P: boostTier(roster.P, 'P'),
   };
 }
 

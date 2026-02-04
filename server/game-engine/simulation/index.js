@@ -105,21 +105,22 @@ function simulateGame(homeRoster, awayRoster, options) {
 
 /**
  * Build a roster object from an array of player cards
+ * Matches live roster structure: 11 slots (QB, RB, WR1, WR2, TE, OL, DL, LB, DB1, DB2, K)
  * @param {array} players - Array of player cards with pos_group field
  * @returns {object} - Structured roster
  */
 function buildRoster(players) {
   const roster = {
     QB: null,
-    RBs: [],
-    WRs: [],
+    RB: null,      // Single RB (was RBs array)
+    WRs: [],       // 2 WRs
     TE: null,
-    OLs: [],
-    DLs: [],
-    LBs: [],
-    DBs: [],
+    OL: null,      // Single OL (was OLs array)
+    DL: null,      // Single DL (was DLs array)
+    LB: null,      // Single LB (was LBs array)
+    DBs: [],       // 2 DBs
     K: null,
-    P: null,
+    // No punter in live roster
   };
   
   for (const player of players) {
@@ -130,31 +131,28 @@ function buildRoster(players) {
         if (!roster.QB) roster.QB = player;
         break;
       case 'RB':
-        roster.RBs.push(player);
+        if (!roster.RB) roster.RB = player;
         break;
       case 'WR':
-        roster.WRs.push(player);
+        if (roster.WRs.length < 2) roster.WRs.push(player);
         break;
       case 'TE':
         if (!roster.TE) roster.TE = player;
         break;
       case 'OL':
-        roster.OLs.push(player);
+        if (!roster.OL) roster.OL = player;
         break;
       case 'DL':
-        roster.DLs.push(player);
+        if (!roster.DL) roster.DL = player;
         break;
       case 'LB':
-        roster.LBs.push(player);
+        if (!roster.LB) roster.LB = player;
         break;
       case 'DB':
-        roster.DBs.push(player);
+        if (roster.DBs.length < 2) roster.DBs.push(player);
         break;
       case 'K':
         if (!roster.K) roster.K = player;
-        break;
-      case 'P':
-        if (!roster.P) roster.P = player;
         break;
     }
   }
@@ -164,7 +162,7 @@ function buildRoster(players) {
 
 /**
  * Create a roster with placeholder players at specified tiers
- * Useful for testing tier matchups
+ * Matches live roster: 11 slots (QB, RB, WR1, WR2, TE, OL, DL, LB, DB1, DB2, K)
  * @param {object} tiers - Object with position: tier mappings
  * @returns {object} - Roster with placeholder players
  */
@@ -173,42 +171,20 @@ function createTestRoster(tiers = {}) {
   
   return {
     QB: { player: 'Test QB', tier: tiers.QB || defaultTier, pos_group: 'QB' },
-    RBs: [
-      { player: 'Test RB1', tier: tiers.RB || defaultTier, pos_group: 'RB' },
-      { player: 'Test RB2', tier: tiers.RB || defaultTier, pos_group: 'RB' },
-    ],
+    RB: { player: 'Test RB', tier: tiers.RB || defaultTier, pos_group: 'RB' },
     WRs: [
       { player: 'Test WR1', tier: tiers.WR || defaultTier, pos_group: 'WR' },
       { player: 'Test WR2', tier: tiers.WR || defaultTier, pos_group: 'WR' },
-      { player: 'Test WR3', tier: tiers.WR || defaultTier, pos_group: 'WR' },
     ],
     TE: { player: 'Test TE', tier: tiers.TE || defaultTier, pos_group: 'TE' },
-    OLs: [
-      { player: 'Test OL1', tier: tiers.OL || defaultTier, pos_group: 'OL' },
-      { player: 'Test OL2', tier: tiers.OL || defaultTier, pos_group: 'OL' },
-      { player: 'Test OL3', tier: tiers.OL || defaultTier, pos_group: 'OL' },
-      { player: 'Test OL4', tier: tiers.OL || defaultTier, pos_group: 'OL' },
-      { player: 'Test OL5', tier: tiers.OL || defaultTier, pos_group: 'OL' },
-    ],
-    DLs: [
-      { player: 'Test DL1', tier: tiers.DL || defaultTier, pos_group: 'DL' },
-      { player: 'Test DL2', tier: tiers.DL || defaultTier, pos_group: 'DL' },
-      { player: 'Test DL3', tier: tiers.DL || defaultTier, pos_group: 'DL' },
-      { player: 'Test DL4', tier: tiers.DL || defaultTier, pos_group: 'DL' },
-    ],
-    LBs: [
-      { player: 'Test LB1', tier: tiers.LB || defaultTier, pos_group: 'LB' },
-      { player: 'Test LB2', tier: tiers.LB || defaultTier, pos_group: 'LB' },
-      { player: 'Test LB3', tier: tiers.LB || defaultTier, pos_group: 'LB' },
-    ],
+    OL: { player: 'Test OL', tier: tiers.OL || defaultTier, pos_group: 'OL' },
+    DL: { player: 'Test DL', tier: tiers.DL || defaultTier, pos_group: 'DL' },
+    LB: { player: 'Test LB', tier: tiers.LB || defaultTier, pos_group: 'LB' },
     DBs: [
       { player: 'Test DB1', tier: tiers.DB || defaultTier, pos_group: 'DB' },
       { player: 'Test DB2', tier: tiers.DB || defaultTier, pos_group: 'DB' },
-      { player: 'Test DB3', tier: tiers.DB || defaultTier, pos_group: 'DB' },
-      { player: 'Test DB4', tier: tiers.DB || defaultTier, pos_group: 'DB' },
     ],
     K: { player: 'Test K', tier: tiers.K || defaultTier, pos_group: 'K' },
-    P: { player: 'Test P', tier: tiers.P || defaultTier, pos_group: 'P' },
   };
 }
 
