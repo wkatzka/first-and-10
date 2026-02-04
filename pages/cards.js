@@ -30,7 +30,7 @@ export default function Cards({ user, onLogout, unreadMessages }) {
 
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
-      <div className="pb-32 md:pb-0">
+      <div className="pb-36 md:pb-0">
         {view === 'packs' ? (
           <PacksContent user={user} onViewCollection={() => setViewAndPersist('collection')} />
         ) : (
@@ -38,25 +38,29 @@ export default function Cards({ user, onLogout, unreadMessages }) {
         )}
       </div>
 
-      {/* Packs | Collection bar – above bottom nav on mobile */}
-      <div className="md:hidden fixed left-0 right-0 z-40 px-3 safe-area-pb" style={{ bottom: '4.5rem' }}>
-        <div className="mx-auto max-w-7xl">
-          <div className="inline-flex f10-segment p-1 bg-black/30 backdrop-blur border border-white/10 rounded-xl">
+      {/* Packs | My cards bar – above bottom nav, same tile aesthetic, active = red glow */}
+      <div className="md:hidden fixed left-0 right-0 z-40 px-3 safe-area-pb" style={{ bottom: '6rem' }}>
+        <div className="mx-auto max-w-7xl flex justify-center">
+          <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
             <button
               onClick={() => setViewAndPersist('packs')}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
-                view === 'packs' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
+                view === 'packs'
+                  ? 'text-white bg-red-500/20 ring-2 ring-red-400 shadow-[0_0_12px_rgba(248,113,113,0.5)]'
+                  : 'text-gray-400 hover:text-white'
               }`}
             >
               Packs
             </button>
             <button
               onClick={() => setViewAndPersist('collection')}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-colors ${
-                view === 'collection' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
+                view === 'collection'
+                  ? 'text-white bg-red-500/20 ring-2 ring-red-400 shadow-[0_0_12px_rgba(248,113,113,0.5)]'
+                  : 'text-gray-400 hover:text-white'
               }`}
             >
-              Collection
+              My cards
             </button>
           </div>
         </div>
