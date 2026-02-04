@@ -13,6 +13,7 @@ const COLORS = {
 const pxPerYard = 18;
 const ENDZONE_DEPTH_YARDS = 10;
 const yardsPerTick = 5;
+// Overall brightness: higher = brighter. No grain on static field (grain is in PlayfieldBackground).
 const BG_DIM = 0.62;
 
 function drawOutlinedText(ctx, text, x, y, opts) {
@@ -180,10 +181,10 @@ export default function StaticFieldBackground() {
 
       ctx.restore();
 
-      // Dim overlay + vignette (match PlayfieldBackground)
+      // Dim overlay (reduced for ~30% brighter field; grain only exists in PlayfieldBackground)
       ctx.save();
       ctx.globalCompositeOperation = 'multiply';
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.38;
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, w, h);
       ctx.restore();
@@ -193,8 +194,8 @@ export default function StaticFieldBackground() {
         w / 2, h / 2, Math.min(w, h) * 0.2,
         w / 2, h / 2, Math.max(w, h) * 0.85
       );
-      g.addColorStop(0, 'rgba(0,0,0,0.12)');
-      g.addColorStop(1, 'rgba(0,0,0,0.58)');
+      g.addColorStop(0, 'rgba(0,0,0,0.08)');
+      g.addColorStop(1, 'rgba(0,0,0,0.42)');
       ctx.fillStyle = g;
       ctx.globalCompositeOperation = 'source-over';
       ctx.fillRect(0, 0, w, h);

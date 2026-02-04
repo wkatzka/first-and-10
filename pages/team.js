@@ -78,8 +78,8 @@ export default function Team({ user, onLogout, unreadMessages }) {
         <RosterView user={user} diagramSide={diagramSide} refreshTrigger={refreshTrigger} />
       </div>
 
-      {/* Mobile: bar fixed above bottom nav (above the two left tiles) */}
-      <div className="md:hidden fixed left-0 right-0 z-40 px-3 safe-area-pb" style={{ bottom: '4.5rem' }}>
+      {/* Mobile: bar fixed above bottom nav with clearance so buttons aren't cut off by tiles */}
+      <div className="md:hidden fixed left-0 right-0 z-40 px-3 safe-area-pb" style={{ bottom: '7.25rem' }}>
         <div className="mx-auto max-w-7xl">
           <Bar />
         </div>
