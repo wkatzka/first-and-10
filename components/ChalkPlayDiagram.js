@@ -171,9 +171,9 @@ export default function ChalkPlayDiagram({ mode, roster }) {
   // Stable card positions for overlay (same layout as play init)
   const cardLayout = React.useMemo(() => {
     if (w <= 0) return [];
-    const margin = 0.08;
-    const step = (1 - 2 * margin) / 4;
     if (mode === 'offense') {
+      const margin = 0.08;
+      const step = (1 - 2 * margin) / 4;
       const positions = OFFENSE_SLOTS.map((slotId, i) => ({
         slotId,
         x: w * (margin + i * step),
@@ -183,15 +183,15 @@ export default function ChalkPlayDiagram({ mode, roster }) {
       const qbX = w * (margin + 2 * step);
       return [...positions, { slotId: OFFENSE_QB_SLOT, x: qbX, y: line10Y + PX_PER_YARD * 4, label: 'QB' }];
     }
-    const margin = 0.1;
-    const step = (1 - 2 * margin) / 3;
+    const marginD = 0.1;
+    const stepD = (1 - 2 * marginD) / 3;
     const positions = DEFENSE_SLOTS.map((slotId, i) => ({
       slotId,
-      x: w * (margin + i * step),
+      x: w * (marginD + i * stepD),
       y: line10Y,
       label: { db1_card_id: 'DB1', dl_card_id: 'DL', lb_card_id: 'LB', db2_card_id: 'DB2' }[slotId],
     }));
-    const kX = w * (margin + 1.5 * step);
+    const kX = w * (marginD + 1.5 * stepD);
     return [...positions, { slotId: DEFENSE_K_SLOT, x: kX, y: line10Y + PX_PER_YARD * 4, label: 'K' }];
   }, [w, mode, line10Y]);
 
