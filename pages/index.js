@@ -16,7 +16,7 @@ export default function Home({ user, onLogin }) {
   
   useEffect(() => {
     if (user) {
-      router.push('/cards');
+      router.push('/team');
     }
   }, [user, router]);
   

@@ -1,7 +1,15 @@
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
+import { logout } from '../lib/api';
 
 export default function HowToPlay({ user, onLogout, unreadMessages }) {
+  const router = useRouter();
+  const handleLogout = async () => {
+    await logout();
+    if (onLogout) onLogout();
+    router.push('/');
+  };
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="max-w-2xl mx-auto">
@@ -212,13 +220,22 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
             </Link>
           </div>
         ) : (
-          <div className="text-center">
+          <div className="text-center space-y-3">
             <Link
               href="/packs"
               className="inline-block px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold rounded-xl hover:from-yellow-600 hover:to-orange-600 transition-all"
             >
               Open Your Packs
             </Link>
+            <div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="px-6 py-2 text-sm text-gray-400 hover:text-white transition-colors touch-target"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         )}
       </div>

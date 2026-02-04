@@ -1,15 +1,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { logout } from '../lib/api';
 
 export default function Layout({ children, user, onLogout, unreadMessages = 0 }) {
   const router = useRouter();
-  
-  const handleLogout = async () => {
-    await logout();
-    if (onLogout) onLogout();
-    router.push('/');
-  };
   
   const NAV = {
     team: { color: '#00e5ff' },
@@ -58,67 +51,17 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
     { href: '/how-to-play', label: 'Rules', variant: 'rules' },
   ];
   
-  // Mobile bottom nav
+  // Mobile bottom nav: Packs & League left, My Team center, Schedule & Rules right
   const mobileNavItems = [
-    { href: '/team', label: 'My Team', variant: 'team' },
     { href: '/packs', label: 'Packs', variant: 'packs' },
     { href: '/league', label: 'League', variant: 'league', badge: unreadMessages },
+    { href: '/team', label: 'My Team', variant: 'team' },
     { href: '/schedule', label: 'Schedule', variant: 'schedule' },
     { href: '/how-to-play', label: 'Rules', variant: 'rules' },
   ];
   
   return (
     <div className="f10-app-shell pb-20 md:pb-0">
-      {/* Header */}
-      <header className="bg-black/30 backdrop-blur border-b border-white/10 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between h-14 md:h-16">
-            {/* Logo */}
-            <Link href="/team" className="flex items-center gap-2">
-              <span className="text-xl md:text-2xl">🏈</span>
-              <span className="text-lg md:text-xl f10-title text-white">First & 10</span>
-            </Link>
-            
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1">
-              {navItems.map(item => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors relative ${
-                    router.pathname === item.href
-                      ? 'bg-white/10 text-white border border-white/10'
-                      : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  {item.label}
-                  {item.badge > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                      {item.badge > 9 ? '9+' : item.badge}
-                    </span>
-                  )}
-                </Link>
-              ))}
-            </nav>
-            
-            {/* User Info */}
-            {user && (
-              <div className="flex items-center gap-2 md:gap-4">
-                <span className="text-gray-300 text-sm hidden sm:inline">
-                  {user.username}
-                </span>
-                <button
-                  onClick={handleLogout}
-                  className="px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors touch-target"
-                >
-                  Logout
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-      
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-4 md:py-8">
         {children}

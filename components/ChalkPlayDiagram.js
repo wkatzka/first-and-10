@@ -110,6 +110,26 @@ function drawChalkArrowhead(ctx, tip, angle, color) {
   ctx.restore();
 }
 
+// Flat head at tip (defense "blocking" style – perpendicular bar)
+function drawChalkFlatHead(ctx, tip, angle, color) {
+  const size = 8;
+  const perp = { x: -Math.sin(angle), y: Math.cos(angle) };
+  const left = { x: tip.x - perp.x * size, y: tip.y - perp.y * size };
+  const right = { x: tip.x + perp.x * size, y: tip.y + perp.y * size };
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = CHALK_STROKE;
+  ctx.lineCap = 'butt';
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 8;
+  ctx.globalAlpha = BG_DIM;
+  ctx.beginPath();
+  ctx.moveTo(left.x, left.y);
+  ctx.lineTo(right.x, right.y);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function bezierPoint(p0, p1, p2, p3, t) {
   const u = 1 - t;
   const uu = u * u, uuu = uu * u;
@@ -262,7 +282,16 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
       { x: w * 0.85 + Math.random() * w * 0.12, y: goalLineY + PX_PER_YARD * 2.5 + Math.random() * 35 },
       { x: w * 0.5 + (Math.random() - 0.5) * w * 0.2, y: goalLineY + PX_PER_YARD * 1.5 + Math.random() * 25 },
     ];
-    return { cardPositions, routes: null, routeColors: [], xCoords };
+    // Routes from each of 4 defenders to their X (arrows meet the X's like blocking)
+    const routes = positions.slice(0, 4).map((pos, i) => {
+      const p0 = { x: pos.x, y: pos.y };
+      const p3 = { x: xCoords[i].x, y: xCoords[i].y };
+      const p1 = { x: p0.x + (p3.x - p0.x) * 0.33, y: p0.y + (p3.y - p0.y) * 0.33 };
+      const p2 = { x: p0.x + (p3.x - p0.x) * 0.67, y: p0.y + (p3.y - p0.y) * 0.67 };
+      return { p0, p1, p2, p3 };
+    });
+    const routeColors = routes.map((_, i) => NEON[i % NEON.length]);
+    return { cardPositions, routes, routeColors, xCoords };
   }, [w, line10Y, goalLineY]);
 
   useEffect(() => {
@@ -315,15 +344,27 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
           cycleStartRef.current = now;
           playRef.current = initOffensePlay();
         }
-      } else if (mode === 'defense' && play.xCoords && play.cardPositions.length >= 4) {
-        const fourCards = play.cardPositions.slice(0, 4);
-        fourCards.forEach((pos, i) => {
-          const xc = play.xCoords[i];
-          const color = NEON[i % NEON.length];
-          drawChalkLine(ctx, [{ x: pos.x, y: pos.y }, { x: xc.x, y: xc.y }], color, true);
+      } else if (mode === 'defense' && play.routes && play.routes.length) {
+        const drawT = Math.min(1, (dt - CYCLE_PAUSE_MS) / ARROW_TRAVEL_MS);
+        const eased = drawT < 0 ? 0 : drawT < 0.5 ? 4 * drawT * drawT * drawT : 1 - Math.pow(-2 * drawT + 2, 3) / 2;
+        play.routes.forEach((r, i) => {
+          const color = play.routeColors[i] || NEON[i % NEON.length];
+          const segments = 80;
+          const endI = Math.ceil(eased * segments);
+          const pts = [];
+          for (let j = 0; j <= endI; j++) {
+            const t = j / segments;
+            pts.push(bezierPoint(r.p0, r.p1, r.p2, r.p3, t));
+          }
+          if (pts.length >= 2) drawChalkLine(ctx, pts, color, true);
+          if (eased >= 0.98 && pts.length >= 2) {
+            const tip = pts[pts.length - 1];
+            const prev = pts[pts.length - 2];
+            drawChalkFlatHead(ctx, tip, Math.atan2(tip.y - prev.y, tip.x - prev.x), color);
+          }
         });
 
-        if (dt > 4000) {
+        if (dt > CYCLE_PAUSE_MS + ARROW_TRAVEL_MS + 600) {
           cycleStartRef.current = now;
           playRef.current = initDefensePlay();
         }
