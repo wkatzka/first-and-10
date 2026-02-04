@@ -27,6 +27,21 @@ const OFFENSE_QB_SLOT = 'qb_card_id';
 const DEFENSE_SLOTS = ['db1_card_id', 'dl_card_id', 'lb_card_id', 'db2_card_id'];
 const DEFENSE_K_SLOT = 'k_card_id';
 
+// For onSlotClick: slot id -> position (used by card picker modal).
+const SLOT_TO_POSITION = {
+  wr1_card_id: 'WR',
+  te_card_id: 'TE',
+  ol_card_id: 'OL',
+  rb_card_id: 'RB',
+  wr2_card_id: 'WR',
+  qb_card_id: 'QB',
+  db1_card_id: 'DB',
+  dl_card_id: 'DL',
+  lb_card_id: 'LB',
+  db2_card_id: 'DB',
+  k_card_id: 'K',
+};
+
 function frayNoise(seed, i) {
   const x = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
   return (x - Math.floor(x)) * 2 - 1;
@@ -144,7 +159,7 @@ function shuffle(arr) {
 const ARROW_TRAVEL_MS = 3200;
 const CYCLE_PAUSE_MS = 800;
 
-export default function ChalkPlayDiagram({ mode, roster }) {
+export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [size, setSize] = useState({ w: 400, h: 320 });
@@ -391,27 +406,41 @@ export default function ChalkPlayDiagram({ mode, roster }) {
         className="w-full h-full rounded-xl overflow-hidden border border-white/10 absolute inset-0"
         style={{ width: w, height: h, background: COLORS.field }}
       />
-      {/* Cards directly on field – no panel */}
-      <div className="absolute inset-0 pointer-events-none" style={{ width: w, height: h }}>
-        {cardLayout.map((pos) => (
-          <div
-            key={pos.slotId}
-            className="absolute flex justify-center items-center"
-            style={{
-              left: pos.x - CARD_W / 2,
-              top: pos.y - CARD_H / 2,
-              width: CARD_W,
-              height: CARD_H,
-            }}
-          >
-            <MiniCard
-              card={cards[pos.slotId] || null}
-              position={pos.label}
-              empty={!cards[pos.slotId]}
-              fieldSize
-            />
-          </div>
-        ))}
+      {/* Cards on field – clickable to change roster */}
+      <div className="absolute inset-0" style={{ width: w, height: h }}>
+        {cardLayout.map((pos) => {
+          const slot = {
+            id: pos.slotId,
+            label: pos.label,
+            position: SLOT_TO_POSITION[pos.slotId] || pos.label,
+          };
+          const card = cards[pos.slotId] || null;
+          return (
+            <div
+              key={pos.slotId}
+              className="absolute flex justify-center items-center cursor-pointer active:scale-95 transition-transform"
+              style={{
+                left: pos.x - CARD_W / 2,
+                top: pos.y - CARD_H / 2,
+                width: CARD_W,
+                height: CARD_H,
+                pointerEvents: 'auto',
+              }}
+              onClick={() => onSlotClick?.(slot)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSlotClick?.(slot); } }}
+              aria-label={`${pos.label} slot, tap to change card`}
+            >
+              <MiniCard
+                card={card}
+                position={pos.label}
+                empty={!card}
+                fieldSize
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

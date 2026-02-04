@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { MiniCard } from './Card';
-import CardModal from './CardModal';
+import ChalkPlayDiagram from './ChalkPlayDiagram';
 import { getRoster, getCards, updateRoster, autoFillRoster } from '../lib/api';
 
 // 11-player roster: QB, RB, WR×2, TE, OL, DL, LB, DB×2, K
@@ -25,14 +24,13 @@ const ROSTER_LAYOUT = [
   ]},
 ];
 
-export default function RosterView({ user, onRosterLoad }) {
+export default function RosterView({ user, diagramSide = 'offense' }) {
   const router = useRouter();
   const [roster, setRoster] = useState(null);
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
-  const [viewCard, setViewCard] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -48,7 +46,6 @@ export default function RosterView({ user, onRosterLoad }) {
       ]);
       setRoster(rosterData);
       setCards(cardsData.cards);
-      if (onRosterLoad) onRosterLoad(rosterData);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -69,7 +66,6 @@ export default function RosterView({ user, onRosterLoad }) {
         [selectedSlot.id]: card ? card.id : null,
       });
         setRoster(newRoster);
-      if (onRosterLoad) onRosterLoad(newRoster);
       setSelectedSlot(null);
     } catch (err) {
       console.error('Failed to update roster:', err);
@@ -86,7 +82,6 @@ export default function RosterView({ user, onRosterLoad }) {
     try {
       const newRoster = await autoFillRoster();
       setRoster(newRoster);
-      if (onRosterLoad) onRosterLoad(newRoster);
     } catch (err) {
       console.error('Failed to auto-fill:', err);
       alert(err.message);
@@ -142,43 +137,11 @@ export default function RosterView({ user, onRosterLoad }) {
       {loading ? (
         <div className="text-center text-gray-400 py-12">Loading roster...</div>
       ) : (
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Roster Sections */}
-          {ROSTER_LAYOUT.map(({ section, slots }) => (
-            <div key={section} className="f10-panel p-4">
-              <h3 className="text-lg f10-title text-white mb-4">{section}</h3>
-
-              <div className="grid grid-cols-4 gap-2">
-                {slots.map(slot => {
-                  const card = roster?.cards?.[slot.id];
-                  return (
-                    <div key={slot.id} className="flex flex-col items-center relative group">
-                      <MiniCard
-                        card={card}
-                        position={slot.label}
-                        onClick={() => handleSlotClick(slot)}
-                        empty={!card}
-                      />
-                      {/* View card button */}
-                      {card && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setViewCard(card);
-                          }}
-                          className="absolute -top-1 -right-1 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-white text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                          title="View card"
-                        >
-                          👁
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
+        <ChalkPlayDiagram
+          mode={diagramSide}
+          roster={roster}
+          onSlotClick={handleSlotClick}
+        />
       )}
 
       {/* Card Selection Modal */}
@@ -288,14 +251,6 @@ export default function RosterView({ user, onRosterLoad }) {
             )}
           </div>
         </div>
-      )}
-
-      {/* Card Detail Modal */}
-      {viewCard && (
-        <CardModal
-          card={viewCard}
-          onClose={() => setViewCard(null)}
-        />
       )}
     </div>
   );

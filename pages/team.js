@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import RosterView from '../components/RosterView';
 import CardsView from '../components/CardsView';
-import ChalkPlayDiagram from '../components/ChalkPlayDiagram';
 
 export default function Team({ user, onLogout, unreadMessages }) {
   const router = useRouter();
@@ -15,7 +14,6 @@ export default function Team({ user, onLogout, unreadMessages }) {
 
   const [tab, setTab] = useState(tabFromQuery);
   const [diagramSide, setDiagramSide] = useState('offense'); // 'offense' | 'defense'
-  const [rosterForDiagram, setRosterForDiagram] = useState(null);
 
   useEffect(() => {
     if (!user) {
@@ -79,14 +77,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
         </>
       )}
 
-      {tab === 'cards' ? <CardsView user={user} /> : <RosterView user={user} onRosterLoad={setRosterForDiagram} />}
-
-      {/* Chalk diagram under roster: cards on field, no extra panel */}
-      {tab === 'roster' && (
-        <div className="mt-6">
-          <ChalkPlayDiagram mode={diagramSide} roster={rosterForDiagram} />
-        </div>
-      )}
+      {tab === 'cards' ? <CardsView user={user} /> : <RosterView user={user} diagramSide={diagramSide} />}
     </Layout>
   );
 }
