@@ -36,8 +36,8 @@ export default function Team({ user, onLogout, unreadMessages }) {
 
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
-      {/* Segmented control */}
-      <div className="mb-5">
+      {/* Segmented control – above fixed diagram when roster */}
+      <div className="relative z-10 mb-5">
         <div className="inline-flex f10-segment p-1">
           <button
             onClick={() => setAndPersistTab('roster')}
@@ -60,8 +60,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
 
       {tab === 'roster' && (
         <>
-          {/* Offense / Defense dropdown – same aesthetic as segment */}
-          <div className="mb-4">
+          <div className="relative z-10 mb-4">
             <label htmlFor="diagram-side" className="sr-only">Play diagram: Offense or Defense</label>
             <select
               id="diagram-side"

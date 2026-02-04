@@ -82,13 +82,13 @@ export default function StaticFieldBackground() {
       ctx.strokeRect(0, 0, w, endzoneH);
       ctx.restore();
 
-      // "FIRST & 10" in end zone
+      // "FIRST & 10" in end zone – College Block (loaded in globals.css)
       ctx.save();
       ctx.fillStyle = COLORS.icyBright;
       ctx.shadowColor = COLORS.icy;
       ctx.shadowBlur = 16;
       drawOutlinedText(ctx, 'FIRST & 10', w / 2, endzoneH / 2, {
-        font: '64px Graduate, CollegeBlock, system-ui, sans-serif',
+        font: '64px CollegeBlock, Graduate, system-ui, sans-serif',
         fillStyle: COLORS.icyBright,
         shadowColor: COLORS.icy,
         shadowBlur: 16,
@@ -157,7 +157,7 @@ export default function StaticFieldBackground() {
           ctx.fillStyle = COLORS.icyBright;
           ctx.shadowColor = COLORS.icy;
           ctx.shadowBlur = 12;
-          ctx.font = '48px CollegeBlock, system-ui, sans-serif';
+          ctx.font = '48px CollegeBlock, Graduate, system-ui, sans-serif';
           ctx.translate(40, yPx);
           ctx.rotate(-Math.PI / 2);
           ctx.textAlign = 'center';
@@ -168,7 +168,7 @@ export default function StaticFieldBackground() {
           ctx.fillStyle = COLORS.icyBright;
           ctx.shadowColor = COLORS.icy;
           ctx.shadowBlur = 12;
-          ctx.font = '48px CollegeBlock, system-ui, sans-serif';
+          ctx.font = '48px CollegeBlock, Graduate, system-ui, sans-serif';
           ctx.translate(w - 40, yPx);
           ctx.rotate(Math.PI / 2);
           ctx.textAlign = 'center';

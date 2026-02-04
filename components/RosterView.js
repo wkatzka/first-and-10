@@ -114,9 +114,9 @@ export default function RosterView({ user, diagramSide = 'offense' }) {
   if (!user) return null;
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="space-y-6 relative">
+      {/* Header – above fixed diagram */}
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl f10-title text-white">My Roster</h1>
           <p className="f10-subtitle">

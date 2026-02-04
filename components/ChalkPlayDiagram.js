@@ -13,9 +13,9 @@ const COLORS = {
 };
 const NEON = ['#4CCBFF', '#4AA3FF', '#6CFF3E', '#FF4FA3', '#FF9A2E'];
 const BG_DIM = 0.62;
-const PX_PER_YARD = 14;
+// Match StaticFieldBackground so cards/arrows align with background field
+const PX_PER_YARD = 18;
 const ENDZONE_YARDS = 10;
-const FIELD_VISIBLE_YARDS = 35;
 const CHALK_STROKE = 2.5;
 const X_SIZE = 12;
 const CARD_W = 56;
@@ -161,7 +161,6 @@ const CYCLE_PAUSE_MS = 800;
 
 export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
   const canvasRef = useRef(null);
-  const containerRef = useRef(null);
   const [size, setSize] = useState({ w: 400, h: 320 });
   const cycleStartRef = useRef(performance.now());
   const playRef = useRef({ cardPositions: [], routes: [], routeColors: [], xCoords: [] });
@@ -169,9 +168,10 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
 
   useEffect(() => {
     const measure = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      setSize({ w: rect.width, h: Math.min(rect.height, typeof window !== 'undefined' ? window.innerHeight * 0.55 : 380) });
+      setSize({
+        w: typeof window !== 'undefined' ? window.innerWidth : 400,
+        h: typeof window !== 'undefined' ? window.innerHeight : 320,
+      });
     };
     measure();
     window.addEventListener('resize', measure);
@@ -226,7 +226,8 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
     const routeOrder = shuffle([0, 1, 2, 3]);
     const routes = arrowIndices.map((idx, i) => {
       const p0 = { x: positions[idx].x, y: positions[idx].y };
-      const endY = 80 + Math.random() * 60;
+      // Arrows can extend into end zone (up to ~endzoneH + 10yd)
+      const endY = 100 + Math.random() * (line10Y * 0.5);
       const build = OFFENSE_ROUTE_BUILDERS[routeOrder[i]];
       return build(p0, endY, centerX);
     });
@@ -281,73 +282,12 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
     canvas.height = Math.floor(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const drawStaticField = () => {
-      ctx.fillStyle = COLORS.field;
-      ctx.fillRect(0, 0, w, h);
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = COLORS.icy;
-      ctx.shadowColor = COLORS.icy;
-      ctx.shadowBlur = 6;
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = 0.55 * BG_DIM;
-      const xStart = 20;
-      const xEnd = w - 20;
-      for (let yard = 0; yard <= FIELD_VISIBLE_YARDS; yard += 5) {
-        const yPx = endzoneH + yard * PX_PER_YARD;
-        if (yPx > h) break;
-        let segStart = xStart;
-        let segEnd = xEnd;
-        if (yard === 0) {
-          const pad = 80;
-          segStart = w / 2 - 160 - pad;
-          segEnd = w / 2 + 160 + pad;
-          if (segStart > xStart) {
-            ctx.beginPath();
-            ctx.moveTo(xStart, yPx);
-            ctx.lineTo(segStart, yPx);
-            ctx.stroke();
-          }
-          if (segEnd < xEnd) {
-            ctx.beginPath();
-            ctx.moveTo(segEnd, yPx);
-            ctx.lineTo(xEnd, yPx);
-            ctx.stroke();
-          }
-        }
-        ctx.beginPath();
-        ctx.moveTo(segStart, yPx);
-        ctx.lineTo(segEnd, yPx);
-        ctx.stroke();
-        if (yard <= 10) {
-          for (let i = 4; i < 12; i++) {
-            const yy = yPx + i * 4;
-            ctx.beginPath();
-            ctx.moveTo(10, yy);
-            ctx.lineTo(14, yy);
-            ctx.moveTo(w - 14, yy);
-            ctx.lineTo(w - 10, yy);
-            ctx.stroke();
-          }
-        }
-      }
-      ctx.restore();
-      ctx.save();
-      ctx.fillStyle = COLORS.icyBright;
-      ctx.shadowColor = COLORS.icy;
-      ctx.shadowBlur = 12;
-      ctx.font = 'bold 32px CollegeBlock, Graduate, system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('FIRST & 10', w / 2, endzoneH / 2);
-      ctx.restore();
-    };
-
     const frame = (now) => {
       const play = playRef.current;
       const dt = now - cycleStartRef.current;
 
-      drawStaticField();
+      // Transparent – only chalk arrows and X's; background shows through
+      ctx.clearRect(0, 0, w, h);
 
       play.xCoords.forEach((xc, i) => drawChalkX(ctx, xc.x, xc.y, NEON[i % NEON.length]));
 
@@ -399,15 +339,24 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
   const play = playRef.current;
 
   return (
-    <div ref={containerRef} className="w-full relative" style={{ height: 'min(55vh, 400px)' }}>
+    <>
       <canvas
         ref={canvasRef}
         aria-hidden="true"
-        className="w-full h-full rounded-xl overflow-hidden border border-white/10 absolute inset-0"
-        style={{ width: w, height: h, background: COLORS.field }}
+        className="pointer-events-none"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          width: w,
+          height: h,
+          zIndex: 0,
+          background: 'transparent',
+        }}
       />
-      {/* Cards on field – clickable to change roster */}
-      <div className="absolute inset-0" style={{ width: w, height: h }}>
+      {/* Cards on background – clickable to change roster */}
+      <div
+        style={{ position: 'fixed', inset: 0, width: w, height: h, zIndex: 0 }}
+      >
         {cardLayout.map((pos) => {
           const slot = {
             id: pos.slotId,
@@ -442,6 +391,6 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
           );
         })}
       </div>
-    </div>
+    </>
   );
 }
