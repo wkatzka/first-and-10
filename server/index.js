@@ -1136,7 +1136,10 @@ app.post('/api/roster/auto-fill', authMiddleware, async (req, res) => {
     const strategy = ['balanced', 'pass_heavy', 'run_heavy'].includes(req.body?.strategy)
       ? req.body.strategy
       : 'balanced';
-    const slots = gameEngine.autoFillRoster(cards, strategy);
+    const defenseStrategy = ['coverage_shell', 'run_stuff', 'base_defense'].includes(req.body?.defenseStrategy)
+      ? req.body.defenseStrategy
+      : 'base_defense';
+    const slots = gameEngine.autoFillRoster(cards, strategy, defenseStrategy);
     await db.updateRoster(req.user.id, slots);
     const fullRoster = await db.getFullRoster(req.user.id);
     res.json(fullRoster);

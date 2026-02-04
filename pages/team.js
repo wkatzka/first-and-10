@@ -6,25 +6,38 @@ import { autoFillRoster } from '../lib/api';
 
 const NAV_CYAN = '#00e5ff';
 
-const STRATEGIES = [
+const OFFENSE_STRATEGIES = [
   { value: 'pass_heavy', label: 'Pass Heavy', description: 'Best throwing QB, best WRs & TE' },
   { value: 'balanced', label: 'Balanced', description: 'Best overall at each position' },
   { value: 'run_heavy', label: 'Run Dominant', description: 'Best mobile QB, best RBs & run game' },
 ];
 
+const DEFENSE_STRATEGIES = [
+  { value: 'coverage_shell', label: 'Coverage Shell', description: 'Nickel/Dime — best vs pass' },
+  { value: 'run_stuff', label: 'Run Stuff', description: 'Stacked box — best vs run' },
+  { value: 'base_defense', label: 'Base Defense', description: '4-3/3-4 — balanced' },
+];
+
+function loadStored(key, valid) {
+  if (typeof window === 'undefined') return null;
+  try {
+    const s = localStorage.getItem(key);
+    return s && valid.includes(s) ? s : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 export default function Team({ user, onLogout, unreadMessages }) {
   const router = useRouter();
   const [diagramSide, setDiagramSide] = useState('offense');
   const [showStrategyModal, setShowStrategyModal] = useState(false);
-  const [selectedStrategy, setSelectedStrategy] = useState(() => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const s = localStorage.getItem('f10_auto_strategy');
-      return s && ['pass_heavy', 'balanced', 'run_heavy'].includes(s) ? s : null;
-    } catch (_) {
-      return null;
-    }
-  });
+  const [selectedOffenseStrategy, setSelectedOffenseStrategy] = useState(() =>
+    loadStored('f10_auto_strategy_offense', ['pass_heavy', 'balanced', 'run_heavy'])
+  );
+  const [selectedDefenseStrategy, setSelectedDefenseStrategy] = useState(() =>
+    loadStored('f10_auto_strategy_defense', ['coverage_shell', 'run_stuff', 'base_defense'])
+  );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -36,18 +49,21 @@ export default function Team({ user, onLogout, unreadMessages }) {
   }, [user, router]);
 
   useEffect(() => {
-    if (selectedStrategy && typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('f10_auto_strategy', selectedStrategy);
-      } catch (_) {}
-    }
-  }, [selectedStrategy]);
+    if (typeof window === 'undefined') return;
+    try {
+      if (selectedOffenseStrategy) localStorage.setItem('f10_auto_strategy_offense', selectedOffenseStrategy);
+      if (selectedDefenseStrategy) localStorage.setItem('f10_auto_strategy_defense', selectedDefenseStrategy);
+    } catch (_) {}
+  }, [selectedOffenseStrategy, selectedDefenseStrategy]);
 
-  const handleStrategySelect = async (strategy) => {
+  const handleStrategySelect = async (value) => {
     setSaving(true);
     try {
-      await autoFillRoster(strategy);
-      setSelectedStrategy(strategy);
+      const offense = diagramSide === 'offense' ? value : (selectedOffenseStrategy || 'balanced');
+      const defense = diagramSide === 'defense' ? value : (selectedDefenseStrategy || 'base_defense');
+      await autoFillRoster(offense, defense);
+      if (diagramSide === 'offense') setSelectedOffenseStrategy(value);
+      else setSelectedDefenseStrategy(value);
       setRefreshTrigger((t) => t + 1);
       setShowStrategyModal(false);
     } catch (err) {
@@ -88,8 +104,10 @@ export default function Team({ user, onLogout, unreadMessages }) {
     </div>
   );
 
-  const strategyLabel = selectedStrategy
-    ? (STRATEGIES.find((s) => s.value === selectedStrategy)?.label ?? 'Auto Strategy')
+  const strategies = diagramSide === 'offense' ? OFFENSE_STRATEGIES : DEFENSE_STRATEGIES;
+  const selected = diagramSide === 'offense' ? selectedOffenseStrategy : selectedDefenseStrategy;
+  const strategyLabel = selected
+    ? (strategies.find((s) => s.value === selected)?.label ?? 'Auto Strategy')
     : 'Auto Strategy';
   const AutoStrategyTile = () => (
     <button
@@ -126,7 +144,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
         </div>
       </div>
 
-      {/* Auto Strategy modal: select strategy (highlighted blue); selection runs autofill and button shows name */}
+      {/* Strategy modal: content depends on Offense vs Defense tab; selection runs autofill and button shows name */}
       {showStrategyModal && (
         <div
           className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
@@ -136,13 +154,17 @@ export default function Team({ user, onLogout, unreadMessages }) {
             className="f10-panel p-6 max-w-sm w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg f10-title text-white mb-4">Auto-fill by strategy</h3>
+            <h3 className="text-lg f10-title text-white mb-4">
+              {diagramSide === 'offense' ? 'Offense strategy' : 'Defense strategy'}
+            </h3>
             <p className="text-gray-400 text-sm mb-4">
-              Pick a strategy to fill your roster with your best matching cards.
+              {diagramSide === 'offense'
+                ? 'Pick a strategy to fill offensive slots with your best matching cards.'
+                : 'Pick a strategy to fill defensive slots with your best matching cards.'}
             </p>
             <div className="space-y-2">
-              {STRATEGIES.map((s) => {
-                const isSelected = selectedStrategy === s.value;
+              {strategies.map((s) => {
+                const isSelected = selected === s.value;
                 return (
                   <button
                     key={s.value}

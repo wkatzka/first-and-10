@@ -183,9 +183,10 @@ function defaultScore(card) {
 /**
  * Auto-fill roster slots with best available cards.
  * @param {Array} cards - user's cards
- * @param {string} strategy - 'balanced' | 'pass_heavy' | 'run_heavy'
+ * @param {string} strategy - 'balanced' | 'pass_heavy' | 'run_heavy' (offense)
+ * @param {string} defenseStrategy - 'coverage_shell' | 'run_stuff' | 'base_defense' (defense slot bias)
  */
-function autoFillRoster(cards, strategy = 'balanced') {
+function autoFillRoster(cards, strategy = 'balanced', defenseStrategy = 'base_defense') {
   const slots = {};
   const byPosition = {};
   for (const card of cards) {
@@ -273,19 +274,30 @@ function autoFillRoster(cards, strategy = 'balanced') {
     if (tes[0]) slots.te_card_id = tes[0].id;
   }
 
-  // OL, DL, LB, DB, K – always best by tier/composite (or run_heavy could favor run-blocking OL later)
+  // OL – always best by tier/composite
   const ols = (byPosition['OL'] || []).sort(defaultSort);
   if (ols[0]) slots.ol_card_id = ols[0].id;
 
+  // Defense slots – bias by defenseStrategy: coverage_shell = best DBs first, run_stuff = best DL/LB first, base = best overall
   const dls = (byPosition['DL'] || []).sort(defaultSort);
-  if (dls[0]) slots.dl_card_id = dls[0].id;
-
   const lbs = (byPosition['LB'] || []).sort(defaultSort);
-  if (lbs[0]) slots.lb_card_id = lbs[0].id;
-
   const dbs = (byPosition['DB'] || []).sort(defaultSort);
-  if (dbs[0]) slots.db1_card_id = dbs[0].id;
-  if (dbs[1]) slots.db2_card_id = dbs[1].id;
+  if (defenseStrategy === 'coverage_shell') {
+    if (dbs[0]) slots.db1_card_id = dbs[0].id;
+    if (dbs[1]) slots.db2_card_id = dbs[1].id;
+    if (dls[0]) slots.dl_card_id = dls[0].id;
+    if (lbs[0]) slots.lb_card_id = lbs[0].id;
+  } else if (defenseStrategy === 'run_stuff') {
+    if (dls[0]) slots.dl_card_id = dls[0].id;
+    if (lbs[0]) slots.lb_card_id = lbs[0].id;
+    if (dbs[0]) slots.db1_card_id = dbs[0].id;
+    if (dbs[1]) slots.db2_card_id = dbs[1].id;
+  } else {
+    if (dls[0]) slots.dl_card_id = dls[0].id;
+    if (lbs[0]) slots.lb_card_id = lbs[0].id;
+    if (dbs[0]) slots.db1_card_id = dbs[0].id;
+    if (dbs[1]) slots.db2_card_id = dbs[1].id;
+  }
 
   const ks = (byPosition['K'] || []).sort(defaultSort);
   if (ks[0]) slots.k_card_id = ks[0].id;
