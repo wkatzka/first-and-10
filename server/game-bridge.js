@@ -172,57 +172,124 @@ function simulateGameFromDB(homeFullRoster, awayFullRoster) {
 }
 
 /**
- * Auto-fill roster slots with best available cards
+ * Score for default sort: tier then composite
  */
-function autoFillRoster(cards) {
+function defaultScore(card) {
+  const t = card.tier || 0;
+  const c = card.composite_score != null ? Number(card.composite_score) : 0;
+  return t * 1000 + c;
+}
+
+/**
+ * Auto-fill roster slots with best available cards.
+ * @param {Array} cards - user's cards
+ * @param {string} strategy - 'balanced' | 'pass_heavy' | 'run_heavy'
+ */
+function autoFillRoster(cards, strategy = 'balanced') {
   const slots = {};
-  
-  // Group cards by position
   const byPosition = {};
   for (const card of cards) {
     const pos = card.position;
     if (!byPosition[pos]) byPosition[pos] = [];
     byPosition[pos].push(card);
   }
-  
-  // Sort each position by tier (desc), then composite score (desc)
-  for (const pos in byPosition) {
-    byPosition[pos].sort((a, b) => {
-      if (b.tier !== a.tier) return b.tier - a.tier;
-      return (b.composite_score || 0) - (a.composite_score || 0);
-    });
-  }
-  
-  // Fill 11 slots
+
+  const trait = (card, key) => {
+    const t = card.engine_traits && typeof card.engine_traits === 'object' ? card.engine_traits[key] : null;
+    return typeof t === 'number' ? t : 50;
+  };
+
+  const defaultSort = (a, b) => (defaultScore(b) - defaultScore(a));
+
+  // QB
   const qbs = byPosition['QB'] || [];
-  if (qbs[0]) slots.qb_card_id = qbs[0].id;
-  
+  if (qbs.length) {
+    if (strategy === 'pass_heavy') {
+      qbs.sort((a, b) => {
+        const scoreA = (trait(a, 'accuracy') + trait(a, 'volume')) / 2;
+        const scoreB = (trait(b, 'accuracy') + trait(b, 'volume')) / 2;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return defaultSort(a, b);
+      });
+    } else if (strategy === 'run_heavy') {
+      qbs.sort((a, b) => {
+        const scoreA = trait(a, 'mobility');
+        const scoreB = trait(b, 'mobility');
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return defaultSort(a, b);
+      });
+    } else {
+      qbs.sort(defaultSort);
+    }
+    slots.qb_card_id = qbs[0].id;
+  }
+
+  // RB
   const rbs = byPosition['RB'] || [];
-  if (rbs[0]) slots.rb_card_id = rbs[0].id;
-  
+  if (rbs.length) {
+    if (strategy === 'run_heavy') {
+      rbs.sort((a, b) => {
+        const scoreA = (trait(a, 'powerRun') + trait(a, 'breakaway') + trait(a, 'workhorse')) / 3;
+        const scoreB = (trait(b, 'powerRun') + trait(b, 'breakaway') + trait(b, 'workhorse')) / 3;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return defaultSort(a, b);
+      });
+    } else {
+      rbs.sort(defaultSort);
+    }
+    slots.rb_card_id = rbs[0].id;
+  }
+
+  // WRs – pass_heavy favors receiving traits
   const wrs = byPosition['WR'] || [];
-  if (wrs[0]) slots.wr1_card_id = wrs[0].id;
-  if (wrs[1]) slots.wr2_card_id = wrs[1].id;
-  
+  if (wrs.length) {
+    if (strategy === 'pass_heavy') {
+      wrs.sort((a, b) => {
+        const scoreA = (trait(a, 'hands') + trait(a, 'explosive') + trait(a, 'tdThreat')) / 3;
+        const scoreB = (trait(b, 'hands') + trait(b, 'explosive') + trait(b, 'tdThreat')) / 3;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return defaultSort(a, b);
+      });
+    } else {
+      wrs.sort(defaultSort);
+    }
+    if (wrs[0]) slots.wr1_card_id = wrs[0].id;
+    if (wrs[1]) slots.wr2_card_id = wrs[1].id;
+  }
+
+  // TE
   const tes = byPosition['TE'] || [];
-  if (tes[0]) slots.te_card_id = tes[0].id;
-  
-  const ols = byPosition['OL'] || [];
+  if (tes.length) {
+    if (strategy === 'pass_heavy') {
+      tes.sort((a, b) => {
+        const scoreA = (trait(a, 'hands') + trait(a, 'explosive') + trait(a, 'tdThreat')) / 3;
+        const scoreB = (trait(b, 'hands') + trait(b, 'explosive') + trait(b, 'tdThreat')) / 3;
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return defaultSort(a, b);
+      });
+    } else {
+      tes.sort(defaultSort);
+    }
+    if (tes[0]) slots.te_card_id = tes[0].id;
+  }
+
+  // OL, DL, LB, DB, K – always best by tier/composite (or run_heavy could favor run-blocking OL later)
+  const ols = (byPosition['OL'] || []).sort(defaultSort);
   if (ols[0]) slots.ol_card_id = ols[0].id;
-  
-  const dls = byPosition['DL'] || [];
+
+  const dls = (byPosition['DL'] || []).sort(defaultSort);
   if (dls[0]) slots.dl_card_id = dls[0].id;
-  
-  const lbs = byPosition['LB'] || [];
+
+  const lbs = (byPosition['LB'] || []).sort(defaultSort);
   if (lbs[0]) slots.lb_card_id = lbs[0].id;
-  
-  const dbs = byPosition['DB'] || [];
+
+  const dbs = (byPosition['DB'] || []).sort(defaultSort);
   if (dbs[0]) slots.db1_card_id = dbs[0].id;
   if (dbs[1]) slots.db2_card_id = dbs[1].id;
-  
-  const ks = byPosition['K'] || [];
+
+  const ks = (byPosition['K'] || []).sort(defaultSort);
   if (ks[0]) slots.k_card_id = ks[0].id;
-  
+
   return slots;
 }
 

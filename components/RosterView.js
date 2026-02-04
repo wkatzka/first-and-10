@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import ChalkPlayDiagram from './ChalkPlayDiagram';
-import { getRoster, getCards, updateRoster, autoFillRoster } from '../lib/api';
+import { getRoster, getCards, updateRoster } from '../lib/api';
 
 // 11-player roster: QB, RB, WR×2, TE, OL, DL, LB, DB×2, K
 const ROSTER_LAYOUT = [
@@ -24,7 +24,7 @@ const ROSTER_LAYOUT = [
   ]},
 ];
 
-export default function RosterView({ user, diagramSide = 'offense' }) {
+export default function RosterView({ user, diagramSide = 'offense', refreshTrigger = 0 }) {
   const router = useRouter();
   const [roster, setRoster] = useState(null);
   const [cards, setCards] = useState([]);
@@ -36,7 +36,7 @@ export default function RosterView({ user, diagramSide = 'offense' }) {
     if (!user) return;
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, refreshTrigger]);
 
   const loadData = async () => {
     try {
@@ -75,21 +75,6 @@ export default function RosterView({ user, diagramSide = 'offense' }) {
     }
   };
 
-  const handleAutoFill = async () => {
-    if (!confirm('Auto-fill your roster with the best available cards?')) return;
-
-    setSaving(true);
-    try {
-      const newRoster = await autoFillRoster();
-      setRoster(newRoster);
-    } catch (err) {
-      console.error('Failed to auto-fill:', err);
-      alert(err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
   // Get cards for selected position
   const availableCards = selectedSlot
     ? cards.filter(c => c.position === selectedSlot.position)
@@ -103,37 +88,10 @@ export default function RosterView({ user, diagramSide = 'offense' }) {
     }
   }
 
-  // Calculate roster power
-  const rosterPower = roster?.cards
-    ? Object.values(roster.cards).reduce((sum, card) => sum + (card?.tier || 0), 0)
-    : 0;
-  const filledSlots = roster?.cards
-    ? Object.values(roster.cards).filter(c => c).length
-    : 0;
-
   if (!user) return null;
 
   return (
     <div className="space-y-6 relative">
-      {/* Header – above fixed diagram */}
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl f10-title text-white">My Roster</h1>
-          <p className="f10-subtitle">
-            {filledSlots}/11 starters | Power: {rosterPower}
-          </p>
-        </div>
-
-        <button
-          onClick={handleAutoFill}
-          disabled={saving || cards.length === 0}
-          className="px-4 py-2 text-white rounded-xl transition-colors disabled:opacity-50"
-          style={{ background: 'rgba(0,229,255,0.16)', border: '1px solid rgba(0,229,255,0.22)' }}
-        >
-          Auto-Fill Best Cards
-        </button>
-      </div>
-
       {loading ? (
         <div className="text-center text-gray-400 py-12">Loading roster...</div>
       ) : (
