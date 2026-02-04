@@ -5,6 +5,8 @@ import '../styles/globals.css';
 import { getMe, setToken, getActiveConferences, getUnreadCount } from '../lib/api';
 import PressConference, { PressConferenceBadge } from '../components/PressConference';
 import PlayfieldBackground from '../components/PlayfieldBackground';
+import StaticFieldBackground from '../components/StaticFieldBackground';
+import { isLive } from '../lib/env';
 
 const graduate = Graduate({
   weight: '400',
@@ -134,7 +136,7 @@ export default function App({ Component, pageProps }) {
       >
         .
       </span>
-      <PlayfieldBackground />
+      {isLive ? <StaticFieldBackground /> : <PlayfieldBackground />}
       <Component 
         {...pageProps} 
         user={user} 
