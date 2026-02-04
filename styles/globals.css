@@ -10,11 +10,11 @@
   font-weight: 400;
 }
 
-/* Field background numbers/letters – College Block */
+/* Field background numbers/letters – College Block (block so first paint uses correct font) */
 @font-face {
   font-family: "CollegeBlock";
   src: url("/fonts/CollegeBlock-Mzxn.ttf") format("truetype");
-  font-display: swap;
+  font-display: block;
   font-style: normal;
   font-weight: 400;
 }

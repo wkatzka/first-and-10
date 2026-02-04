@@ -201,7 +201,16 @@ export default function StaticFieldBackground() {
       ctx.restore();
     };
 
-    draw();
+    // Wait for College Block before first draw so first paint is correct (no scroll needed)
+    const runDraw = () => {
+      draw();
+    };
+    if (typeof document !== 'undefined' && document.fonts && document.fonts.load) {
+      document.fonts.load('64px CollegeBlock').then(runDraw).catch(runDraw);
+      document.fonts.ready.then(runDraw); // Redraw again when all fonts ready (ensures correct font even if load resolved with fallback)
+    } else {
+      runDraw();
+    }
     window.addEventListener('resize', draw);
     return () => window.removeEventListener('resize', draw);
   }, []);

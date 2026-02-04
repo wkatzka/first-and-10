@@ -222,7 +222,7 @@ export default function HowToPlay({ user, onLogout, unreadMessages }) {
         ) : (
           <div className="text-center space-y-3">
             <Link
-              href="/packs"
+              href="/cards"
               className="inline-block px-8 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold rounded-xl hover:from-yellow-600 hover:to-orange-600 transition-all"
             >
               Open Your Packs

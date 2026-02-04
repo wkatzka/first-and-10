@@ -184,7 +184,7 @@ export default function RosterView({ user, diagramSide = 'offense' }) {
                 No {selectedSlot.position} cards available.
                 <br />
                 <button
-                  onClick={() => router.push('/packs')}
+                  onClick={() => router.push('/cards')}
                   className="mt-2 text-blue-400 hover:underline"
                 >
                   Open packs to get more cards!

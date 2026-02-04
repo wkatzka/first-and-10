@@ -45,15 +45,15 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
   // Desktop navigation items
   const navItems = [
     { href: '/team', label: 'My Team', variant: 'team' },
-    { href: '/packs', label: 'Packs', variant: 'packs' },
+    { href: '/cards', label: 'Cards', variant: 'packs' },
     { href: '/league', label: 'League', variant: 'league', badge: unreadMessages },
     { href: '/schedule', label: 'Schedule', variant: 'schedule' },
     { href: '/how-to-play', label: 'Rules', variant: 'rules' },
   ];
   
-  // Mobile bottom nav: Packs & League left, My Team center, Schedule & Rules right
+  // Mobile bottom nav: Cards & League left, My Team center, Schedule & Rules right
   const mobileNavItems = [
-    { href: '/packs', label: 'Packs', variant: 'packs' },
+    { href: '/cards', label: 'Cards', variant: 'packs' },
     { href: '/league', label: 'League', variant: 'league', badge: unreadMessages },
     { href: '/team', label: 'My Team', variant: 'team' },
     { href: '/schedule', label: 'Schedule', variant: 'schedule' },

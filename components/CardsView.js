@@ -68,7 +68,7 @@ export default function CardsView({ user }) {
 
         {cards.length === 0 && !loading && (
           <button
-            onClick={() => router.push('/packs')}
+            onClick={() => router.push('/cards')}
             className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all"
           >
             Open Your First Pack!

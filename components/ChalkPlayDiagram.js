@@ -18,8 +18,8 @@ const PX_PER_YARD = 18;
 const ENDZONE_YARDS = 10;
 const CHALK_STROKE = 2.5;
 const X_SIZE = 12;
-const CARD_W = 56;
-const CARD_H = 67;
+const CARD_W = 66;
+const CARD_H = 78;
 
 // Offense: WR1, TE, OL, RB, WR2 + QB behind OL. Slot ids for roster.cards.
 const OFFENSE_SLOTS = ['wr1_card_id', 'te_card_id', 'ol_card_id', 'rb_card_id', 'wr2_card_id'];
@@ -92,10 +92,12 @@ function drawChalkLine(ctx, points, color, flatEnd = false) {
   ctx.restore();
 }
 
+// Arrowhead: twice as big, right angle (π/2 total = 0.5 rad each side from tip direction)
 function drawChalkArrowhead(ctx, tip, angle, color) {
-  const size = 10;
-  const left = { x: tip.x - size * Math.cos(angle - 0.45), y: tip.y - size * Math.sin(angle - 0.45) };
-  const right = { x: tip.x - size * Math.cos(angle + 0.45), y: tip.y - size * Math.sin(angle + 0.45) };
+  const size = 20;
+  const halfAngle = Math.PI / 4; // 45° each side = 90° total
+  const left = { x: tip.x - size * Math.cos(angle - halfAngle), y: tip.y - size * Math.sin(angle - halfAngle) };
+  const right = { x: tip.x - size * Math.cos(angle + halfAngle), y: tip.y - size * Math.sin(angle + halfAngle) };
   ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = CHALK_STROKE;
@@ -110,9 +112,9 @@ function drawChalkArrowhead(ctx, tip, angle, color) {
   ctx.restore();
 }
 
-// Flat head at tip (defense "blocking" style – perpendicular bar)
+// Flat head: twice as long (16), perpendicular bar at tip
 function drawChalkFlatHead(ctx, tip, angle, color) {
-  const size = 8;
+  const size = 16;
   const perp = { x: -Math.sin(angle), y: Math.cos(angle) };
   const left = { x: tip.x - perp.x * size, y: tip.y - perp.y * size };
   const right = { x: tip.x + perp.x * size, y: tip.y + perp.y * size };
@@ -332,8 +334,9 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
             const t = j / segments;
             pts.push(bezierPoint(r.p0, r.p1, r.p2, r.p3, t));
           }
-          if (pts.length >= 2) drawChalkLine(ctx, pts, color, false);
-          if (eased >= 0.98 && pts.length >= 2) {
+          if (pts.length >= 2) {
+            drawChalkLine(ctx, pts, color, false);
+            // Arrowhead always on the moving tip throughout the animation
             const tip = pts[pts.length - 1];
             const prev = pts[pts.length - 2];
             drawChalkArrowhead(ctx, tip, Math.atan2(tip.y - prev.y, tip.x - prev.x), color);
@@ -356,8 +359,9 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
             const t = j / segments;
             pts.push(bezierPoint(r.p0, r.p1, r.p2, r.p3, t));
           }
-          if (pts.length >= 2) drawChalkLine(ctx, pts, color, true);
-          if (eased >= 0.98 && pts.length >= 2) {
+          if (pts.length >= 2) {
+            drawChalkLine(ctx, pts, color, true);
+            // Flat head always on the moving line throughout the animation
             const tip = pts[pts.length - 1];
             const prev = pts[pts.length - 2];
             drawChalkFlatHead(ctx, tip, Math.atan2(tip.y - prev.y, tip.x - prev.x), color);
