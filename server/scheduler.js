@@ -406,7 +406,8 @@ function generateSuperBowlSunday(sundayDateStr, schedule) {
  */
 async function initializeSchedule(forceReset = false) {
   let schedule = loadSchedule();
-  const allUsers = await db.getAllUsers();
+  const allUsersRaw = await db.getAllUsers();
+  const allUsers = Array.isArray(allUsersRaw) ? allUsersRaw : [];
   const eligibleUsers = await getEligibleUsers(allUsers);
   
   console.log(`Scheduling: ${eligibleUsers.length}/${allUsers.length} users have full rosters`);
@@ -607,7 +608,8 @@ async function checkAndGenerateNextWeek() {
 
   if (daysRemaining > 2) return;
 
-  const allUsers = await db.getAllUsers();
+  const allUsersRaw = await db.getAllUsers();
+  const allUsers = Array.isArray(allUsersRaw) ? allUsersRaw : [];
   const eligibleUsers = await getEligibleUsers(allUsers);
   if (eligibleUsers.length < 2) return;
 
