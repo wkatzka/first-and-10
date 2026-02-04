@@ -1,0 +1,26 @@
+---
+description: Canonical definitions of testing vs live environment; never conflate them
+alwaysApply: true
+---
+
+# Environments: Testing vs Live
+
+This project has exactly **two environments**. Always use these names:
+
+## Testing environment
+- **Name:** testing environment (or "testing")
+- **What it is:** Local development. Frontend at `http://localhost:3000`, backend at `http://localhost:4000`.
+- **When:** Running the app on your machine for development and safe experimentation.
+- **In code (frontend):** `lib/env.js` → `isTesting` is true. Use `isTesting` / `isLive` from that file; do not infer from NODE_ENV or hardcoded localhost.
+
+## Live environment
+- **Name:** live environment (or "live")
+- **What it is:** Production. Deployed frontend and backend URLs (e.g. Vercel + Render). Real users.
+- **When:** The deployed app that users actually use.
+- **In code (frontend):** `lib/env.js` → `isLive` is true.
+
+## Rules for agents
+- When the user says "local", "localhost", or "dev" → they mean **testing environment**.
+- When the user says "production", "deployed", or "real users" → they mean **live environment**.
+- Do not use port 3001, 3002, 3003 for the API; backend default is 4000 (testing only).
+- See `ENVIRONMENTS.md` and `lib/env.js` for config and code details.

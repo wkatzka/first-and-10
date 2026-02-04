@@ -59,7 +59,7 @@ export default function FoilTest() {
             Start Foil Animation
           </button>
           <p className="text-xs text-gray-500 mt-4">
-            Visit `http://localhost:3002/foil-test`
+            Visit http://localhost:3000/foil-test (testing only)
           </p>
         </div>
       )}
