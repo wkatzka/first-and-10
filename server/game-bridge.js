@@ -9,6 +9,10 @@ const path = require('path');
 // Import game engine
 const { simulateGame, buildRoster } = require('./game-engine/simulation');
 
+// Tier caps (must match server/index.js)
+const OFFENSE_TIER_CAP = 42; // 6 slots: QB, RB, WR1, WR2, TE, OL
+const DEFENSE_TIER_CAP = 28; // 4 slots: DL, LB, DB1, DB2
+
 /**
  * Convert database card to game engine player format
  */
@@ -115,13 +119,55 @@ function fillMissingPositions(roster) {
 }
 
 /**
+ * Calculate tier sums from full roster (for tier cap validation)
+ * @param {object} fullRoster - { roster, cards } from db.getFullRoster
+ * @returns {{ offense: number, defense: number }}
+ */
+function calculateTierSums(fullRoster) {
+  const { cards } = fullRoster;
+  if (!cards) return { offense: 0, defense: 0 };
+  
+  const offenseSlots = ['qb_card_id', 'rb_card_id', 'wr1_card_id', 'wr2_card_id', 'te_card_id', 'ol_card_id'];
+  const defenseSlots = ['dl_card_id', 'lb_card_id', 'db1_card_id', 'db2_card_id'];
+  
+  let offenseSum = 0;
+  for (const slot of offenseSlots) {
+    const card = cards[slot];
+    if (card?.tier) offenseSum += card.tier;
+  }
+  
+  let defenseSum = 0;
+  for (const slot of defenseSlots) {
+    const card = cards[slot];
+    if (card?.tier) defenseSum += card.tier;
+  }
+  
+  return { offense: offenseSum, defense: defenseSum };
+}
+
+/**
+ * Check if a roster is over the tier cap (offense or defense)
+ * @param {object} fullRoster - { roster, cards } from db.getFullRoster
+ * @returns {boolean}
+ */
+function isOverTierCap(fullRoster) {
+  const sums = calculateTierSums(fullRoster);
+  return sums.offense > OFFENSE_TIER_CAP || sums.defense > DEFENSE_TIER_CAP;
+}
+
+/**
  * Run a game simulation from database rosters
+ * If a team's roster is over tier cap, their strategy defaults to balanced.
  */
 function simulateGameFromDB(homeFullRoster, awayFullRoster) {
   const homeRoster = dbRosterToEngineRoster(homeFullRoster);
   const awayRoster = dbRosterToEngineRoster(awayFullRoster);
   
-  const result = simulateGame(homeRoster, awayRoster);
+  // Check if either team is over tier cap (penalty: force balanced strategy)
+  const homeForceBalanced = isOverTierCap(homeFullRoster);
+  const awayForceBalanced = isOverTierCap(awayFullRoster);
+  
+  const result = simulateGame(homeRoster, awayRoster, { homeForceBalanced, awayForceBalanced });
   
   // Process plays to identify touchdowns and scoring plays
   const processedPlays = [];

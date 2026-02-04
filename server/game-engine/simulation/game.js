@@ -68,16 +68,22 @@ function applyRosterBoosts(roster, multipliers) {
 
 /**
  * Create initial game state with strategy-based rating boosts
+ * @param {object} homeRoster - Home team roster
+ * @param {object} awayRoster - Away team roster
+ * @param {object} options - Options: { homeForceBalanced, awayForceBalanced }
  */
-function createGameState(homeRoster, awayRoster) {
+function createGameState(homeRoster, awayRoster, options = {}) {
+  const { homeForceBalanced = false, awayForceBalanced = false } = options;
+  
   // Step 1: Calculate BASE ratings (no boosts) to derive strategies
   const homeBaseRatings = calculateTeamRatings(homeRoster);
   const awayBaseRatings = calculateTeamRatings(awayRoster);
   
-  const homeOffStrategy = getOffensiveStrategyFromRatings(homeBaseRatings.offense);
-  const homeDefStrategy = getDefensiveStrategyFromRatings(homeBaseRatings.defense);
-  const awayOffStrategy = getOffensiveStrategyFromRatings(awayBaseRatings.offense);
-  const awayDefStrategy = getDefensiveStrategyFromRatings(awayBaseRatings.defense);
+  // Derive strategies from roster composition (or force balanced if over tier cap)
+  const homeOffStrategy = homeForceBalanced ? 'balanced' : getOffensiveStrategyFromRatings(homeBaseRatings.offense);
+  const homeDefStrategy = homeForceBalanced ? 'base_defense' : getDefensiveStrategyFromRatings(homeBaseRatings.defense);
+  const awayOffStrategy = awayForceBalanced ? 'balanced' : getOffensiveStrategyFromRatings(awayBaseRatings.offense);
+  const awayDefStrategy = awayForceBalanced ? 'base_defense' : getDefensiveStrategyFromRatings(awayBaseRatings.defense);
   
   // Step 2: Get rating multipliers based on strategy matchup
   const homeMultipliers = getStrategyRatingMultipliers(
@@ -590,10 +596,10 @@ function runPlay(state) {
  * Simulate a complete game
  */
 function simulateGame(homeRoster, awayRoster, options = {}) {
-  const { verbose = false, maxPlays = 300 } = options;
+  const { verbose = false, maxPlays = 300, homeForceBalanced = false, awayForceBalanced = false } = options;
   
-  // Initialize game state
-  const state = createGameState(homeRoster, awayRoster);
+  // Initialize game state (pass forceBalanced flags for over-cap penalty)
+  const state = createGameState(homeRoster, awayRoster, { homeForceBalanced, awayForceBalanced });
   
   // Set who receives second half
   state.receivingSecondHalf = state.possession === 'home' ? 'away' : 'home';
