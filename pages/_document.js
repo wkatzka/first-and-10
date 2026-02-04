@@ -4,7 +4,14 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
-        {/* Fonts */}
+        {/* Fonts – preload College Block so background canvas can use it on first draw */}
+        <link
+          rel="preload"
+          href="/fonts/CollegeBlock-Mzxn.ttf"
+          as="font"
+          type="font/ttf"
+          crossOrigin="anonymous"
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
