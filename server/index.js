@@ -2131,10 +2131,8 @@ app.listen(PORT, '0.0.0.0', async () => {
   packs.loadPlayers();
   scheduler.startScheduler();
   if (process.env.PRIVATE_KEY && dbPool.useDatabase()) packFulfillment.start(15000).catch(() => {});
-  // Ensure John! has a tier-11 WR (one-time fix; no-op if he already has one)
-  if (dbPool.useDatabase()) {
-    ensureJohnHasHofWR().catch((err) => console.warn('ensureJohnHasHofWR:', err.message));
-  }
+  // Ensure John! has a tier-11 WR (no-op if he already has one). Runs for both Postgres and JSON (live).
+  ensureJohnHasHofWR().catch((err) => console.warn('ensureJohnHasHofWR:', err.message));
 });
 
 async function ensureJohnHasHofWR() {
