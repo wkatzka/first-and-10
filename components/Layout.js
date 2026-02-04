@@ -51,11 +51,11 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
 
   const baseNavItems = [
     { href: '/cards', label: 'Cards', variant: 'packs' },
-    ...(cryptoShopEnabled ? [{ href: '/shop', label: 'Shop', variant: 'shop' }] : []),
-    { href: '/team', label: 'My Team', variant: 'team' },
     { href: '/league', label: 'League', variant: 'league', badge: unreadMessages },
+    { href: '/team', label: 'My Team', variant: 'team' },
     { href: '/schedule', label: 'Schedule', variant: 'schedule' },
     { href: '/how-to-play', label: 'Rules', variant: 'rules' },
+    ...(cryptoShopEnabled ? [{ href: '/shop', label: 'Shop', variant: 'shop' }] : []),
   ];
 
   const navItems = baseNavItems;
