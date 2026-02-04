@@ -1753,6 +1753,59 @@ app.post('/api/admin/grant-single-card-pack', adminAuth, async (req, res) => {
   }
 });
 
+// Admin: Grant one Hall of Fame (tier 11) card to a user
+app.post('/api/admin/grant-hof-card', adminAuth, async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) return res.status(400).json({ error: 'username required' });
+    const user = await db.getUserByUsernameCaseInsensitive(username);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    let hofPlayer = null;
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const p = await packs.pickRandomPlayerFromTier(11);
+      if (p && (p.tier === 11 || p.isHOF) && (await mintingLedger.isCardMinted(p)) === false) {
+        hofPlayer = p;
+        break;
+      }
+    }
+    if (!hofPlayer) return res.status(500).json({ error: 'No unminted Hall of Fame player available' });
+
+    await mintingLedger.mintCard(hofPlayer, user.id);
+    const mintedCard = { ...hofPlayer, player_name: hofPlayer.player || hofPlayer.player_name };
+    const engine = buildEngineForCard({
+      player_name: mintedCard.player_name,
+      season: mintedCard.season,
+      position: mintedCard.position,
+      tier: mintedCard.tier,
+      composite_score: mintedCard.composite_score,
+    });
+    if (engine) {
+      mintedCard.engine_v = engine.engine_v;
+      mintedCard.engine_era = engine.engine_era;
+      mintedCard.engine_percentiles = engine.engine_percentiles;
+      mintedCard.engine_traits = engine.engine_traits;
+      mintedCard.engine_inferred = engine.engine_inferred;
+    }
+    mintedCard.stats = cardImageGenerator.getFormattedStats(mintedCard);
+    let imageUrl = '/cards/placeholder.svg';
+    let imagePending = !!AI_ENABLED;
+    if (!AI_ENABLED) {
+      try { imageUrl = await cardImageGenerator.getOrGenerateCardImage(mintedCard); } catch (_) {}
+    }
+    mintedCard.image_url = imageUrl;
+    mintedCard.image_pending = imagePending;
+    const cardId = await db.addCard(user.id, mintedCard);
+    res.json({
+      success: true,
+      username: user.username,
+      card: { id: cardId, player_name: mintedCard.player_name, season: mintedCard.season, tier: 11, position: mintedCard.position },
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Debug endpoint to see card image status (no auth for easy debugging)
 app.get('/api/admin/debug-images', async (req, res) => {
   const fs = require('fs');
