@@ -37,17 +37,31 @@ export default function Team({ user, onLogout, unreadMessages }) {
   if (!user) return null;
 
   const tileStyle = 'bg-black/30 backdrop-blur border border-white/10 rounded-2xl flex items-center justify-center font-bold text-sm transition-colors';
-  const tileActiveStyle = { borderColor: NAV_CYAN, boxShadow: `0 0 24px ${NAV_CYAN}40`, color: NAV_CYAN };
 
-  const OffenseDefenseTile = () => (
-    <button
-      type="button"
-      onClick={() => setDiagramSide((s) => (s === 'offense' ? 'defense' : 'offense'))}
-      className={`${tileStyle} flex-1 min-w-0 py-3 px-4 touch-target`}
-      style={diagramSide === 'offense' ? tileActiveStyle : {}}
-    >
-      {diagramSide === 'offense' ? 'Offense' : 'Defense'}
-    </button>
+  const activeSegmentStyle = { backgroundColor: `${NAV_CYAN}20`, border: `2px solid ${NAV_CYAN}`, boxShadow: `0 0 12px ${NAV_CYAN}80` };
+  const OffenseDefenseSegment = () => (
+    <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
+      <button
+        type="button"
+        onClick={() => setDiagramSide('offense')}
+        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
+          diagramSide === 'offense' ? 'text-white' : 'text-gray-400 hover:text-white'
+        }`}
+        style={diagramSide === 'offense' ? activeSegmentStyle : {}}
+      >
+        Offense
+      </button>
+      <button
+        type="button"
+        onClick={() => setDiagramSide('defense')}
+        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
+          diagramSide === 'defense' ? 'text-white' : 'text-gray-400 hover:text-white'
+        }`}
+        style={diagramSide === 'defense' ? activeSegmentStyle : {}}
+      >
+        Defense
+      </button>
+    </div>
   );
 
   const AutoStrategyTile = () => (
@@ -61,8 +75,8 @@ export default function Team({ user, onLogout, unreadMessages }) {
   );
 
   const Bar = ({ className = '' }) => (
-    <div className={`flex gap-2 ${className}`}>
-      <OffenseDefenseTile />
+    <div className={`flex gap-2 items-center ${className}`}>
+      <OffenseDefenseSegment />
       <AutoStrategyTile />
     </div>
   );

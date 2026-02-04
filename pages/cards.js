@@ -38,7 +38,7 @@ export default function Cards({ user, onLogout, unreadMessages }) {
         )}
       </div>
 
-      {/* Packs | My cards bar – above bottom nav, same tile aesthetic, active = red glow */}
+      {/* Packs | Collection bar – above bottom nav, same tile aesthetic, active = red glow */}
       <div className="md:hidden fixed left-0 right-0 z-40 px-3 safe-area-pb" style={{ bottom: '6rem' }}>
         <div className="mx-auto max-w-7xl flex justify-center">
           <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
@@ -60,7 +60,7 @@ export default function Cards({ user, onLogout, unreadMessages }) {
                   : 'text-gray-400 hover:text-white'
               }`}
             >
-              My cards
+              Collection
             </button>
           </div>
         </div>
