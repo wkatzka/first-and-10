@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { cryptoShopEnabled } from '../lib/env';
+import AnnouncementModal from './AnnouncementModal';
 
 export default function Layout({ children, user, onLogout, unreadMessages = 0 }) {
   const router = useRouter();
@@ -63,6 +64,9 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
   
   return (
     <div className="f10-app-shell pb-20 md:pb-0">
+      {/* Announcement Modal - shows once per announcement */}
+      <AnnouncementModal />
+      
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-4 md:py-8">
         {children}

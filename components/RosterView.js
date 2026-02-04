@@ -3,8 +3,13 @@ import { useRouter } from 'next/router';
 import ChalkPlayDiagram from './ChalkPlayDiagram';
 import { getRoster, getCards, updateRoster } from '../lib/api';
 
-// Tier cap for roster building
-const TIER_CAP = 75;
+// Tier caps for roster building (separate for offense and defense)
+const OFFENSE_TIER_CAP = 42; // 6 slots: QB, RB, WR1, WR2, TE, OL (avg ~T7)
+const DEFENSE_TIER_CAP = 28; // 4 slots: DL, LB, DB1, DB2 (avg ~T7)
+// K is uncapped (just 1 slot)
+
+const OFFENSE_SLOTS = ['qb_card_id', 'rb_card_id', 'wr1_card_id', 'wr2_card_id', 'te_card_id', 'ol_card_id'];
+const DEFENSE_SLOTS = ['dl_card_id', 'lb_card_id', 'db1_card_id', 'db2_card_id'];
 
 // 11-player roster: QB, RB, WR×2, TE, OL, DL, LB, DB×2, K
 const ROSTER_LAYOUT = [
@@ -27,19 +32,23 @@ const ROSTER_LAYOUT = [
   ]},
 ];
 
-// Calculate tier sum from roster
-function calculateTierSum(rosterCards) {
-  if (!rosterCards) return 0;
-  let sum = 0;
-  const slotIds = [
-    'qb_card_id', 'rb_card_id', 'wr1_card_id', 'wr2_card_id', 'te_card_id',
-    'ol_card_id', 'dl_card_id', 'lb_card_id', 'db1_card_id', 'db2_card_id', 'k_card_id'
-  ];
-  for (const slotId of slotIds) {
+// Calculate tier sums from roster (separate offense and defense)
+function calculateTierSums(rosterCards) {
+  if (!rosterCards) return { offense: 0, defense: 0 };
+  
+  let offenseSum = 0;
+  for (const slotId of OFFENSE_SLOTS) {
     const card = rosterCards[slotId];
-    if (card?.tier) sum += card.tier;
+    if (card?.tier) offenseSum += card.tier;
   }
-  return sum;
+  
+  let defenseSum = 0;
+  for (const slotId of DEFENSE_SLOTS) {
+    const card = rosterCards[slotId];
+    if (card?.tier) defenseSum += card.tier;
+  }
+  
+  return { offense: offenseSum, defense: defenseSum };
 }
 
 export default function RosterView({ user, diagramSide = 'offense', refreshTrigger = 0 }) {
@@ -79,17 +88,30 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
   const handleCardSelect = async (card) => {
     if (!selectedSlot) return;
 
-    // Check if this would exceed the tier cap
+    // Check if this would exceed the tier cap (offense or defense)
     if (card) {
       const currentCards = roster?.cards || {};
       const currentCardInSlot = currentCards[selectedSlot.id];
       const currentTierInSlot = currentCardInSlot?.tier || 0;
-      const newTierSum = calculateTierSum(currentCards) - currentTierInSlot + card.tier;
+      const sums = calculateTierSums(currentCards);
       
-      if (newTierSum > TIER_CAP) {
-        setShowCapWarning(true);
-        return;
+      const isOffenseSlot = OFFENSE_SLOTS.includes(selectedSlot.id);
+      const isDefenseSlot = DEFENSE_SLOTS.includes(selectedSlot.id);
+      
+      if (isOffenseSlot) {
+        const newOffenseSum = sums.offense - currentTierInSlot + card.tier;
+        if (newOffenseSum > OFFENSE_TIER_CAP) {
+          setShowCapWarning('offense');
+          return;
+        }
+      } else if (isDefenseSlot) {
+        const newDefenseSum = sums.defense - currentTierInSlot + card.tier;
+        if (newDefenseSum > DEFENSE_TIER_CAP) {
+          setShowCapWarning('defense');
+          return;
+        }
       }
+      // K slot is uncapped
     }
 
     setSaving(true);
@@ -122,9 +144,16 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
 
   if (!user) return null;
 
-  // Calculate current tier sum
-  const tierSum = calculateTierSum(roster?.cards);
-  const isOverCap = tierSum > TIER_CAP;
+  // Calculate current tier sums (offense and defense separately)
+  const tierSums = calculateTierSums(roster?.cards);
+  const isOffenseOverCap = tierSums.offense > OFFENSE_TIER_CAP;
+  const isDefenseOverCap = tierSums.defense > DEFENSE_TIER_CAP;
+  
+  // Show the relevant cap based on current tab
+  const currentSum = diagramSide === 'offense' ? tierSums.offense : tierSums.defense;
+  const currentCap = diagramSide === 'offense' ? OFFENSE_TIER_CAP : DEFENSE_TIER_CAP;
+  const isOverCap = diagramSide === 'offense' ? isOffenseOverCap : isDefenseOverCap;
+  const sideLabel = diagramSide === 'offense' ? 'Offense' : 'Defense';
 
   return (
     <div className="space-y-6 relative">
@@ -138,7 +167,7 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
             onSlotClick={handleSlotClick}
           />
           
-          {/* Tier Cap Display - positioned in endzone corners */}
+          {/* Tier Cap Display - shows current side's cap */}
           <div 
             className="fixed left-4 top-4 z-10 px-3 py-1.5 rounded-lg text-sm font-bold"
             style={{ 
@@ -146,8 +175,8 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
               border: '1px solid rgba(255,255,255,0.2)',
             }}
           >
-            <span className="text-gray-400">Tier Cap = </span>
-            <span className="text-white">{TIER_CAP}</span>
+            <span className="text-gray-400">{sideLabel} Cap = </span>
+            <span className="text-white">{currentCap}</span>
           </div>
           
           <div 
@@ -157,8 +186,9 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
               border: `1px solid ${isOverCap ? 'rgba(239,68,68,0.5)' : 'rgba(34,197,94,0.5)'}`,
             }}
           >
-            <span className="text-gray-400">Tier Sum = </span>
-            <span style={{ color: isOverCap ? '#ef4444' : '#22c55e' }}>{tierSum}</span>
+            <span className="text-gray-400">{sideLabel} = </span>
+            <span style={{ color: isOverCap ? '#ef4444' : '#22c55e' }}>{currentSum}</span>
+            <span className="text-gray-500">/{currentCap}</span>
           </div>
         </>
       )}
@@ -167,22 +197,25 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
       {showCapWarning && (
         <div
           className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
-          onClick={() => setShowCapWarning(false)}
+          onClick={() => setShowCapWarning(null)}
         >
           <div
             className="f10-panel p-6 max-w-sm w-full text-center"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-4xl mb-4">⚠️</div>
-            <h3 className="text-xl font-bold text-white mb-3">Over Tier Cap</h3>
+            <h3 className="text-xl font-bold text-white mb-3">
+              {showCapWarning === 'offense' ? 'Offense' : 'Defense'} Over Cap
+            </h3>
             <p className="text-gray-300 mb-4">
-              Adding this player would put your roster over the tier cap of {TIER_CAP}.
+              Adding this player would put your {showCapWarning} over the tier cap of{' '}
+              {showCapWarning === 'offense' ? OFFENSE_TIER_CAP : DEFENSE_TIER_CAP}.
             </p>
             <p className="text-gray-400 text-sm mb-6">
-              Remove or swap players with lower tiers to make room.
+              Remove or swap {showCapWarning} players with lower tiers to make room.
             </p>
             <button
-              onClick={() => setShowCapWarning(false)}
+              onClick={() => setShowCapWarning(null)}
               className="w-full py-3 rounded-xl font-bold text-white transition-colors"
               style={{ backgroundColor: '#3b82f6' }}
             >

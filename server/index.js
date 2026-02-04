@@ -1102,22 +1102,31 @@ app.get('/api/roster', authMiddleware, async (req, res) => {
   res.json(fullRoster);
 });
 
-// Tier cap for roster building (sum of all 11 starter tiers)
-const TIER_CAP = 75;
+// Tier caps for roster building (separate for offense and defense)
+const OFFENSE_TIER_CAP = 42; // 6 slots: QB, RB, WR1, WR2, TE, OL (avg ~T7)
+const DEFENSE_TIER_CAP = 28; // 4 slots: DL, LB, DB1, DB2 (avg ~T7)
+// K is uncapped (just 1 slot)
 
-// Helper to calculate tier sum from roster cards
-function calculateRosterTierSum(cards) {
-  if (!cards) return 0;
-  const slotIds = [
-    'qb_card_id', 'rb_card_id', 'wr1_card_id', 'wr2_card_id', 'te_card_id',
-    'ol_card_id', 'dl_card_id', 'lb_card_id', 'db1_card_id', 'db2_card_id', 'k_card_id'
-  ];
-  let sum = 0;
-  for (const slotId of slotIds) {
+const OFFENSE_SLOTS = ['qb_card_id', 'rb_card_id', 'wr1_card_id', 'wr2_card_id', 'te_card_id', 'ol_card_id'];
+const DEFENSE_SLOTS = ['dl_card_id', 'lb_card_id', 'db1_card_id', 'db2_card_id'];
+
+// Helper to calculate tier sums from roster cards (offense and defense separately)
+function calculateRosterTierSums(cards) {
+  if (!cards) return { offense: 0, defense: 0 };
+  
+  let offenseSum = 0;
+  for (const slotId of OFFENSE_SLOTS) {
     const card = cards[slotId];
-    if (card?.tier) sum += card.tier;
+    if (card?.tier) offenseSum += card.tier;
   }
-  return sum;
+  
+  let defenseSum = 0;
+  for (const slotId of DEFENSE_SLOTS) {
+    const card = cards[slotId];
+    if (card?.tier) defenseSum += card.tier;
+  }
+  
+  return { offense: offenseSum, defense: defenseSum };
 }
 
 // Update roster slot
@@ -1147,13 +1156,22 @@ app.put('/api/roster', authMiddleware, async (req, res) => {
       }
     }
     
-    // Check tier cap
-    const newTierSum = calculateRosterTierSum(newCards);
-    if (newTierSum > TIER_CAP) {
+    // Check tier caps (offense and defense separately)
+    const tierSums = calculateRosterTierSums(newCards);
+    if (tierSums.offense > OFFENSE_TIER_CAP) {
       return res.status(400).json({ 
-        error: `Roster exceeds tier cap of ${TIER_CAP}. Current: ${newTierSum}`,
-        tierSum: newTierSum,
-        tierCap: TIER_CAP
+        error: `Offense exceeds tier cap of ${OFFENSE_TIER_CAP}. Current: ${tierSums.offense}`,
+        offenseTierSum: tierSums.offense,
+        offenseTierCap: OFFENSE_TIER_CAP,
+        side: 'offense'
+      });
+    }
+    if (tierSums.defense > DEFENSE_TIER_CAP) {
+      return res.status(400).json({ 
+        error: `Defense exceeds tier cap of ${DEFENSE_TIER_CAP}. Current: ${tierSums.defense}`,
+        defenseTierSum: tierSums.defense,
+        defenseTierCap: DEFENSE_TIER_CAP,
+        side: 'defense'
       });
     }
     
@@ -1176,7 +1194,7 @@ app.post('/api/roster/auto-fill', authMiddleware, async (req, res) => {
     const defenseStrategy = ['coverage_shell', 'run_stuff', 'base_defense'].includes(req.body?.defenseStrategy)
       ? req.body.defenseStrategy
       : 'base_defense';
-    const slots = gameEngine.autoFillRoster(cards, strategy, defenseStrategy, TIER_CAP);
+    const slots = gameEngine.autoFillRoster(cards, strategy, defenseStrategy, { offense: OFFENSE_TIER_CAP, defense: DEFENSE_TIER_CAP });
     await db.updateRoster(req.user.id, slots);
     const fullRoster = await db.getFullRoster(req.user.id);
     res.json(fullRoster);
