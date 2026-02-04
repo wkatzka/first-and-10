@@ -4,8 +4,13 @@
  * Main game loop with clock, scoring, and drive management.
  */
 
-const { GAME, SCORING, DRIVE } = require('./constants');
-const { calculateTeamRatings } = require('./playstyle');
+const { GAME, SCORING, DRIVE, STRATEGY_BOOST_AMOUNT } = require('./constants');
+const {
+  calculateTeamRatings,
+  getOffensiveStrategyFromRatings,
+  getDefensiveStrategyFromRatings,
+  getStrategyRatingMultipliers,
+} = require('./playstyle');
 const {
   simulatePlay,
   simulateFieldGoal,
@@ -20,9 +25,81 @@ const { roll } = require('./matchups');
 // =============================================================================
 
 /**
- * Create initial game state
+ * Apply rating multipliers directly to roster player tiers
+ * This ensures the boosted tiers are used in play simulation
+ */
+function applyRosterBoosts(roster, multipliers) {
+  const boostTier = (player, posKey) => {
+    if (!player) return player;
+    const mult = multipliers[posKey] || 1.0;
+    if (mult === 1.0) return player;
+    // Apply multiplier to effective tier (allows > 11 or < 1 internally)
+    const boostedTier = player.tier * mult;
+    return { ...player, tier: boostedTier, tierBase: player.tier };
+  };
+  
+  const boostArray = (players, posKey) => {
+    if (!players) return players;
+    return players.map(p => boostTier(p, posKey));
+  };
+  
+  return {
+    ...roster,
+    QB: boostTier(roster.QB, 'QB'),
+    RBs: boostArray(roster.RBs, 'RB'),
+    WRs: boostArray(roster.WRs, 'WR'),
+    TE: boostTier(roster.TE, 'TE'),
+    OLs: boostArray(roster.OLs, 'OL'),
+    DLs: boostArray(roster.DLs, 'DL'),
+    LBs: boostArray(roster.LBs, 'LB'),
+    DBs: boostArray(roster.DBs, 'DB'),
+    K: boostTier(roster.K, 'K'),
+    P: boostTier(roster.P, 'P'),
+  };
+}
+
+/**
+ * Create initial game state with strategy-based rating boosts
  */
 function createGameState(homeRoster, awayRoster) {
+  // Step 1: Calculate BASE ratings (no boosts) to derive strategies
+  const homeBaseRatings = calculateTeamRatings(homeRoster);
+  const awayBaseRatings = calculateTeamRatings(awayRoster);
+  
+  const homeOffStrategy = getOffensiveStrategyFromRatings(homeBaseRatings.offense);
+  const homeDefStrategy = getDefensiveStrategyFromRatings(homeBaseRatings.defense);
+  const awayOffStrategy = getOffensiveStrategyFromRatings(awayBaseRatings.offense);
+  const awayDefStrategy = getDefensiveStrategyFromRatings(awayBaseRatings.defense);
+  
+  // Step 2: Get rating multipliers based on strategy matchup
+  const homeMultipliers = getStrategyRatingMultipliers(
+    homeOffStrategy, homeDefStrategy, awayOffStrategy, awayDefStrategy
+  );
+  const awayMultipliers = getStrategyRatingMultipliers(
+    awayOffStrategy, awayDefStrategy, homeOffStrategy, homeDefStrategy
+  );
+  
+  // Step 3: Apply boosts directly to roster player tiers
+  const homeBoostedRoster = applyRosterBoosts(homeRoster, homeMultipliers);
+  const awayBoostedRoster = applyRosterBoosts(awayRoster, awayMultipliers);
+  
+  // Step 4: Calculate ratings with boosted rosters (for display and play-calling)
+  const homeStrategyContext = {
+    myOffense: homeOffStrategy,
+    myDefense: homeDefStrategy,
+    theirOffense: awayOffStrategy,
+    theirDefense: awayDefStrategy,
+  };
+  const awayStrategyContext = {
+    myOffense: awayOffStrategy,
+    myDefense: awayDefStrategy,
+    theirOffense: homeOffStrategy,
+    theirDefense: homeDefStrategy,
+  };
+  
+  const homeBoostedRatings = calculateTeamRatings(homeBoostedRoster, homeStrategyContext);
+  const awayBoostedRatings = calculateTeamRatings(awayBoostedRoster, awayStrategyContext);
+  
   return {
     // Scores
     homeScore: 0,
@@ -46,15 +123,19 @@ function createGameState(homeRoster, awayRoster) {
     drives: [],
     currentDrive: null,
     
-    // Team data
+    // Team data (boosted rosters, ratings + strategies)
     home: {
-      roster: homeRoster,
-      ratings: calculateTeamRatings(homeRoster),
+      roster: homeBoostedRoster,  // Use boosted roster for play simulation
+      ratings: homeBoostedRatings,
+      offensiveStrategy: homeOffStrategy,
+      defensiveStrategy: homeDefStrategy,
       stats: createTeamStats(),
     },
     away: {
-      roster: awayRoster,
-      ratings: calculateTeamRatings(awayRoster),
+      roster: awayBoostedRoster,  // Use boosted roster for play simulation
+      ratings: awayBoostedRatings,
+      offensiveStrategy: awayOffStrategy,
+      defensiveStrategy: awayDefStrategy,
       stats: createTeamStats(),
     },
     

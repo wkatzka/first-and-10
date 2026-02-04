@@ -5,7 +5,7 @@
  */
 
 const { PLAY_OUTCOMES, SITUATION, SCORING } = require('./constants');
-const { avgTier, getPassTendency } = require('./playstyle');
+const { avgTier, getPassTendency, getStrategyMatchupModifier } = require('./playstyle');
 const {
   roll,
   calculateProtection,
@@ -110,7 +110,12 @@ function choosePassType(down, yardsToGo, fieldPosition) {
  */
 function simulatePassPlay(offense, defense, situation) {
   const { down, yardsToGo, fieldPosition } = situation;
-  
+  const passMod = getStrategyMatchupModifier(
+    offense.offensiveStrategy || 'balanced',
+    defense.defensiveStrategy || 'base_defense',
+    'pass'
+  );
+
   const qb = offense.roster.QB;
   const wrs = offense.roster.WRs || [];
   const te = offense.roster.TE;
@@ -157,11 +162,12 @@ function simulatePassPlay(offense, defense, situation) {
 
   if (protection.pressured && roll() < scrambleChance) {
     const scrambleResult = calculateQBRun(qb, avgTier([...dls, ...lbs]), false);
+    const yards = Math.max(0, Math.round(scrambleResult.yards * passMod));
     return {
       type: 'pass',
       result: 'scramble',
-      yards: scrambleResult.yards,
-      description: `${qb?.player || 'QB'} scrambles for ${scrambleResult.yards} yards`,
+      yards,
+      description: `${qb?.player || 'QB'} scrambles for ${yards} yards`,
       turnover: scrambleResult.fumbled,
       turnoverType: scrambleResult.fumbled ? 'fumble' : null,
       timeElapsed: 28 + roll() * 12,
@@ -175,13 +181,14 @@ function simulatePassPlay(offense, defense, situation) {
   const catchResult = calculateCatch(wr, db, qb, throwResult.accuracy, coverage.separation, passType);
   
   if (catchResult.caught) {
+    const yards = Math.max(0, Math.round(catchResult.yards * passMod));
     return {
       type: 'pass',
       result: 'complete',
-      yards: catchResult.yards,
+      yards,
       passType,
       target: wr?.player || 'WR',
-      description: `${qb?.player || 'QB'} completes ${passType} pass to ${wr?.player || 'WR'} for ${catchResult.yards} yards`,
+      description: `${qb?.player || 'QB'} completes ${passType} pass to ${wr?.player || 'WR'} for ${yards} yards`,
       turnover: false,
       timeElapsed: 25 + roll() * 15,
     };
@@ -222,6 +229,12 @@ function simulatePassPlay(offense, defense, situation) {
  * @returns {object} - Play result
  */
 function simulateRunPlay(offense, defense, situation) {
+  const runMod = getStrategyMatchupModifier(
+    offense.offensiveStrategy || 'balanced',
+    defense.defensiveStrategy || 'base_defense',
+    'run'
+  );
+
   const rbs = offense.roster.RBs || [];
   const rb = rbs[Math.floor(roll() * rbs.length)] || { tier: 5, player: 'RB' };
   const olTier = avgTier(offense.roster.OLs);
@@ -250,28 +263,29 @@ function simulateRunPlay(offense, defense, situation) {
   const rushResult = calculateRush(rb, lbTier, blocking.holeSize);
   
   if (rushResult.fumbled) {
+    const yards = Math.floor(rushResult.yards / 2);
     return {
       type: 'run',
       result: 'fumble',
-      yards: Math.floor(rushResult.yards / 2),
+      yards,
       carrier: rb?.player || 'RB',
-      description: `${rb?.player || 'RB'} fumbles after ${Math.floor(rushResult.yards / 2)} yards`,
+      description: `${rb?.player || 'RB'} fumbles after ${yards} yards`,
       turnover: true,
       turnoverType: 'fumble',
       timeElapsed: 30 + roll() * 10,
     };
   }
   
-  // Big run?
-  const isBigRun = rushResult.yards >= 15;
+  const yards = Math.max(0, Math.round(rushResult.yards * runMod));
+  const isBigRun = yards >= 15;
   
   return {
     type: 'run',
     result: isBigRun ? 'big_gain' : 'gain',
-    yards: rushResult.yards,
+    yards,
     carrier: rb?.player || 'RB',
     brokenTackle: rushResult.brokenTackle,
-    description: `${rb?.player || 'RB'} rushes for ${rushResult.yards} yards${rushResult.brokenTackle ? ' (broken tackle)' : ''}`,
+    description: `${rb?.player || 'RB'} rushes for ${yards} yards${rushResult.brokenTackle ? ' (broken tackle)' : ''}`,
     turnover: false,
     timeElapsed: 32 + roll() * 10,
   };
@@ -426,8 +440,12 @@ function simulateKickoff(kicker) {
 function simulatePlay(offense, defense, situation) {
   const { down, yardsToGo, fieldPosition, quarter, timeRemaining, scoreDiff } = situation;
   
-  // Determine pass/run tendency
-  let passTendency = getPassTendency(offense.ratings.offense, defense.ratings.defense);
+  // Determine pass/run tendency (incl. strategy matchup: e.g. defense beats pass → lean run)
+  const strategyContext = {
+    offensiveStrategy: offense.offensiveStrategy || 'balanced',
+    defensiveStrategy: defense.defensiveStrategy || 'base_defense',
+  };
+  let passTendency = getPassTendency(offense.ratings.offense, defense.ratings.defense, strategyContext);
   
   // Situational adjustments
   if (down === 3 && yardsToGo > 5) {

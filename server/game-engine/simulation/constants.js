@@ -25,6 +25,7 @@ const GAME = {
 // =============================================================================
 
 const TIERS = {
+  11: { name: 'Hall of Fame', multiplier: 1.08 },  // HOF players
   10: { name: 'Legendary', multiplier: 1.00 },
   9:  { name: 'Epic',      multiplier: 0.92 },
   8:  { name: 'Ultra Rare', multiplier: 0.84 },
@@ -37,12 +38,14 @@ const TIERS = {
   1:  { name: 'Basic',     multiplier: 0.28 },
 };
 
-// Convert tier to a 0-1 scale for probability calculations
+// Convert tier to a 0-1+ scale for probability calculations
+// Supports T1-T11 (HOF) and fractional tiers via interpolation
 function tierToRating(tier) {
   const t = typeof tier === 'number' ? tier : Number(tier);
   if (!Number.isFinite(t)) return 0.50;
   // Support fractional tiers by interpolating adjacent multipliers.
-  const clamped = Math.max(1, Math.min(10, t));
+  // Allow tier 11 (HOF) - clamp to 1-11 range
+  const clamped = Math.max(1, Math.min(11, t));
   const lo = Math.floor(clamped);
   const hi = Math.ceil(clamped);
   if (lo === hi) return TIERS[lo]?.multiplier || 0.50;
@@ -270,6 +273,114 @@ const SCORING = {
 };
 
 // =============================================================================
+// OFFENSIVE / DEFENSIVE STRATEGY (rock-paper-scissors)
+// =============================================================================
+// Offense: Pass Heavy, Balanced, Run Dominant
+// Defense: Coverage Shell (Nickel/Dime), Run Stuff (Stacked Box), Base (4-3/3-4)
+// Matchup table: each defense "Beats" one offense type and "Loses To" another.
+
+const OFFENSIVE_STRATEGIES = {
+  pass_heavy:   { name: 'Pass Heavy',   label: 'Pass Heavy' },
+  balanced:     { name: 'Balanced',     label: 'Balanced' },
+  run_dominant: { name: 'Run Dominant', label: 'Run Dominant' },
+};
+
+const DEFENSIVE_STRATEGIES = {
+  coverage_shell: { name: 'Coverage Shell (Nickel/Dime)', beats: 'pass_heavy',   losesTo: 'run_dominant' },
+  run_stuff:      { name: 'Run Stuff (Stacked Box)',      beats: 'run_dominant', losesTo: 'balanced' },
+  base_defense:   { name: 'Base Defense (4-3/3-4)',       beats: 'balanced',     losesTo: 'pass_heavy' },
+};
+
+// Strategy matchup modifier for play outcomes (legacy, kept for reference)
+// Now using player-level rating boosts instead (see STRATEGY_RATING_BOOSTS below)
+const STRATEGY_MATCHUP_MODIFIERS = {
+  coverage_shell: {
+    pass_heavy:   { pass: 1.00, run: 1.00 }, // handled by rating boosts now
+    balanced:     { pass: 1.00, run: 1.00 },
+    run_dominant: { pass: 1.00, run: 1.00 },
+  },
+  run_stuff: {
+    pass_heavy:   { pass: 1.00, run: 1.00 },
+    balanced:     { pass: 1.00, run: 1.00 },
+    run_dominant: { pass: 1.00, run: 1.00 },
+  },
+  base_defense: {
+    pass_heavy:   { pass: 1.00, run: 1.00 },
+    balanced:     { pass: 1.00, run: 1.00 },
+    run_dominant: { pass: 1.00, run: 1.00 },
+  },
+};
+
+// =============================================================================
+// PLAYER-LEVEL STRATEGY BOOSTS
+// =============================================================================
+// Rating multipliers applied to specific positions based on strategy matchup.
+// ~5% boost/nerf gives ~10 pp win rate swing (advantage vs captured).
+// 
+// Results: advantage, captured, or neutral
+// - advantage: your offense beats their defense type (or your defense beats their offense)
+// - captured: their defense beats your offense type (or their offense beats your defense)
+// - neutral: no rock-paper-scissors edge either way
+
+const STRATEGY_BOOST_AMOUNT = 0.007; // 0.7% tier multiplier (tuned for ~10 pp swing on double advantage)
+
+// Offensive strategy vs opponent's defensive strategy
+// Returns which positions on OFFENSE get boosted/nerfed
+const OFFENSE_STRATEGY_BOOSTS = {
+  pass_heavy: {
+    base_defense:    'advantage',   // base loses to pass_heavy
+    coverage_shell:  'captured',    // coverage beats pass_heavy
+    run_stuff:       'neutral',
+  },
+  balanced: {
+    run_stuff:       'advantage',   // run_stuff loses to balanced
+    base_defense:    'captured',    // base beats balanced
+    coverage_shell:  'neutral',
+  },
+  run_dominant: {
+    coverage_shell:  'advantage',   // coverage loses to run
+    run_stuff:       'captured',    // run_stuff beats run
+    base_defense:    'neutral',
+  },
+};
+
+// Defensive strategy vs opponent's offensive strategy
+// Returns which positions on DEFENSE get boosted/nerfed
+const DEFENSE_STRATEGY_BOOSTS = {
+  coverage_shell: {
+    pass_heavy:   'advantage',      // coverage beats pass
+    run_dominant: 'captured',       // run beats coverage
+    balanced:     'neutral',
+  },
+  run_stuff: {
+    run_dominant: 'advantage',      // run_stuff beats run
+    balanced:     'captured',       // balanced beats run_stuff
+    pass_heavy:   'neutral',
+  },
+  base_defense: {
+    balanced:     'advantage',      // base beats balanced
+    pass_heavy:   'captured',       // pass beats base
+    run_dominant: 'neutral',
+  },
+};
+
+// Which positions are affected by each strategy type
+const STRATEGY_AFFECTED_POSITIONS = {
+  // Offensive strategies affect these offensive positions
+  offense: {
+    pass_heavy:   ['QB', 'WR', 'TE'],       // passing game positions
+    balanced:     ['QB', 'WR', 'RB', 'OL'], // all skill positions
+    run_dominant: ['RB', 'OL', 'TE'],       // run game positions
+  },
+  // Defensive strategies affect these defensive positions
+  defense: {
+    coverage_shell: ['DB'],                 // secondary
+    run_stuff:      ['DL', 'LB'],           // front seven
+    base_defense:   ['DL', 'LB', 'DB'],     // all defensive positions
+  },
+};
+
+// =============================================================================
 // DRIVE OUTCOMES
 // =============================================================================
 
@@ -302,4 +413,12 @@ module.exports = {
   SITUATION,
   SCORING,
   DRIVE,
+  OFFENSIVE_STRATEGIES,
+  DEFENSIVE_STRATEGIES,
+  STRATEGY_MATCHUP_MODIFIERS,
+  // Player-level strategy boosts
+  STRATEGY_BOOST_AMOUNT,
+  OFFENSE_STRATEGY_BOOSTS,
+  DEFENSE_STRATEGY_BOOSTS,
+  STRATEGY_AFFECTED_POSITIONS,
 };
