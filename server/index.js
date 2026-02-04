@@ -569,6 +569,21 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'No cards available to mint' });
     }
     
+    // Sneak a Hall of Fame card into one pack for John!
+    const isJohn = user.username && String(user.username).toLowerCase() === 'john!';
+    let hofForSlot = null;
+    let hofSlotIndex = 2;
+    if (isJohn) {
+      for (let a = 0; a < 50; a++) {
+        const p = await packs.pickRandomPlayerFromTier(11);
+        if (p && (p.tier === 11 || p.isHOF) && !(await mintingLedger.isCardMinted(p))) {
+          hofForSlot = p;
+          hofSlotIndex = Math.floor(Math.random() * 5);
+          break;
+        }
+      }
+    }
+    
     // Save cards to database AND mint them (mark as taken)
     const savedCards = [];
     const cardsToGenerateImages = [];
@@ -578,14 +593,20 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
     for (let i = 0; i < desiredCount; i++) {
       const preferredPosition = desiredPositions[i] || null;
       let mintedCard = null;
+      const useHofThisSlot = isJohn && i === hofSlotIndex && hofForSlot;
       
-      // Try the originally selected card first, then retry with replacements
+      // Try the originally selected card first, then retry with replacements (or HOF for John!'s special slot)
       for (let attempt = 0; attempt < 200; attempt++) {
-        const candidate = attempt === 0
-          ? cards[i]
-          : (preferredPosition
-              ? (packs.pickRandomPlayerFromPosition(preferredPosition) || packs.pickAnyAvailablePlayer())
-              : packs.pickAnyAvailablePlayer());
+        let candidate;
+        if (useHofThisSlot && attempt === 0) {
+          candidate = hofForSlot;
+        } else if (attempt === 0) {
+          candidate = cards[i];
+        } else {
+          candidate = preferredPosition
+            ? (packs.pickRandomPlayerFromPosition(preferredPosition) || packs.pickAnyAvailablePlayer())
+            : packs.pickAnyAvailablePlayer();
+        }
         
         if (!candidate) break;
         
