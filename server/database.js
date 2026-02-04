@@ -1,8 +1,17 @@
 /**
- * Database Operations (JSON File-based for MVP)
- * ==============================================
- * Simple JSON file database for First & 10 MVP
+ * Database Operations
+ * ====================
+ * Uses Postgres when DATABASE_URL is set, otherwise JSON file storage (MVP).
  */
+
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+const dbPool = require('./db');
+if (dbPool.useDatabase()) {
+  module.exports = require('./database-pg');
+  return;
+}
+
+// ========== JSON file-based implementation (when DATABASE_URL not set) ==========
 
 const fs = require('fs');
 const path = require('path');
@@ -241,6 +250,20 @@ function getDb() {
     dbCache = loadDb();
   }
   return dbCache;
+}
+
+// In-memory sessions (JSON mode only)
+const sessionStore = new Map();
+function createSession(userId, username, teamName, expiresAt) {
+  const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+  sessionStore.set(token, { user_id: userId, username, team_name: teamName });
+  return token;
+}
+function getSession(token) {
+  return sessionStore.get(token) || null;
+}
+function deleteSession(token) {
+  sessionStore.delete(token);
 }
 
 // Hash password
@@ -734,6 +757,18 @@ function updateUserMaxPacks(userId, maxPacks) {
   return user;
 }
 
+function setPasswordByUsername(username, newPassword) {
+  if (!username || !newPassword) throw new Error('Username and password required');
+  if (newPassword.length < 4) throw new Error('Password must be at least 4 characters');
+  const db = getDb();
+  const needle = String(username).toLowerCase();
+  const user = db.users.find(u => String(u.username || '').toLowerCase() === needle);
+  if (!user) throw new Error('User not found');
+  user.password_hash = hashPassword(newPassword);
+  saveDb(db);
+  return { id: user.id, username: user.username };
+}
+
 // Update card image URL (for background AI generation)
 function updateCardImage(cardId, imageUrl) {
   const db = getDb();
@@ -752,13 +787,14 @@ function updateCardImage(cardId, imageUrl) {
 }
 
 // =============================================================================
-// EXPORTS
+// EXPORTS (wrap so callers can always use await)
 // =============================================================================
 
-module.exports = {
+const raw = {
   getDb,
-  
-  // Users
+  createSession,
+  getSession,
+  deleteSession,
   createUser,
   authenticateUser,
   getUser,
@@ -767,29 +803,31 @@ module.exports = {
   incrementPacksOpened,
   updateTeamName,
   updateUserMaxPacks,
-  
-  // Pre-registration (admin)
+  setPasswordByUsername,
   preregisterUser,
   getPreregisteredUser,
   claimPreregisteredUser,
   listPreregistered,
-  
-  // Cards
   addCard,
   getUserCards,
   getCard,
   getUserCardsByPosition,
   updateCardImage,
-  
-  // Rosters
   getRoster,
   updateRoster,
   getFullRoster,
-  
-  // Games
   recordGame,
   getGame,
   getUserGames,
   getUserStats,
   getLeaderboard,
 };
+
+function wrapAsync(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    out[k] = typeof v === 'function' ? (...args) => Promise.resolve(v(...args)) : v;
+  }
+  return out;
+}
+module.exports = wrapAsync(raw);

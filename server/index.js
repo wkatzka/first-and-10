@@ -1,14 +1,16 @@
 /**
  * First & 10 - API Server
  * ===========================
- * Express server for the MVP web app
+ * Express server for the MVP web app. Uses Postgres when DATABASE_URL is set.
  */
 
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
 const db = require('./database');
+const dbPool = require('./db');
 const packs = require('./packs');
 const gameEngine = require('./game-bridge');
 const mintingLedger = require('./minting-ledger');
@@ -18,16 +20,18 @@ const pressConference = require('./press-conference');
 const messages = require('./messages');
 const imageRegenQueue = require('./image-regen-queue');
 const { buildEngineForCard } = require('./game-engine/player-traits');
+const packFulfillment = require('./pack-fulfillment');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Middleware
-// CORS configuration for production
 const allowedOrigins = [
   'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002',
   'http://localhost:3003',
-  process.env.FRONTEND_URL, // Vercel URL
+  process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 app.use(cors({
@@ -82,22 +86,17 @@ if (fs.existsSync(PERSISTENT_DIR)) {
 // Serve other static files from public
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Simple session management (in-memory for MVP)
-const sessions = new Map();
-
-function generateToken() {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
-}
-
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  
-  if (!token || !sessions.has(token)) {
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const session = await db.getSession(token);
+    if (!session) return res.status(401).json({ error: 'Unauthorized' });
+    req.user = { id: session.user_id, username: session.username, team_name: session.team_name };
+    next();
+  } catch (err) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  
-  req.user = sessions.get(token);
-  next();
 }
 
 // Admin auth (for safe production DB inspection)
@@ -115,13 +114,14 @@ function adminMiddleware(req, res, next) {
   next();
 }
 
-function findUserCaseInsensitive(username) {
-  const raw = db.getDb();
+async function findUserCaseInsensitive(username) {
+  if (dbPool.useDatabase()) return await db.getUserByUsernameCaseInsensitive(username);
+  const raw = await db.getDb();
   const needle = String(username || '').toLowerCase();
   return raw.users.find(u => String(u.username || '').toLowerCase() === needle) || null;
 }
 
-function getRosterStatus(userId) {
+async function getRosterStatus(userId) {
   const required = [
     'qb_card_id', 'rb_card_id',
     'wr1_card_id', 'wr2_card_id', 'te_card_id',
@@ -129,23 +129,16 @@ function getRosterStatus(userId) {
     'db1_card_id', 'db2_card_id',
     'k_card_id',
   ];
-
-  const full = db.getFullRoster(userId);
+  const full = await db.getFullRoster(userId);
   const roster = full?.roster || null;
   const cards = full?.cards || {};
-
   const missingSlots = [];
   for (const key of required) {
     const cardId = roster?.[key];
     const card = cards?.[key];
     if (!cardId || !card) missingSlots.push(key);
   }
-
-  return {
-    fullRoster: missingSlots.length === 0,
-    missingSlots,
-    roster,
-  };
+  return { fullRoster: missingSlots.length === 0, missingSlots, roster };
 }
 
 // =============================================================================
@@ -153,58 +146,29 @@ function getRosterStatus(userId) {
 // =============================================================================
 
 // Look up a user by username (case-insensitive) and roster status
-app.get('/api/admin/user', adminMiddleware, (req, res) => {
+app.get('/api/admin/user', adminMiddleware, async (req, res) => {
   const username = req.query.username;
-  if (!username) {
-    return res.status(400).json({ error: 'username query param required' });
-  }
-
-  const user = findUserCaseInsensitive(username);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
-  const raw = db.getDb();
-  const cardCount = raw.cards.filter(c => c.user_id === user.id).length;
-  const rosterStatus = getRosterStatus(user.id);
-
+  if (!username) return res.status(400).json({ error: 'username query param required' });
+  const user = await findUserCaseInsensitive(username);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const raw = await db.getDb();
+  const cardCount = dbPool.useDatabase() ? (await db.getUserCards(user.id)).length : raw.cards.filter(c => c.user_id === user.id).length;
+  const rosterStatus = await getRosterStatus(user.id);
   res.json({
-    user: {
-      id: user.id,
-      username: user.username,
-      team_name: user.team_name,
-      created_at: user.created_at,
-      packs_opened: user.packs_opened,
-      max_packs: user.max_packs,
-      card_count: cardCount,
-    },
+    user: { id: user.id, username: user.username, team_name: user.team_name, created_at: user.created_at, packs_opened: user.packs_opened, max_packs: user.max_packs, card_count: cardCount },
     roster: rosterStatus.roster,
-    rosterStatus: {
-      fullRoster: rosterStatus.fullRoster,
-      missingSlots: rosterStatus.missingSlots,
-    },
+    rosterStatus: { fullRoster: rosterStatus.fullRoster, missingSlots: rosterStatus.missingSlots },
   });
 });
 
 // Convenience endpoint: just whether they have a full roster
-app.get('/api/admin/has-full-roster', adminMiddleware, (req, res) => {
+app.get('/api/admin/has-full-roster', adminMiddleware, async (req, res) => {
   const username = req.query.username;
-  if (!username) {
-    return res.status(400).json({ error: 'username query param required' });
-  }
-
-  const user = findUserCaseInsensitive(username);
-  if (!user) {
-    return res.status(404).json({ error: 'User not found' });
-  }
-
-  const rosterStatus = getRosterStatus(user.id);
-  res.json({
-    username: user.username,
-    userId: user.id,
-    fullRoster: rosterStatus.fullRoster,
-    missingSlots: rosterStatus.missingSlots,
-  });
+  if (!username) return res.status(400).json({ error: 'username query param required' });
+  const user = await findUserCaseInsensitive(username);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  const rosterStatus = await getRosterStatus(user.id);
+  res.json({ username: user.username, userId: user.id, fullRoster: rosterStatus.fullRoster, missingSlots: rosterStatus.missingSlots });
 });
 
 // =============================================================================
@@ -212,112 +176,117 @@ app.get('/api/admin/has-full-roster', adminMiddleware, (req, res) => {
 // =============================================================================
 
 // Check if username exists or is pre-registered
-app.get('/api/auth/check/:username', (req, res) => {
-  const username = req.params.username;
-  
-  const existingUser = db.getUserByUsername(username);
-  if (existingUser) {
-    return res.json({ status: 'exists', message: 'Username already registered. Please login.' });
+app.get('/api/auth/check/:username', async (req, res, next) => {
+  try {
+    const username = req.params.username;
+
+    const existingUser = await db.getUserByUsernameCaseInsensitive(username);
+    if (existingUser) {
+      return res.json({ status: 'exists', message: 'Username already registered. Please login.' });
+    }
+
+    const preregistered = await db.getPreregisteredUser(username);
+    if (preregistered) {
+      return res.json({
+        status: 'preregistered',
+        message: 'Welcome! Set your password and team name to get started.',
+        maxPacks: preregistered.max_packs,
+      });
+    }
+
+    return res.json({ status: 'not_found', message: 'Username not found. Contact admin for access.' });
+  } catch (err) {
+    const msg = (err && (err.message || String(err))) || 'Failed to check username';
+    console.error('GET /api/auth/check error:', err);
+    if (!res.headersSent) return res.status(500).json({ error: msg });
+    next(err);
   }
-  
-  const preregistered = db.getPreregisteredUser(username);
-  if (preregistered) {
-    return res.json({ 
-      status: 'preregistered', 
-      message: 'Welcome! Set your password and team name to get started.',
-      maxPacks: preregistered.max_packs,
-    });
-  }
-  
-  return res.json({ status: 'not_found', message: 'Username not found. Contact admin for access.' });
 });
 
 // Register (for open registration - disabled for invite-only)
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, teamName } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
-    }
-    
-    if (password.length < 4) {
-      return res.status(400).json({ error: 'Password must be at least 4 characters' });
-    }
-    
-    // Check if pre-registered (use claim flow)
-    const preregistered = db.getPreregisteredUser(username);
+    if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+    if (password.length < 4) return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    const preregistered = await db.getPreregisteredUser(username);
     if (preregistered) {
-      const user = db.claimPreregisteredUser(username, password, teamName);
-      const token = generateToken();
-      sessions.set(token, user);
-      return res.json({ user, token, claimed: true });
+      const user = await db.claimPreregisteredUser(username, password, teamName);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const token = await db.createSession(user.id, user.username, user.team_name, expiresAt);
+      return res.json({ user: { id: user.id, username: user.username, team_name: user.team_name }, token, claimed: true });
     }
-    
-    // For now, require pre-registration (invite-only MVP)
-    return res.status(403).json({ 
-      error: 'Registration is invite-only. Contact admin for access.' 
-    });
-    
-    // Uncomment below for open registration:
-    // const user = db.createUser(username, password, teamName);
-    // const token = generateToken();
-    // sessions.set(token, user);
-    // res.json({ user, token });
+    return res.status(403).json({ error: 'Registration is invite-only. Contact admin for access.' });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
 // Login
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res, next) => {
   try {
     const { username, password, teamName } = req.body;
-    
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
+    if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+    // If user already exists in users, always authenticate (never claim again)
+    const existingUser = await db.getUserByUsernameCaseInsensitive(username);
+    if (existingUser) {
+      const user = await db.authenticateUser(username, password);
+      const full = await db.getUser(user.id);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const token = await db.createSession(user.id, user.username, full?.team_name, expiresAt);
+      return res.json({ user: { id: user.id, username: user.username, team_name: full?.team_name, packs_opened: user.packs_opened, max_packs: user.max_packs }, token });
     }
-    
-    // Check if this is a pre-registered user claiming their account
-    const preregistered = db.getPreregisteredUser(username);
+    const preregistered = await db.getPreregisteredUser(username);
     if (preregistered) {
-      // This is their first login - set password and create account
-      const user = db.claimPreregisteredUser(username, password, teamName);
-      const token = generateToken();
-      sessions.set(token, user);
-      return res.json({ user, token, firstLogin: true });
+      try {
+        const user = await db.claimPreregisteredUser(username, password, teamName);
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const token = await db.createSession(user.id, user.username, user.team_name, expiresAt);
+        return res.json({ user: { id: user.id, username: user.username, team_name: user.team_name }, token, firstLogin: true });
+      } catch (claimErr) {
+        try {
+          const user = await db.authenticateUser(username, password);
+          const full = await db.getUser(user.id);
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          const token = await db.createSession(user.id, user.username, full?.team_name, expiresAt);
+          return res.json({ user: { id: user.id, username: user.username, team_name: full?.team_name, packs_opened: user.packs_opened, max_packs: user.max_packs }, token });
+        } catch (_) {
+          throw claimErr;
+        }
+      }
     }
-    
-    // Regular login
-    const user = db.authenticateUser(username, password);
-    const token = generateToken();
-    sessions.set(token, user);
-    
-    res.json({ user, token });
+    return res.status(401).json({ error: 'Invalid username or password' });
   } catch (err) {
-    res.status(401).json({ error: err.message });
+    const msg = (err && (err.message || String(err))) || 'Login failed';
+    const isAuthError = /invalid|password|not found|required/i.test(msg);
+    if (!res.headersSent) {
+      if (isAuthError) return res.status(401).json({ error: msg });
+      console.error('POST /api/auth/login error:', err);
+      return res.status(500).json({ error: msg });
+    }
+    next(err);
   }
 });
 
 // Logout
-app.post('/api/auth/logout', authMiddleware, (req, res) => {
+app.post('/api/auth/logout', authMiddleware, async (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  sessions.delete(token);
+  await db.deleteSession(token);
   res.json({ success: true });
 });
 
 // Get current user
-app.get('/api/auth/me', authMiddleware, (req, res) => {
-  const user = db.getUser(req.user.id);
-  const stats = db.getUserStats(req.user.id);
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+  const user = await db.getUser(req.user.id);
+  const stats = await db.getUserStats(req.user.id);
   res.json({ user, stats });
 });
 
 // Update team name
-app.put('/api/auth/team-name', authMiddleware, (req, res) => {
+app.put('/api/auth/team-name', authMiddleware, async (req, res) => {
   try {
     const { teamName } = req.body;
-    const user = db.updateTeamName(req.user.id, teamName);
+    const user = await db.updateTeamName(req.user.id, teamName);
     res.json({ success: true, team_name: user.team_name });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -339,7 +308,7 @@ function adminAuth(req, res, next) {
 }
 
 // Pre-register a username
-app.post('/api/admin/preregister', adminAuth, (req, res) => {
+app.post('/api/admin/preregister', adminAuth, async (req, res) => {
   try {
     const { username, maxPacks } = req.body;
     
@@ -347,7 +316,7 @@ app.post('/api/admin/preregister', adminAuth, (req, res) => {
       return res.status(400).json({ error: 'Username required' });
     }
     
-    const preUser = db.preregisterUser(username, maxPacks || 8);
+    const preUser = await db.preregisterUser(username, maxPacks || 8);
     res.json({ success: true, user: preUser });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -355,26 +324,45 @@ app.post('/api/admin/preregister', adminAuth, (req, res) => {
 });
 
 // List all pre-registered users
-app.get('/api/admin/preregistered', adminAuth, (req, res) => {
-  const list = db.listPreregistered();
+app.get('/api/admin/preregistered', adminAuth, async (req, res) => {
+  const list = await db.listPreregistered();
   res.json({ preregistered: list });
 });
 
 // Update user's max packs
-app.put('/api/admin/user/:userId/packs', adminAuth, (req, res) => {
+app.put('/api/admin/user/:userId/packs', adminAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params.userId);
     const { maxPacks } = req.body;
-    const user = db.updateUserMaxPacks(userId, maxPacks);
+    const user = await db.updateUserMaxPacks(userId, maxPacks);
     res.json({ success: true, user });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
+// Reset a user's password (admin). Sets a temporary password so they can log in and change it later.
+app.post('/api/admin/reset-password', adminAuth, async (req, res) => {
+  try {
+    const { username, tempPassword } = req.body;
+    if (!username) return res.status(400).json({ error: 'username required' });
+    const password = tempPassword && tempPassword.length >= 4 ? tempPassword : 'password';
+    const user = await db.setPasswordByUsername(username, password);
+    res.json({
+      success: true,
+      message: `Password for ${user.username} has been reset.`,
+      username: user.username,
+      tempPassword: password,
+    });
+  } catch (err) {
+    if (err.message === 'User not found') return res.status(404).json({ error: err.message });
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // List all users (admin)
-app.get('/api/admin/users', adminAuth, (req, res) => {
-  const users = db.getAllUsers();
+app.get('/api/admin/users', adminAuth, async (req, res) => {
+  const users = await db.getAllUsers();
   res.json({ users: users.map(u => ({
     id: u.id,
     username: u.username,
@@ -386,7 +374,7 @@ app.get('/api/admin/users', adminAuth, (req, res) => {
 });
 
 // Admin: Card counts & image health per user
-app.get('/api/admin/user-card-stats', adminAuth, (req, res) => {
+app.get('/api/admin/user-card-stats', adminAuth, async (req, res) => {
   const fs = require('fs');
   const path = require('path');
   const PERSISTENT_DIR = '/var/data';
@@ -421,9 +409,9 @@ app.get('/api/admin/user-card-stats', adminAuth, (req, res) => {
     return false;
   }
   
-  const users = db.getAllUsers();
-  const results = users.map(u => {
-    const cards = db.getUserCards(u.id);
+  const users = await db.getAllUsers();
+  const results = await Promise.all(users.map(async (u) => {
+    const cards = await db.getUserCards(u.id);
     const stats = {
       user_id: u.id,
       username: u.username,
@@ -454,7 +442,7 @@ app.get('/api/admin/user-card-stats', adminAuth, (req, res) => {
     }
     
     return stats;
-  });
+  }));
   
   res.json({
     persistent_storage: USE_PERSISTENT,
@@ -464,19 +452,19 @@ app.get('/api/admin/user-card-stats', adminAuth, (req, res) => {
 
 // Admin: Compensate a user for missing mints by adding bonus packs
 // If pack opens were counted but fewer than 5 cards were saved, this restores fairness
-app.post('/api/admin/compensate-missing-packs', adminAuth, (req, res) => {
+app.post('/api/admin/compensate-missing-packs', adminAuth, async (req, res) => {
   try {
     const { username } = req.body;
     if (!username) {
       return res.status(400).json({ error: 'Missing username' });
     }
     
-    const user = db.getUserByUsername(username);
+    const user = await db.getUserByUsername(username);
     if (!user) {
       return res.status(404).json({ error: `User "${username}" not found` });
     }
     
-    const actualCards = db.getUserCards(user.id).length;
+    const actualCards = (await db.getUserCards(user.id)).length;
     const expectedCards = (user.packs_opened || 0) * 5;
     const missingCards = Math.max(0, expectedCards - actualCards);
     
@@ -494,7 +482,7 @@ app.post('/api/admin/compensate-missing-packs', adminAuth, (req, res) => {
     
     const packsToAdd = Math.ceil(missingCards / 5);
     const newMax = (user.max_packs || 0) + packsToAdd;
-    db.updateUserMaxPacks(user.id, newMax);
+    await db.updateUserMaxPacks(user.id, newMax);
     
     res.json({
       success: true,
@@ -516,18 +504,33 @@ app.post('/api/admin/compensate-missing-packs', adminAuth, (req, res) => {
 // =============================================================================
 
 // Get pack info
-app.get('/api/packs/info', authMiddleware, (req, res) => {
-  const user = db.getUser(req.user.id);
-  const packStats = packs.getPackStats();
-  const availability = mintingLedger.getAvailabilityStats();
-  
-  res.json({
-    packsOpened: user.packs_opened,
-    maxPacks: user.max_packs,
-    packsRemaining: user.max_packs - user.packs_opened,
-    tierRates: packStats.expectedRates,
-    cardAvailability: availability,
-  });
+const STARTER_PACKS_MAX = 3;
+app.get('/api/packs/info', authMiddleware, async (req, res) => {
+  try {
+    const user = await db.getUser(req.user.id);
+    const packStats = packs.getPackStats();
+    const availability = mintingLedger.getAvailabilityStats();
+    const opened = user.packs_opened ?? 0;
+    const maxPacks = user.max_packs ?? 13;
+    const starterOpened = Math.min(opened, STARTER_PACKS_MAX);
+    const bonusMax = Math.max(0, maxPacks - STARTER_PACKS_MAX);
+    const bonusOpened = Math.max(0, opened - STARTER_PACKS_MAX);
+
+    res.json({
+      packsOpened: opened,
+      maxPacks,
+      packsRemaining: maxPacks - opened,
+      starterPacksOpened: starterOpened,
+      starterPacksMax: STARTER_PACKS_MAX,
+      bonusPacksOpened: bonusOpened,
+      bonusPacksMax: bonusMax,
+      tierRates: packStats.expectedRates,
+      cardAvailability: availability,
+    });
+  } catch (err) {
+    console.error('GET /api/packs/info error:', err);
+    res.status(500).json({ error: err.message || 'Failed to load pack info' });
+  }
 });
 
 // Check if AI image generation is enabled
@@ -541,7 +544,7 @@ if (AI_ENABLED) {
 // Open a pack
 app.post('/api/packs/open', authMiddleware, async (req, res) => {
   try {
-    const user = db.getUser(req.user.id);
+    const user = await db.getUser(req.user.id);
     
     if (user.packs_opened >= user.max_packs) {
       return res.status(400).json({ error: 'No packs remaining' });
@@ -550,7 +553,7 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
     // Determine pack type
     const isStarterPack = user.packs_opened < 3; // First 3 are starter packs
     const packNum = user.packs_opened; // 0-based
-    const cards = isStarterPack ? packs.openStarterPack(packNum) : packs.openPack();
+    const cards = isStarterPack ? await packs.openStarterPack(packNum) : await packs.openPack();
     
     if (cards.length === 0) {
       return res.status(400).json({ error: 'No cards available to mint' });
@@ -626,7 +629,7 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
       mintedCard.image_url = imageUrl;
       mintedCard.image_pending = imagePending;
       
-      const cardId = db.addCard(req.user.id, mintedCard);
+      const cardId = await db.addCard(req.user.id, mintedCard);
       const savedCard = { id: cardId, ...mintedCard, image_url: imageUrl, image_pending: imagePending };
       savedCards.push(savedCard);
       
@@ -636,7 +639,7 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
     }
     
     // Increment packs opened ONLY after minting full pack
-    db.incrementPacksOpened(req.user.id);
+    await db.incrementPacksOpened(req.user.id);
     
     // Generate AI images in background (don't wait)
     if (cardsToGenerateImages.length > 0) {
@@ -645,7 +648,7 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
           try {
             console.log(`Background: Generating AI image for card ${cardId}...`);
             const imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
-            db.updateCardImage(cardId, imageUrl);
+            await db.updateCardImage(cardId, imageUrl);
             console.log(`Background: Card ${cardId} image ready: ${imageUrl}`);
           } catch (err) {
             console.error(`Background: Failed to generate image for card ${cardId}:`, err.message);
@@ -669,13 +672,13 @@ app.post('/api/packs/open', authMiddleware, async (req, res) => {
 // Open a single-card pack (for testing foil animation)
 app.post('/api/packs/open-single', authMiddleware, async (req, res) => {
   try {
-    const user = db.getUser(req.user.id);
+    const user = await db.getUser(req.user.id);
     
     if (user.packs_opened >= user.max_packs) {
       return res.status(400).json({ error: 'No packs remaining' });
     }
     
-    const cards = packs.openSingleCard();
+    const cards = await packs.openSingleCard();
     
     if (cards.length === 0) {
       return res.status(400).json({ error: 'No cards available to mint' });
@@ -736,7 +739,7 @@ app.post('/api/packs/open-single', authMiddleware, async (req, res) => {
     mintedCard.image_url = imageUrl;
     mintedCard.image_pending = imagePending;
       
-    const cardId = db.addCard(req.user.id, mintedCard);
+    const cardId = await db.addCard(req.user.id, mintedCard);
     const savedCard = { id: cardId, ...mintedCard, image_url: imageUrl, image_pending: imagePending };
     savedCards.push(savedCard);
       
@@ -744,7 +747,7 @@ app.post('/api/packs/open-single', authMiddleware, async (req, res) => {
       cardsToGenerateImages.push({ cardId, card: savedCard });
     }
     
-    db.incrementPacksOpened(req.user.id);
+    await db.incrementPacksOpened(req.user.id);
     
     if (cardsToGenerateImages.length > 0) {
       setImmediate(async () => {
@@ -752,7 +755,7 @@ app.post('/api/packs/open-single', authMiddleware, async (req, res) => {
           try {
             console.log(`Background: Generating AI image for card ${cardId}...`);
             const imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
-            db.updateCardImage(cardId, imageUrl);
+            await db.updateCardImage(cardId, imageUrl);
             console.log(`Background: Card ${cardId} image ready: ${imageUrl}`);
           } catch (err) {
             console.error(`Background: Failed to generate image for card ${cardId}:`, err.message);
@@ -776,7 +779,7 @@ app.post('/api/packs/open-single', authMiddleware, async (req, res) => {
 // Open all remaining packs at once
 app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
   try {
-    const user = db.getUser(req.user.id);
+    const user = await db.getUser(req.user.id);
     const remaining = user.max_packs - user.packs_opened;
     
     if (remaining <= 0) {
@@ -789,7 +792,7 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
     for (let i = 0; i < remaining; i++) {
       const currentPackNum = user.packs_opened + i;
       const isStarterPack = currentPackNum < 3;
-      const cards = isStarterPack ? packs.openStarterPack(currentPackNum) : packs.openPack();
+      const cards = isStarterPack ? await packs.openStarterPack(currentPackNum) : await packs.openPack();
       const desiredCount = 5;
       const desiredPositions = cards.slice(0, desiredCount).map(c => c.position);
       let mintedThisPack = 0;
@@ -850,7 +853,7 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
         mintedCard.image_url = imageUrl;
         mintedCard.image_pending = imagePending;
         
-        const cardId = db.addCard(req.user.id, mintedCard);
+        const cardId = await db.addCard(req.user.id, mintedCard);
         const savedCard = { 
           id: cardId, 
           ...mintedCard,
@@ -868,7 +871,7 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
       }
       
       if (mintedThisPack === desiredCount) {
-        db.incrementPacksOpened(req.user.id);
+        await db.incrementPacksOpened(req.user.id);
       } else {
         return res.status(500).json({ error: 'Failed to mint a full pack during open-all. Please try again.' });
       }
@@ -881,7 +884,7 @@ app.post('/api/packs/open-all', authMiddleware, async (req, res) => {
           try {
             console.log(`Background: Generating AI image for card ${cardId}...`);
             const imageUrl = await cardImageGenerator.getOrGenerateCardImage(card);
-            db.updateCardImage(cardId, imageUrl);
+            await db.updateCardImage(cardId, imageUrl);
             console.log(`Background: Card ${cardId} image ready: ${imageUrl}`);
           } catch (err) {
             console.error(`Background: Failed to generate image for card ${cardId}:`, err.message);
@@ -959,8 +962,8 @@ function enqueueCardImageRegen(card) {
 }
 
 // Get all user's cards
-app.get('/api/cards', authMiddleware, (req, res) => {
-  const cards = db.getUserCards(req.user.id);
+app.get('/api/cards', authMiddleware, async (req, res) => {
+  const cards = await db.getUserCards(req.user.id);
   
   // Check for cards needing image regeneration
   if (AI_ENABLED) {
@@ -975,14 +978,14 @@ app.get('/api/cards', authMiddleware, (req, res) => {
 });
 
 // Get cards by position
-app.get('/api/cards/position/:position', authMiddleware, (req, res) => {
-  const cards = db.getUserCardsByPosition(req.user.id, req.params.position.toUpperCase());
+app.get('/api/cards/position/:position', authMiddleware, async (req, res) => {
+  const cards = await db.getUserCardsByPosition(req.user.id, req.params.position.toUpperCase());
   res.json({ cards });
 });
 
 // Get single card
-app.get('/api/cards/:id', authMiddleware, (req, res) => {
-  const card = db.getCard(parseInt(req.params.id));
+app.get('/api/cards/:id', authMiddleware, async (req, res) => {
+  const card = await db.getCard(parseInt(req.params.id));
   
   if (!card || card.user_id !== req.user.id) {
     return res.status(404).json({ error: 'Card not found' });
@@ -996,32 +999,26 @@ app.get('/api/cards/:id', authMiddleware, (req, res) => {
 // =============================================================================
 
 // Get all users with their card counts (for browsing)
-app.get('/api/users', authMiddleware, (req, res) => {
-  const users = db.getAllUsers();
-  const userList = users.map(u => {
-    const cards = db.getUserCards(u.id);
-    const stats = db.getUserStats(u.id);
-    return {
-      id: u.id,
-      username: u.username,
-      team_name: u.team_name,
-      card_count: cards.length,
-      stats,
-    };
-  });
+app.get('/api/users', authMiddleware, async (req, res) => {
+  const users = await db.getAllUsers();
+  const userList = await Promise.all(users.map(async (u) => {
+    const cards = await db.getUserCards(u.id);
+    const stats = await db.getUserStats(u.id);
+    return { id: u.id, username: u.username, team_name: u.team_name, card_count: cards.length, stats };
+  }));
   res.json({ users: userList });
 });
 
 // Get another user's card collection
-app.get('/api/users/:userId/cards', authMiddleware, (req, res) => {
+app.get('/api/users/:userId/cards', authMiddleware, async (req, res) => {
   const userId = parseInt(req.params.userId);
-  const user = db.getUser(userId);
+  const user = await db.getUser(userId);
   
   if (!user) {
     return res.status(404).json({ error: 'User not found' });
   }
   
-  const cards = db.getUserCards(userId);
+  const cards = await db.getUserCards(userId);
   
   // Check for cards needing image regeneration
   if (AI_ENABLED) {
@@ -1044,15 +1041,15 @@ app.get('/api/users/:userId/cards', authMiddleware, (req, res) => {
 });
 
 // Get another user's roster
-app.get('/api/users/:userId/roster', authMiddleware, (req, res) => {
+app.get('/api/users/:userId/roster', authMiddleware, async (req, res) => {
   const userId = parseInt(req.params.userId);
-  const user = db.getUser(userId);
+  const user = await db.getUser(userId);
   
   if (!user) {
     return res.status(404).json({ error: 'User not found' });
   }
   
-  const fullRoster = db.getFullRoster(userId);
+  const fullRoster = await db.getFullRoster(userId);
   
   res.json({
     user: {
@@ -1069,13 +1066,13 @@ app.get('/api/users/:userId/roster', authMiddleware, (req, res) => {
 // =============================================================================
 
 // Get user's roster
-app.get('/api/roster', authMiddleware, (req, res) => {
-  const fullRoster = db.getFullRoster(req.user.id);
+app.get('/api/roster', authMiddleware, async (req, res) => {
+  const fullRoster = await db.getFullRoster(req.user.id);
   res.json(fullRoster);
 });
 
 // Update roster slot
-app.put('/api/roster', authMiddleware, (req, res) => {
+app.put('/api/roster', authMiddleware, async (req, res) => {
   try {
     const { slots } = req.body;
     
@@ -1086,15 +1083,15 @@ app.put('/api/roster', authMiddleware, (req, res) => {
     // Verify all cards belong to user
     for (const [slot, cardId] of Object.entries(slots)) {
       if (cardId !== null) {
-        const card = db.getCard(cardId);
+        const card = await db.getCard(cardId);
         if (!card || card.user_id !== req.user.id) {
           return res.status(400).json({ error: `Card ${cardId} not found or not owned` });
         }
       }
     }
     
-    db.updateRoster(req.user.id, slots);
-    const fullRoster = db.getFullRoster(req.user.id);
+    await db.updateRoster(req.user.id, slots);
+    const fullRoster = await db.getFullRoster(req.user.id);
     res.json(fullRoster);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1102,12 +1099,12 @@ app.put('/api/roster', authMiddleware, (req, res) => {
 });
 
 // Auto-fill roster with best available cards
-app.post('/api/roster/auto-fill', authMiddleware, (req, res) => {
+app.post('/api/roster/auto-fill', authMiddleware, async (req, res) => {
   try {
-    const cards = db.getUserCards(req.user.id);
+    const cards = await db.getUserCards(req.user.id);
     const slots = gameEngine.autoFillRoster(cards);
-    db.updateRoster(req.user.id, slots);
-    const fullRoster = db.getFullRoster(req.user.id);
+    await db.updateRoster(req.user.id, slots);
+    const fullRoster = await db.getFullRoster(req.user.id);
     res.json(fullRoster);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1119,7 +1116,7 @@ app.post('/api/roster/auto-fill', authMiddleware, (req, res) => {
 // =============================================================================
 
 // Practice simulation (doesn't affect standings)
-app.post('/api/games/practice', authMiddleware, (req, res) => {
+app.post('/api/games/practice', authMiddleware, async (req, res) => {
   try {
     const { opponent_id } = req.body;
     
@@ -1127,14 +1124,14 @@ app.post('/api/games/practice', authMiddleware, (req, res) => {
       return res.status(400).json({ error: 'Opponent ID required' });
     }
     
-    const opponent = db.getUser(opponent_id);
+    const opponent = await db.getUser(opponent_id);
     if (!opponent) {
       return res.status(404).json({ error: 'Opponent not found' });
     }
     
     // Get both rosters (full roster format that game engine expects)
-    const myRoster = db.getFullRoster(req.user.id);
-    const opponentRoster = db.getFullRoster(opponent_id);
+    const myRoster = await db.getFullRoster(req.user.id);
+    const opponentRoster = await db.getFullRoster(opponent_id);
     
     if (!myRoster.cards || Object.keys(myRoster.cards).length === 0) {
       return res.status(400).json({ error: 'You need to set your roster first' });
@@ -1246,20 +1243,18 @@ app.post('/api/games/practice', authMiddleware, (req, res) => {
 });
 
 // Get list of opponents
-app.get('/api/opponents', authMiddleware, (req, res) => {
-  const users = db.getAllUsers().filter(u => u.id !== req.user.id);
-  
-  // Add stats for each user
-  const opponents = users.map(u => {
-    const stats = db.getUserStats(u.id);
+app.get('/api/opponents', authMiddleware, async (req, res) => {
+  const all = await db.getAllUsers();
+  const users = all.filter(u => u.id !== req.user.id);
+  const opponents = await Promise.all(users.map(async (u) => {
+    const stats = await db.getUserStats(u.id);
     return { ...u, stats };
-  });
-  
+  }));
   res.json({ opponents });
 });
 
 // Challenge an opponent
-app.post('/api/game/challenge', authMiddleware, (req, res) => {
+app.post('/api/game/challenge', authMiddleware, async (req, res) => {
   try {
     const { opponentId } = req.body;
     
@@ -1267,14 +1262,14 @@ app.post('/api/game/challenge', authMiddleware, (req, res) => {
       return res.status(400).json({ error: 'Opponent ID required' });
     }
     
-    const opponent = db.getUser(opponentId);
+    const opponent = await db.getUser(opponentId);
     if (!opponent) {
       return res.status(404).json({ error: 'Opponent not found' });
     }
     
     // Get both rosters
-    const homeRoster = db.getFullRoster(req.user.id);
-    const awayRoster = db.getFullRoster(opponentId);
+    const homeRoster = await db.getFullRoster(req.user.id);
+    const awayRoster = await db.getFullRoster(opponentId);
     
     if (!homeRoster || Object.keys(homeRoster.cards).length === 0) {
       return res.status(400).json({ error: 'You need to set up your roster first' });
@@ -1296,7 +1291,7 @@ app.post('/api/game/challenge', authMiddleware, (req, res) => {
     }
     
     // Save game
-    const gameId = db.recordGame(
+    const gameId = await db.recordGame(
       req.user.id,
       opponentId,
       result.homeScore,
@@ -1340,20 +1335,17 @@ app.post('/api/game/challenge', authMiddleware, (req, res) => {
 });
 
 // Quick match (random opponent)
-app.post('/api/game/quick-match', authMiddleware, (req, res) => {
+app.post('/api/game/quick-match', authMiddleware, async (req, res) => {
   try {
     // Find random opponent with a roster
-    const users = db.getAllUsers().filter(u => u.id !== req.user.id);
+    const users = await db.getAllUsers().filter(u => u.id !== req.user.id);
     
     if (users.length === 0) {
       return res.status(400).json({ error: 'No opponents available' });
     }
     
-    // Filter to users with rosters
-    const validOpponents = users.filter(u => {
-      const roster = db.getFullRoster(u.id);
-      return roster && Object.keys(roster.cards).length > 0;
-    });
+    const withRosters = await Promise.all(users.map(async (u) => ({ u, roster: await db.getFullRoster(u.id) })));
+    const validOpponents = withRosters.filter(({ roster }) => roster && Object.keys(roster.cards || {}).length > 0).map(({ u }) => u);
     
     if (validOpponents.length === 0) {
       return res.status(400).json({ error: 'No opponents with rosters available' });
@@ -1365,8 +1357,8 @@ app.post('/api/game/quick-match', authMiddleware, (req, res) => {
     req.body.opponentId = opponent.id;
     
     // Get both rosters
-    const homeRoster = db.getFullRoster(req.user.id);
-    const awayRoster = db.getFullRoster(opponent.id);
+    const homeRoster = await db.getFullRoster(req.user.id);
+    const awayRoster = await db.getFullRoster(opponent.id);
     
     if (!homeRoster || Object.keys(homeRoster.cards).length === 0) {
       return res.status(400).json({ error: 'You need to set up your roster first' });
@@ -1384,7 +1376,7 @@ app.post('/api/game/quick-match', authMiddleware, (req, res) => {
     }
     
     // Save game
-    const gameId = db.recordGame(
+    const gameId = await db.recordGame(
       req.user.id,
       opponent.id,
       result.homeScore,
@@ -1428,8 +1420,8 @@ app.post('/api/game/quick-match', authMiddleware, (req, res) => {
 });
 
 // Get game details
-app.get('/api/game/:id', authMiddleware, (req, res) => {
-  const game = db.getGame(parseInt(req.params.id));
+app.get('/api/game/:id', authMiddleware, async (req, res) => {
+  const game = await db.getGame(parseInt(req.params.id));
   
   if (!game) {
     return res.status(404).json({ error: 'Game not found' });
@@ -1439,9 +1431,9 @@ app.get('/api/game/:id', authMiddleware, (req, res) => {
 });
 
 // Get user's game history
-app.get('/api/games', authMiddleware, (req, res) => {
+app.get('/api/games', authMiddleware, async (req, res) => {
   const limit = parseInt(req.query.limit) || 20;
-  const games = db.getUserGames(req.user.id, limit);
+  const games = await db.getUserGames(req.user.id, limit);
   res.json({ games });
 });
 
@@ -1450,13 +1442,13 @@ app.get('/api/games', authMiddleware, (req, res) => {
 // =============================================================================
 
 // Get all active press conferences for the current user
-app.get('/api/press-conference', authMiddleware, (req, res) => {
+app.get('/api/press-conference', authMiddleware, async (req, res) => {
   const conferences = pressConference.getActiveConferencesForUser(req.user.id);
   res.json({ conferences });
 });
 
 // Get messages for a specific game's press conference
-app.get('/api/press-conference/:gameId', authMiddleware, (req, res) => {
+app.get('/api/press-conference/:gameId', authMiddleware, async (req, res) => {
   const gameId = parseInt(req.params.gameId);
   const since = req.query.since || null;
   
@@ -1470,7 +1462,7 @@ app.get('/api/press-conference/:gameId', authMiddleware, (req, res) => {
 });
 
 // Send a message in a press conference
-app.post('/api/press-conference/:gameId/message', authMiddleware, (req, res) => {
+app.post('/api/press-conference/:gameId/message', authMiddleware, async (req, res) => {
   const gameId = parseInt(req.params.gameId);
   const { content } = req.body;
   
@@ -1496,9 +1488,9 @@ app.post('/api/press-conference/:gameId/message', authMiddleware, (req, res) => 
 // LEADERBOARD
 // =============================================================================
 
-app.get('/api/leaderboard', (req, res) => {
+app.get('/api/leaderboard', async (req, res) => {
   const limit = parseInt(req.query.limit) || 20;
-  const leaderboard = db.getLeaderboard(limit);
+  const leaderboard = await db.getLeaderboard(limit);
   res.json({ leaderboard });
 });
 
@@ -1506,7 +1498,7 @@ app.get('/api/leaderboard', (req, res) => {
 // SEARCH (for testing)
 // =============================================================================
 
-app.get('/api/players/search', authMiddleware, (req, res) => {
+app.get('/api/players/search', authMiddleware, async (req, res) => {
   const query = req.query.q || '';
   const results = packs.searchPlayers(query, 20);
   res.json({ players: results });
@@ -1517,9 +1509,9 @@ app.get('/api/players/search', authMiddleware, (req, res) => {
 // =============================================================================
 
 // Get today's schedule
-app.get('/api/schedule/today', authMiddleware, (req, res) => {
+app.get('/api/schedule/today', authMiddleware, async (req, res) => {
   const games = scheduler.getTodaySchedule();
-  const users = db.getAllUsers();
+  const users = await db.getAllUsers();
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
   
   const gamesWithUsers = games.map(g => ({
@@ -1535,9 +1527,9 @@ app.get('/api/schedule/today', authMiddleware, (req, res) => {
 });
 
 // Get tomorrow's schedule
-app.get('/api/schedule/tomorrow', authMiddleware, (req, res) => {
+app.get('/api/schedule/tomorrow', authMiddleware, async (req, res) => {
   const games = scheduler.getTomorrowSchedule();
-  const users = db.getAllUsers();
+  const users = await db.getAllUsers();
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
   
   const tomorrow = scheduler.getESTDate();
@@ -1556,15 +1548,15 @@ app.get('/api/schedule/tomorrow', authMiddleware, (req, res) => {
 });
 
 // Get full schedule
-app.get('/api/schedule', authMiddleware, (req, res) => {
-  const schedule = scheduler.getScheduleWithDetails();
+app.get('/api/schedule', authMiddleware, async (req, res) => {
+  const schedule = await scheduler.getScheduleWithDetails();
   res.json(schedule);
 });
 
 // Get my upcoming games
-app.get('/api/schedule/my-games', authMiddleware, (req, res) => {
+app.get('/api/schedule/my-games', authMiddleware, async (req, res) => {
   const schedule = scheduler.loadSchedule();
-  const users = db.getAllUsers();
+  const users = await db.getAllUsers();
   const userMap = Object.fromEntries(users.map(u => [u.id, u]));
   
   const myGames = schedule.games
@@ -1580,16 +1572,16 @@ app.get('/api/schedule/my-games', authMiddleware, (req, res) => {
 });
 
 // Standings (team records from regular-season completed games; used for playoff seeding)
-app.get('/api/schedule/standings', authMiddleware, (req, res) => {
+app.get('/api/schedule/standings', authMiddleware, async (req, res) => {
   const schedule = scheduler.loadSchedule();
-  const standings = scheduler.getStandings(schedule);
+  const standings = await scheduler.getStandings(schedule);
   res.json({ standings });
 });
 
 // Admin: Initialize/reset schedule (for testing)
-app.post('/api/schedule/init', authMiddleware, (req, res) => {
+app.post('/api/schedule/init', authMiddleware, async (req, res) => {
   const { reset } = req.body;
-  const schedule = scheduler.initializeSchedule(reset === true);
+  const schedule = await scheduler.initializeSchedule(reset === true);
   res.json({ 
     message: reset ? 'Schedule reset' : 'Schedule initialized',
     seasonStart: schedule.seasonStart,
@@ -1598,7 +1590,7 @@ app.post('/api/schedule/init', authMiddleware, (req, res) => {
 });
 
 // Admin: Run pending games now (for testing)
-app.post('/api/schedule/run-now', authMiddleware, (req, res) => {
+app.post('/api/schedule/run-now', authMiddleware, async (req, res) => {
   const results = scheduler.runPendingGames();
   res.json({ 
     message: `Ran ${results.length} games`,
@@ -1610,7 +1602,7 @@ app.post('/api/schedule/run-now', authMiddleware, (req, res) => {
 // MINTING STATS
 // =============================================================================
 
-app.get('/api/minting/stats', authMiddleware, (req, res) => {
+app.get('/api/minting/stats', authMiddleware, async (req, res) => {
   const stats = mintingLedger.getAvailabilityStats();
   res.json(stats);
 });
@@ -1620,30 +1612,23 @@ app.get('/api/minting/stats', authMiddleware, (req, res) => {
 // =============================================================================
 
 // Get unread message count
-app.get('/api/messages/unread-count', authMiddleware, (req, res) => {
+app.get('/api/messages/unread-count', authMiddleware, async (req, res) => {
   const count = messages.getUnreadCount(req.user.id);
   res.json({ count });
 });
 
 // Get inbox (received messages)
-app.get('/api/messages/inbox', authMiddleware, (req, res) => {
+app.get('/api/messages/inbox', authMiddleware, async (req, res) => {
   const inbox = messages.getInbox(req.user.id);
-  
-  // Enrich with sender info
-  const enriched = inbox.map(msg => {
-    const sender = db.getUser(msg.from_user_id);
-    return {
-      ...msg,
-      from_username: sender?.username || 'Unknown',
-      from_team_name: sender?.team_name || 'Unknown Team',
-    };
-  });
-  
+  const enriched = await Promise.all(inbox.map(async (msg) => {
+    const sender = await db.getUser(msg.from_user_id);
+    return { ...msg, from_username: sender?.username || 'Unknown', from_team_name: sender?.team_name || 'Unknown Team' };
+  }));
   res.json({ messages: enriched });
 });
 
 // Get conversation with a user
-app.get('/api/messages/conversation/:userId', authMiddleware, (req, res) => {
+app.get('/api/messages/conversation/:userId', authMiddleware, async (req, res) => {
   const otherUserId = parseInt(req.params.userId);
   const conversation = messages.getConversation(req.user.id, otherUserId);
   
@@ -1651,7 +1636,7 @@ app.get('/api/messages/conversation/:userId', authMiddleware, (req, res) => {
   messages.markAsRead(req.user.id, otherUserId);
   
   // Enrich with user info
-  const otherUser = db.getUser(otherUserId);
+  const otherUser = await db.getUser(otherUserId);
   const enriched = conversation.map(msg => ({
     ...msg,
     is_mine: msg.from_user_id === req.user.id,
@@ -1668,7 +1653,7 @@ app.get('/api/messages/conversation/:userId', authMiddleware, (req, res) => {
 });
 
 // Send a message
-app.post('/api/messages/send', authMiddleware, (req, res) => {
+app.post('/api/messages/send', authMiddleware, async (req, res) => {
   try {
     const { to_user_id, content } = req.body;
     
@@ -1677,7 +1662,7 @@ app.post('/api/messages/send', authMiddleware, (req, res) => {
     }
     
     // Verify recipient exists
-    const recipient = db.getUser(parseInt(to_user_id));
+    const recipient = await db.getUser(parseInt(to_user_id));
     if (!recipient) {
       return res.status(404).json({ error: 'Recipient not found' });
     }
@@ -1702,7 +1687,7 @@ app.post('/api/messages/send', authMiddleware, (req, res) => {
 // =============================================================================
 
 // Admin: Update user's max packs
-app.post('/api/admin/add-packs', (req, res) => {
+app.post('/api/admin/add-packs', async (req, res) => {
   try {
     const { username, packs_to_add } = req.body;
     
@@ -1710,13 +1695,13 @@ app.post('/api/admin/add-packs', (req, res) => {
       return res.status(400).json({ error: 'Missing username or packs_to_add' });
     }
     
-    const user = db.getUserByUsername(username);
+    const user = await db.getUserByUsername(username);
     if (!user) {
       return res.status(404).json({ error: `User "${username}" not found` });
     }
     
     const newMax = user.max_packs + parseInt(packs_to_add);
-    db.updateUserMaxPacks(user.id, newMax);
+    await db.updateUserMaxPacks(user.id, newMax);
     
     res.json({ 
       success: true,
@@ -1739,13 +1724,13 @@ app.post('/api/admin/grant-single-card-pack', adminAuth, async (req, res) => {
       return res.status(400).json({ error: 'Missing username' });
     }
     
-    const user = db.getUserByUsername(username);
+    const user = await db.getUserByUsername(username);
     if (!user) {
       return res.status(404).json({ error: `User "${username}" not found` });
     }
     
     // Grant a single pack without opening it
-    db.updateUserMaxPacks(user.id, (user.max_packs || 0) + 1);
+    await db.updateUserMaxPacks(user.id, (user.max_packs || 0) + 1);
     
     res.json({ 
       success: true,
@@ -1759,18 +1744,18 @@ app.post('/api/admin/grant-single-card-pack', adminAuth, async (req, res) => {
 });
 
 // Debug endpoint to see card image status (no auth for easy debugging)
-app.get('/api/admin/debug-images', (req, res) => {
+app.get('/api/admin/debug-images', async (req, res) => {
   const fs = require('fs');
   const path = require('path');
   
   const PERSISTENT_DIR = '/var/data';
   const USE_PERSISTENT = fs.existsSync(PERSISTENT_DIR);
   
-  const allUsers = db.getAllUsers();
+  const allUsers = await db.getAllUsers();
   const results = [];
   
   for (const user of allUsers) {
-    const cards = db.getUserCards(user.id);
+    const cards = await db.getUserCards(user.id);
     for (const card of cards) {
       const filename = card.image_url ? card.image_url.split('/').pop() : null;
       
@@ -1813,17 +1798,17 @@ app.get('/api/admin/debug-images', (req, res) => {
 // ADMIN: Regenerate missing images
 // =============================================================================
 
-app.post('/api/admin/regenerate-images', (req, res) => {
+app.post('/api/admin/regenerate-images', async (req, res) => {
   if (!AI_ENABLED) {
     return res.status(400).json({ error: 'AI image generation not enabled (no OPENAI_API_KEY)' });
   }
   
   // Get all cards from all users
-  const allUsers = db.getAllUsers();
+  const allUsers = await db.getAllUsers();
   let cardsToRegenerate = [];
   
   for (const user of allUsers) {
-    const cards = db.getUserCards(user.id);
+    const cards = await db.getUserCards(user.id);
     for (const card of cards) {
       if (cardNeedsImage(card)) {
         cardsToRegenerate.push(card);
@@ -1844,57 +1829,188 @@ app.post('/api/admin/regenerate-images', (req, res) => {
 });
 
 // =============================================================================
+// NFT METADATA (public)
+// =============================================================================
+
+app.get('/api/nft/metadata/:tokenId.json', async (req, res) => {
+  try {
+    if (!dbPool.useDatabase()) return res.status(404).json({ error: 'Not configured' });
+    const tokenId = parseInt(req.params.tokenId);
+    const r = await dbPool.query(
+      'SELECT bpc.* FROM blockchain_pack_cards bpc WHERE bpc.token_id = $1 LIMIT 1',
+      [tokenId]
+    );
+    if (r.rows.length === 0) return res.status(404).json({ error: 'Token not found' });
+    const c = r.rows[0];
+    const tierNames = { 11: 'Hall of Fame', 10: 'Legendary', 9: 'Epic', 8: 'Ultra Rare', 7: 'Very Rare', 6: 'Rare', 5: 'Uncommon+', 4: 'Uncommon', 3: 'Common+', 2: 'Common', 1: 'Basic' };
+    const apiUrl = process.env.API_URL || 'http://localhost:4000';
+    res.json({
+      name: `${c.player_name} (${c.season})`,
+      description: `${c.player_name} - ${c.season} Season | ${c.position || 'Player'} | ${tierNames[c.tier] || 'Unknown'} Tier`,
+      image: `${apiUrl}/api/nft/image/${tokenId}.svg`,
+      attributes: [
+        { trait_type: 'Player', value: c.player_name },
+        { trait_type: 'Season', value: c.season },
+        { trait_type: 'Position', value: c.position || 'Unknown' },
+        { trait_type: 'Tier', value: tierNames[c.tier] || 'Unknown' },
+      ],
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to get metadata' });
+  }
+});
+
+app.get('/api/nft/image/:tokenId.svg', async (req, res) => {
+  try {
+    if (!dbPool.useDatabase()) return res.status(404).send('Not configured');
+    const tokenId = parseInt(req.params.tokenId);
+    const r = await dbPool.query('SELECT * FROM blockchain_pack_cards WHERE token_id = $1 LIMIT 1', [tokenId]);
+    if (r.rows.length === 0) return res.status(404).send('Token not found');
+    const c = r.rows[0];
+    const { buildTieredCardSVG } = require('./nft-generator/tier-templates');
+    const svg = buildTieredCardSVG({ name: c.player_name, season: c.season, team: c.team || '—', position: c.position || 'Unknown', tier: c.tier || 5, stats: {} });
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.send(svg);
+  } catch (err) {
+    res.status(500).send('Failed to generate image');
+  }
+});
+
+// =============================================================================
+// BLOCKCHAIN PACKS & WALLET
+// =============================================================================
+
+app.get('/api/blockchain/pack/:packId', async (req, res) => {
+  try {
+    const pack = await packFulfillment.getPackStatus(req.params.packId);
+    if (!pack) return res.status(404).json({ error: 'Pack not found' });
+    res.json(pack);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/blockchain/packs/:walletAddress', async (req, res) => {
+  try {
+    const packsList = await packFulfillment.getPacksForWallet(req.params.walletAddress);
+    res.json(packsList);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/my-packs', authMiddleware, async (req, res) => {
+  try {
+    const wallet = await db.getUserWallet(req.user.id);
+    if (!wallet) return res.json({ packs: [] });
+    const packsList = await packFulfillment.getPacksForWallet(wallet.address);
+    res.json({ packs: packsList });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/wallet', authMiddleware, async (req, res) => {
+  try {
+    const wallet = await db.getUserWallet(req.user.id);
+    if (!wallet) return res.json({ wallet: null });
+    res.json({ wallet: { address: wallet.address, walletType: wallet.wallet_type, chainId: wallet.chain_id } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/wallet/sign-message', authMiddleware, async (req, res) => {
+  const msg = `Sign in to First & 10. Nonce: ${Date.now()}`;
+  res.json({ message: msg });
+});
+
+app.post('/api/wallet/link', authMiddleware, async (req, res) => {
+  try {
+    const { address, walletType, signature } = req.body;
+    if (!address) return res.status(400).json({ error: 'address required' });
+    await db.linkWallet(req.user.id, address, walletType || 'external', 84532);
+    const wallet = await db.getUserWallet(req.user.id);
+    res.json({ wallet: { address: wallet.address, walletType: wallet.wallet_type } });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get('/api/wallet/check/:address', authMiddleware, async (req, res) => {
+  try {
+    const wallet = await db.getWalletByAddress(req.params.address);
+    if (wallet && wallet.user_id !== req.user.id) return res.json({ linked: true, linkedToOther: true });
+    res.json({ linked: !!wallet, linkedToOther: false });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/fulfill-pack/:packId', async (req, res) => {
+  if (req.headers['x-admin-key'] !== process.env.ADMIN_KEY) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    await packFulfillment.pollForEvents();
+    const pack = await packFulfillment.getPackStatus(req.params.packId);
+    res.json({ success: true, pack });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/poll-events', async (req, res) => {
+  if (req.headers['x-admin-key'] !== process.env.ADMIN_KEY) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    await packFulfillment.pollForEvents();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =============================================================================
 // HEALTH CHECK (for Render)
 // =============================================================================
 
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV || 'development',
-  });
+app.get('/health', async (req, res) => {
+  const dbOk = dbPool.useDatabase() ? await dbPool.testConnection() : true;
+  res.json({ status: dbOk ? 'ok' : 'degraded', database: dbOk ? 'connected' : 'disconnected', timestamp: new Date().toISOString() });
 });
 
-app.get('/', (req, res) => {
-  res.json({ 
-    name: 'First & 10 API',
-    version: '1.0.0',
-    status: 'running',
-  });
+app.get('/', async (req, res) => {
+  res.json({ name: 'First & 10 API', version: '2.0.0', database: dbPool.useDatabase() ? 'postgres' : 'json', status: 'running' });
+});
+
+// Global error handler: ensure every error returns JSON (no plain "Internal Server Error")
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  const msg = (err && (err.message || String(err))) || 'Internal server error';
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: msg });
 });
 
 // =============================================================================
 // START SERVER
 // =============================================================================
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, '0.0.0.0', async () => {
   const isProduction = process.env.NODE_ENV === 'production';
-  
+  const dbConnected = dbPool.useDatabase() ? await dbPool.testConnection() : true;
+  if (dbPool.useDatabase() && !dbConnected) console.warn('WARNING: Postgres connection failed. Check DATABASE_URL.');
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║             First & 10 - API Server                        ║
 ╠═══════════════════════════════════════════════════════════╣
 ║  Server running on port ${PORT}                              ║
-║  Environment: ${(isProduction ? 'PRODUCTION' : 'development').padEnd(14)}                       ║
+║  Database: ${(dbPool.useDatabase() ? (dbConnected ? 'Postgres (connected)' : 'Postgres (FAILED)') : 'JSON file').padEnd(24)}     ║
 ║                                                           ║
-║  API Endpoints:                                           ║
-║    POST /api/auth/register    - Create account            ║
-║    POST /api/auth/login       - Login                     ║
-║    POST /api/packs/open       - Open a pack               ║
-║    GET  /api/cards            - View your cards           ║
-║    GET  /api/roster           - View your roster          ║
-║    PUT  /api/roster           - Update roster             ║
-║    GET  /api/schedule/today   - Today's games             ║
-║    GET  /api/schedule/tomorrow - Tomorrow's games         ║
-║    GET  /api/leaderboard      - View standings            ║
-║                                                           ║
-║  Game Times: 7:00 PM & 9:00 PM EST (auto-played)          ║
+║  POST /api/auth/login       - Login                       ║
+║  GET  /api/cards            - View your cards             ║
+║  GET  /api/my-packs         - Your NFT packs              ║
+║  GET  /api/leaderboard      - View standings              ║
 ╚═══════════════════════════════════════════════════════════╝
   `);
-  
-  // Pre-load players
   packs.loadPlayers();
-  
-  // Start the game scheduler
   scheduler.startScheduler();
+  if (process.env.PRIVATE_KEY && dbPool.useDatabase()) packFulfillment.start(15000).catch(() => {});
 });
