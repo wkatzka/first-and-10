@@ -1632,6 +1632,20 @@ app.post('/api/schedule/run-now', authMiddleware, async (req, res) => {
   });
 });
 
+// Admin: Swap user in schedule (e.g. John! for Nick! in all games, including today/tomorrow)
+app.post('/api/schedule/swap-user', authMiddleware, async (req, res) => {
+  try {
+    const { fromUsername, toUsername } = req.body;
+    if (!fromUsername || !toUsername) {
+      return res.status(400).json({ error: 'fromUsername and toUsername required' });
+    }
+    const result = await scheduler.swapUserInSchedule(fromUsername, toUsername);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // =============================================================================
 // MINTING STATS
 // =============================================================================

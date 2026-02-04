@@ -67,7 +67,9 @@ async function hasFullRoster(userId) {
 async function getEligibleUsers(users) {
   const list = Array.isArray(users) ? users : [];
   const results = await Promise.all(list.map(async (user) => ({ user, ok: await hasFullRoster(user.id) })));
-  return results.filter(r => r.ok).map(r => r.user);
+  const eligible = results.filter(r => r.ok).map(r => r.user);
+  // Exclude Nick! from schedule pool (John! is swapped in for him)
+  return eligible.filter(u => String(u.username || '').toLowerCase() !== 'nick!');
 }
 
 /**
@@ -680,11 +682,44 @@ async function getScheduleWithDetails() {
 }
 
 /**
+ * Swap one user for another in the entire schedule (e.g. John! for Nick!).
+ * Updates schedule.json in place; run once to apply.
+ * @param {string} fromUsername - e.g. 'Nick!'
+ * @param {string} toUsername - e.g. 'John!'
+ * @returns {{ swapped: number, message: string }}
+ */
+async function swapUserInSchedule(fromUsername, toUsername) {
+  const fromUser = await db.getUserByUsernameCaseInsensitive(fromUsername);
+  const toUser = await db.getUserByUsernameCaseInsensitive(toUsername);
+  if (!fromUser) throw new Error(`User "${fromUsername}" not found`);
+  if (!toUser) throw new Error(`User "${toUsername}" not found`);
+  const fromId = fromUser.id;
+  const toId = toUser.id;
+  const schedule = loadSchedule();
+  let swapped = 0;
+  for (const g of schedule.games) {
+    if (g.homeUserId === fromId) {
+      g.homeUserId = toId;
+      swapped++;
+    }
+    if (g.awayUserId === fromId) {
+      g.awayUserId = toId;
+      swapped++;
+    }
+  }
+  saveSchedule(schedule);
+  return { swapped, message: `Replaced ${fromUsername} with ${toUsername} in ${swapped} slot(s)` };
+}
+
+/**
  * Start the scheduler (runs every minute to check for games)
  */
 function startScheduler() {
   console.log('Game scheduler started');
-  initializeSchedule().catch(err => console.error('Schedule init error:', err));
+  initializeSchedule()
+    .then(() => swapUserInSchedule('Nick!', 'John!'))
+    .then((r) => { if (r.swapped) console.log('Schedule: swapped Nick! for John! in', r.swapped, 'slot(s)'); })
+    .catch((err) => { if (err.message && !err.message.includes('not found')) console.error('Schedule init/swap error:', err); });
   
   // Check every minute for games to run
   setInterval(() => {
@@ -723,4 +758,5 @@ module.exports = {
   formatDate,
   hasFullRoster,
   getEligibleUsers,
+  swapUserInSchedule,
 };
