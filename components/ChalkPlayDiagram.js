@@ -1,54 +1,35 @@
 /**
- * ChalkPlayDiagram – Static play diagram under My Roster (Offense / Defense).
- * "First & 10" end zone at top; viewport-only; chalk-style circles, X's, and arrows.
- * Color scheme matches PlayfieldBackground (icy/neon on dark field).
+ * ChalkPlayDiagram – Roster cards on the field under My Roster.
+ * "First & 10" end zone at top; chalk X's and arrows (neon colors); real MiniCards on field.
+ * No panel wrapper – cards sit directly on the field.
  */
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { MiniCard } from './Card';
 
 const COLORS = {
   field: '#06080A',
   icy: '#8FD9FF',
   icyBright: '#C7EEFF',
-  chalk: 'rgba(199, 238, 255, 0.92)',
-  chalkDim: 'rgba(143, 217, 255, 0.65)',
 };
+const NEON = ['#4CCBFF', '#4AA3FF', '#6CFF3E', '#FF4FA3', '#FF9A2E'];
 const BG_DIM = 0.62;
 const PX_PER_YARD = 14;
 const ENDZONE_YARDS = 10;
-const FIELD_VISIBLE_YARDS = 35; // from goal line down; fits phone
+const FIELD_VISIBLE_YARDS = 35;
 const CHALK_STROKE = 2.5;
-const CARD_R = 22;
 const X_SIZE = 12;
+const CARD_W = 56;
+const CARD_H = 67;
 
-// Seeded noise for repeatable "fray" offsets
+// Offense: WR1, TE, OL, RB, WR2 + QB behind OL. Slot ids for roster.cards.
+const OFFENSE_SLOTS = ['wr1_card_id', 'te_card_id', 'ol_card_id', 'rb_card_id', 'wr2_card_id'];
+const OFFENSE_QB_SLOT = 'qb_card_id';
+const DEFENSE_SLOTS = ['db1_card_id', 'dl_card_id', 'lb_card_id', 'db2_card_id'];
+const DEFENSE_K_SLOT = 'k_card_id';
+
 function frayNoise(seed, i) {
   const x = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
   return (x - Math.floor(x)) * 2 - 1;
-}
-
-function drawChalkCircle(ctx, cx, cy, r, color) {
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = CHALK_STROKE;
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 8;
-  ctx.globalAlpha = BG_DIM;
-  // Frayed edge: multiple strokes with small random offsets
-  for (let pass = 0; pass < 5; pass++) {
-    ctx.beginPath();
-    const steps = 48;
-    for (let i = 0; i <= steps; i++) {
-      const t = (i / steps) * Math.PI * 2;
-      const jitter = 1.5 * frayNoise(pass * 7 + 1, i);
-      const x = cx + (r + jitter) * Math.cos(t);
-      const y = cy + (r + jitter) * Math.sin(t);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.stroke();
-  }
-  ctx.restore();
 }
 
 function drawChalkX(ctx, x, y, color) {
@@ -88,10 +69,8 @@ function drawChalkLine(ctx, points, color, flatEnd = false) {
       const p = points[i];
       const jx = frayNoise(pass * 11 + i, 2) * 1.2;
       const jy = frayNoise(pass * 11 + i, 3) * 1.2;
-      const x = p.x + jx;
-      const y = p.y + jy;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      if (i === 0) ctx.moveTo(p.x + jx, p.y + jy);
+      else ctx.lineTo(p.x + jx, p.y + jy);
     }
     ctx.stroke();
   }
@@ -100,14 +79,8 @@ function drawChalkLine(ctx, points, color, flatEnd = false) {
 
 function drawChalkArrowhead(ctx, tip, angle, color) {
   const size = 10;
-  const left = {
-    x: tip.x - size * Math.cos(angle - 0.45),
-    y: tip.y - size * Math.sin(angle - 0.45),
-  };
-  const right = {
-    x: tip.x - size * Math.cos(angle + 0.45),
-    y: tip.y - size * Math.sin(angle + 0.45),
-  };
+  const left = { x: tip.x - size * Math.cos(angle - 0.45), y: tip.y - size * Math.sin(angle - 0.45) };
+  const right = { x: tip.x - size * Math.cos(angle + 0.45), y: tip.y - size * Math.sin(angle + 0.45) };
   ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = CHALK_STROKE;
@@ -131,7 +104,6 @@ function bezierPoint(p0, p1, p2, p3, t) {
     y: uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y,
   };
 }
-
 function bezierTangent(p0, p1, p2, p3, t) {
   const u = 1 - t;
   return {
@@ -140,33 +112,25 @@ function bezierTangent(p0, p1, p2, p3, t) {
   };
 }
 
-// Route builders (offense): different shapes for WR, TE, RB, WR
 function buildSlant(p0, endY) {
   const p3 = { x: p0.x + 30, y: p0.y - endY };
-  const p1 = { x: p0.x + (p3.x - p0.x) * 0.35, y: p0.y + (p3.y - p0.y) * 0.35 };
-  const p2 = { x: p0.x + (p3.x - p0.x) * 0.7, y: p0.y + (p3.y - p0.y) * 0.7 };
-  return { p0, p1, p2, p3 };
+  return { p0, p1: { x: p0.x + (p3.x - p0.x) * 0.35, y: p0.y + (p3.y - p0.y) * 0.35 }, p2: { x: p0.x + (p3.x - p0.x) * 0.7, y: p0.y + (p3.y - p0.y) * 0.7 }, p3 };
 }
 function buildPost(p0, endY, centerX) {
   const p3 = { x: p0.x + (centerX - p0.x) * 0.6, y: p0.y - endY };
-  const p1 = { x: p0.x + (p3.x - p0.x) * 0.3, y: p0.y + (p3.y - p0.y) * 0.35 };
-  const p2 = { x: p0.x + (p3.x - p0.x) * 0.7, y: p0.y + (p3.y - p0.y) * 0.75 };
-  return { p0, p1, p2, p3 };
+  return { p0, p1: { x: p0.x + (p3.x - p0.x) * 0.3, y: p0.y + (p3.y - p0.y) * 0.35 }, p2: { x: p0.x + (p3.x - p0.x) * 0.7, y: p0.y + (p3.y - p0.y) * 0.75 }, p3 };
 }
 function buildFlag(p0, endY, centerX) {
   const side = p0.x >= centerX ? 1 : -1;
   const p3 = { x: p0.x + side * 80, y: p0.y - endY * 0.8 };
-  const p1 = { x: p0.x + (p3.x - p0.x) * 0.3, y: p0.y + (p3.y - p0.y) * 0.35 };
-  const p2 = { x: p0.x + (p3.x - p0.x) * 0.7, y: p0.y + (p3.y - p0.y) * 0.75 };
-  return { p0, p1, p2, p3 };
+  return { p0, p1: { x: p0.x + (p3.x - p0.x) * 0.3, y: p0.y + (p3.y - p0.y) * 0.35 }, p2: { x: p0.x + (p3.x - p0.x) * 0.7, y: p0.y + (p3.y - p0.y) * 0.75 }, p3 };
 }
 function buildButtonhook(p0, endY) {
   const p3 = { x: p0.x - 20, y: p0.y - endY * 0.6 };
   const midY = p0.y - endY * 0.4;
-  const p1 = { x: p0.x + 25, y: midY };
-  const p2 = { x: p3.x + 30, y: midY };
-  return { p0, p1, p2, p3 };
+  return { p0, p1: { x: p0.x + 25, y: midY }, p2: { x: p3.x + 30, y: midY }, p3 };
 }
+const OFFENSE_ROUTE_BUILDERS = [buildSlant, buildPost, buildFlag, buildButtonhook];
 
 function shuffle(arr) {
   const out = [...arr];
@@ -177,16 +141,15 @@ function shuffle(arr) {
   return out;
 }
 
-const OFFENSE_ROUTE_BUILDERS = [buildSlant, buildPost, buildFlag, buildButtonhook];
 const ARROW_TRAVEL_MS = 3200;
 const CYCLE_PAUSE_MS = 800;
 
-export default function ChalkPlayDiagram({ mode, width, height }) {
+export default function ChalkPlayDiagram({ mode, roster }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [size, setSize] = useState({ w: 400, h: 320 });
   const cycleStartRef = useRef(performance.now());
-  const playRef = useRef({ xPositions: [], routes: [], xCoords: [] });
+  const playRef = useRef({ cardPositions: [], routes: [], routeColors: [], xCoords: [] });
   const rafRef = useRef(null);
 
   useEffect(() => {
@@ -205,61 +168,91 @@ export default function ChalkPlayDiagram({ mode, width, height }) {
   const goalLineY = endzoneH;
   const line10Y = goalLineY + 10 * PX_PER_YARD;
 
-  const initOffensePlay = useCallback(() => {
-    const margin = 0.12;
+  // Stable card positions for overlay (same layout as play init)
+  const cardLayout = React.useMemo(() => {
+    if (w <= 0) return [];
+    const margin = 0.08;
     const step = (1 - 2 * margin) / 4;
-    const centerX = w / 2;
-    const positions = ['WR', 'TE', 'DB', 'RB', 'WR'];
-    const xPositions = positions.map((_, i) => ({
+    if (mode === 'offense') {
+      const positions = OFFENSE_SLOTS.map((slotId, i) => ({
+        slotId,
+        x: w * (margin + i * step),
+        y: line10Y,
+        label: { wr1_card_id: 'WR1', te_card_id: 'TE', ol_card_id: 'OL', rb_card_id: 'RB', wr2_card_id: 'WR2' }[slotId],
+      }));
+      const qbX = w * (margin + 2 * step);
+      return [...positions, { slotId: OFFENSE_QB_SLOT, x: qbX, y: line10Y + PX_PER_YARD * 4, label: 'QB' }];
+    }
+    const margin = 0.1;
+    const step = (1 - 2 * margin) / 3;
+    const positions = DEFENSE_SLOTS.map((slotId, i) => ({
+      slotId,
       x: w * (margin + i * step),
       y: line10Y,
-      label: positions[i],
+      label: { db1_card_id: 'DB1', dl_card_id: 'DL', lb_card_id: 'LB', db2_card_id: 'DB2' }[slotId],
     }));
-    const qbX = w * (margin + 2 * step);
-    const qb = { x: qbX, y: line10Y + PX_PER_YARD * 4, label: 'QB' };
+    const kX = w * (margin + 1.5 * step);
+    return [...positions, { slotId: DEFENSE_K_SLOT, x: kX, y: line10Y + PX_PER_YARD * 4, label: 'K' }];
+  }, [w, mode, line10Y]);
+
+  const initOffensePlay = useCallback(() => {
+    const margin = 0.08;
+    const step = (1 - 2 * margin) / 4;
+    const centerX = w / 2;
+    const positions = OFFENSE_SLOTS.map((slotId, i) => ({
+      slotId,
+      x: w * (margin + i * step),
+      y: line10Y,
+      label: { wr1_card_id: 'WR1', te_card_id: 'TE', ol_card_id: 'OL', rb_card_id: 'RB', wr2_card_id: 'WR2' }[slotId],
+    }));
+    const qb = { slotId: OFFENSE_QB_SLOT, x: w * (margin + 2 * step), y: line10Y + PX_PER_YARD * 4, label: 'QB' };
+    const cardPositions = [...positions, qb];
     const arrowIndices = [0, 1, 3, 4];
     const routeOrder = shuffle([0, 1, 2, 3]);
     const routes = arrowIndices.map((idx, i) => {
-      const p0 = { x: xPositions[idx].x, y: xPositions[idx].y };
+      const p0 = { x: positions[idx].x, y: positions[idx].y };
       const endY = 80 + Math.random() * 60;
       const build = OFFENSE_ROUTE_BUILDERS[routeOrder[i]];
       return build(p0, endY, centerX);
     });
+    const routeColors = routes.map((_, i) => NEON[i % NEON.length]);
     const xCoords = [
-      { x: w * 0.25 + (Math.random() - 0.5) * 60, y: line10Y - 50 - Math.random() * 40 },
-      { x: w * 0.5 + (Math.random() - 0.5) * 80, y: line10Y - 70 - Math.random() * 50 },
-      { x: w * 0.75 + (Math.random() - 0.5) * 60, y: line10Y - 45 - Math.random() * 45 },
+      { x: w * 0.2 + (Math.random() - 0.5) * 50, y: line10Y - 45 - Math.random() * 35 },
+      { x: w * 0.35 + (Math.random() - 0.5) * 40, y: line10Y - 65 - Math.random() * 45 },
+      { x: w * 0.5 + (Math.random() - 0.5) * 60, y: line10Y - 55 - Math.random() * 50 },
+      { x: w * 0.65 + (Math.random() - 0.5) * 40, y: line10Y - 70 - Math.random() * 40 },
+      { x: w * 0.8 + (Math.random() - 0.5) * 50, y: line10Y - 48 - Math.random() * 42 },
     ];
-    return { xPositions: [...xPositions, qb], routes, xCoords };
+    return { cardPositions, routes, routeColors, xCoords };
   }, [w, line10Y]);
 
   const initDefensePlay = useCallback(() => {
-    const margin = 0.14;
+    const margin = 0.1;
     const step = (1 - 2 * margin) / 3;
-    const positions = ['DB', 'DL', 'LB', 'DB'];
-    const xPositions = positions.map((_, i) => ({
+    const positions = DEFENSE_SLOTS.map((slotId, i) => ({
+      slotId,
       x: w * (margin + i * step),
       y: line10Y,
-      label: positions[i],
+      label: { db1_card_id: 'DB1', dl_card_id: 'DL', lb_card_id: 'LB', db2_card_id: 'DB2' }[slotId],
     }));
     const kX = w * (margin + 1.5 * step);
-    const k = { x: kX, y: line10Y + PX_PER_YARD * 4, label: 'K' };
+    const k = { slotId: DEFENSE_K_SLOT, x: kX, y: line10Y + PX_PER_YARD * 4, label: 'K' };
+    const cardPositions = [...positions, k];
     const xCoords = [
-      { x: w * 0.2 + Math.random() * w * 0.15, y: goalLineY + PX_PER_YARD * 3 + Math.random() * 40 },
-      { x: w * 0.4 + Math.random() * w * 0.2, y: goalLineY + PX_PER_YARD * 4 + Math.random() * 35 },
-      { x: w * 0.6 + Math.random() * w * 0.2, y: goalLineY + PX_PER_YARD * 3.5 + Math.random() * 40 },
-      { x: w * 0.8 + Math.random() * w * 0.15, y: goalLineY + PX_PER_YARD * 3 + Math.random() * 35 },
+      { x: w * 0.15 + Math.random() * w * 0.12, y: goalLineY + PX_PER_YARD * 2.5 + Math.random() * 35 },
+      { x: w * 0.32 + Math.random() * w * 0.18, y: goalLineY + PX_PER_YARD * 3 + Math.random() * 40 },
+      { x: w * 0.5 + (Math.random() - 0.5) * w * 0.15, y: goalLineY + PX_PER_YARD * 3.5 + Math.random() * 38 },
+      { x: w * 0.68 + Math.random() * w * 0.18, y: goalLineY + PX_PER_YARD * 3 + Math.random() * 40 },
+      { x: w * 0.85 + Math.random() * w * 0.12, y: goalLineY + PX_PER_YARD * 2.5 + Math.random() * 35 },
+      { x: w * 0.5 + (Math.random() - 0.5) * w * 0.2, y: goalLineY + PX_PER_YARD * 1.5 + Math.random() * 25 },
     ];
-    return { xPositions: [...xPositions, k], routes: null, xCoords };
+    return { cardPositions, routes: null, routeColors: [], xCoords };
   }, [w, line10Y, goalLineY]);
 
   useEffect(() => {
     cycleStartRef.current = performance.now();
-    if (mode === 'offense') {
-      playRef.current = initOffensePlay();
-    } else {
-      playRef.current = initDefensePlay();
-    }
+    if (mode === 'offense') playRef.current = initOffensePlay();
+    else playRef.current = initDefensePlay();
   }, [mode, w, h, initOffensePlay, initDefensePlay]);
 
   useEffect(() => {
@@ -288,8 +281,6 @@ export default function ChalkPlayDiagram({ mode, width, height }) {
       for (let yard = 0; yard <= FIELD_VISIBLE_YARDS; yard += 5) {
         const yPx = endzoneH + yard * PX_PER_YARD;
         if (yPx > h) break;
-        const isGoal = yard === 0;
-        const is10 = yard === 10;
         let segStart = xStart;
         let segEnd = xEnd;
         if (yard === 0) {
@@ -343,38 +334,25 @@ export default function ChalkPlayDiagram({ mode, width, height }) {
 
       drawStaticField();
 
-      const color = COLORS.chalk;
+      play.xCoords.forEach((xc, i) => drawChalkX(ctx, xc.x, xc.y, NEON[i % NEON.length]));
 
-      if (mode === 'offense' && play.routes) {
-        play.xPositions.forEach((pos) => {
-          drawChalkCircle(ctx, pos.x, pos.y, CARD_R, color);
-          ctx.save();
-          ctx.fillStyle = color;
-          ctx.font = '11px system-ui, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.globalAlpha = BG_DIM;
-          ctx.fillText(pos.label, pos.x, pos.y);
-          ctx.restore();
-        });
-        play.xCoords.forEach((xc) => drawChalkX(ctx, xc.x, xc.y, color));
-
+      if (mode === 'offense' && play.routes && play.routes.length) {
         const drawT = Math.min(1, (dt - CYCLE_PAUSE_MS) / ARROW_TRAVEL_MS);
         const eased = drawT < 0 ? 0 : drawT < 0.5 ? 4 * drawT * drawT * drawT : 1 - Math.pow(-2 * drawT + 2, 3) / 2;
-        play.routes.forEach((r) => {
+        play.routes.forEach((r, i) => {
+          const color = play.routeColors[i] || NEON[i % NEON.length];
           const segments = 80;
           const endI = Math.ceil(eased * segments);
           const pts = [];
-          for (let i = 0; i <= endI; i++) {
-            const t = i / segments;
+          for (let j = 0; j <= endI; j++) {
+            const t = j / segments;
             pts.push(bezierPoint(r.p0, r.p1, r.p2, r.p3, t));
           }
           if (pts.length >= 2) drawChalkLine(ctx, pts, color, false);
           if (eased >= 0.98 && pts.length >= 2) {
             const tip = pts[pts.length - 1];
             const prev = pts[pts.length - 2];
-            const angle = Math.atan2(tip.y - prev.y, tip.x - prev.x);
-            drawChalkArrowhead(ctx, tip, angle, color);
+            drawChalkArrowhead(ctx, tip, Math.atan2(tip.y - prev.y, tip.x - prev.x), color);
           }
         });
 
@@ -382,24 +360,12 @@ export default function ChalkPlayDiagram({ mode, width, height }) {
           cycleStartRef.current = now;
           playRef.current = initOffensePlay();
         }
-      } else if (mode === 'defense' && play.xCoords) {
-        play.xPositions.forEach((pos) => {
-          drawChalkCircle(ctx, pos.x, pos.y, CARD_R, color);
-          ctx.save();
-          ctx.fillStyle = color;
-          ctx.font = '11px system-ui, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.globalAlpha = BG_DIM;
-          ctx.fillText(pos.label, pos.x, pos.y);
-          ctx.restore();
-        });
-        play.xCoords.forEach((xc) => drawChalkX(ctx, xc.x, xc.y, color));
-        const fourCards = play.xPositions.slice(0, 4);
+      } else if (mode === 'defense' && play.xCoords && play.cardPositions.length >= 4) {
+        const fourCards = play.cardPositions.slice(0, 4);
         fourCards.forEach((pos, i) => {
           const xc = play.xCoords[i];
-          const pts = [{ x: pos.x, y: pos.y }, { x: xc.x, y: xc.y }];
-          drawChalkLine(ctx, pts, color, true);
+          const color = NEON[i % NEON.length];
+          drawChalkLine(ctx, [{ x: pos.x, y: pos.y }, { x: xc.x, y: xc.y }], color, true);
         });
 
         if (dt > 4000) {
@@ -411,23 +377,42 @@ export default function ChalkPlayDiagram({ mode, width, height }) {
       rafRef.current = requestAnimationFrame(frame);
     };
     rafRef.current = requestAnimationFrame(frame);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [w, h, mode, initOffensePlay, initDefensePlay, goalLineY, endzoneH, line10Y]);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [w, h, mode, initOffensePlay, initDefensePlay, endzoneH, goalLineY, line10Y]);
+
+  const cards = roster?.cards || {};
+  const play = playRef.current;
 
   return (
-    <div ref={containerRef} className="w-full" style={{ height: 'min(55vh, 400px)' }}>
+    <div ref={containerRef} className="w-full relative" style={{ height: 'min(55vh, 400px)' }}>
       <canvas
         ref={canvasRef}
         aria-hidden="true"
-        className="w-full h-full rounded-xl overflow-hidden border border-white/10"
-        style={{
-          width: w,
-          height: h,
-          background: COLORS.field,
-        }}
+        className="w-full h-full rounded-xl overflow-hidden border border-white/10 absolute inset-0"
+        style={{ width: w, height: h, background: COLORS.field }}
       />
+      {/* Cards directly on field – no panel */}
+      <div className="absolute inset-0 pointer-events-none" style={{ width: w, height: h }}>
+        {cardLayout.map((pos) => (
+          <div
+            key={pos.slotId}
+            className="absolute flex justify-center items-center"
+            style={{
+              left: pos.x - CARD_W / 2,
+              top: pos.y - CARD_H / 2,
+              width: CARD_W,
+              height: CARD_H,
+            }}
+          >
+            <MiniCard
+              card={cards[pos.slotId] || null}
+              position={pos.label}
+              empty={!cards[pos.slotId]}
+              fieldSize
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

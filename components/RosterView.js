@@ -25,7 +25,7 @@ const ROSTER_LAYOUT = [
   ]},
 ];
 
-export default function RosterView({ user }) {
+export default function RosterView({ user, onRosterLoad }) {
   const router = useRouter();
   const [roster, setRoster] = useState(null);
   const [cards, setCards] = useState([]);
@@ -48,6 +48,7 @@ export default function RosterView({ user }) {
       ]);
       setRoster(rosterData);
       setCards(cardsData.cards);
+      if (onRosterLoad) onRosterLoad(rosterData);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -67,7 +68,8 @@ export default function RosterView({ user }) {
       const newRoster = await updateRoster({
         [selectedSlot.id]: card ? card.id : null,
       });
-      setRoster(newRoster);
+        setRoster(newRoster);
+      if (onRosterLoad) onRosterLoad(newRoster);
       setSelectedSlot(null);
     } catch (err) {
       console.error('Failed to update roster:', err);
@@ -84,6 +86,7 @@ export default function RosterView({ user }) {
     try {
       const newRoster = await autoFillRoster();
       setRoster(newRoster);
+      if (onRosterLoad) onRosterLoad(newRoster);
     } catch (err) {
       console.error('Failed to auto-fill:', err);
       alert(err.message);

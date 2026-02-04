@@ -15,6 +15,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
 
   const [tab, setTab] = useState(tabFromQuery);
   const [diagramSide, setDiagramSide] = useState('offense'); // 'offense' | 'defense'
+  const [rosterForDiagram, setRosterForDiagram] = useState(null);
 
   useEffect(() => {
     if (!user) {
@@ -78,12 +79,12 @@ export default function Team({ user, onLogout, unreadMessages }) {
         </>
       )}
 
-      {tab === 'cards' ? <CardsView user={user} /> : <RosterView user={user} />}
+      {tab === 'cards' ? <CardsView user={user} /> : <RosterView user={user} onRosterLoad={setRosterForDiagram} />}
 
-      {/* Static chalk play diagram – only when My Roster is selected; fits viewport */}
+      {/* Chalk diagram under roster: cards on field, no extra panel */}
       {tab === 'roster' && (
         <div className="mt-6">
-          <ChalkPlayDiagram mode={diagramSide} />
+          <ChalkPlayDiagram mode={diagramSide} roster={rosterForDiagram} />
         </div>
       )}
     </Layout>

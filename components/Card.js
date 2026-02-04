@@ -249,49 +249,54 @@ export default function Card({ card, onClick, selected, small, showImage = true 
   );
 }
 
-// Mini card for roster slots
-export function MiniCard({ card, position, onClick, empty }) {
+// Mini card for roster slots; fieldSize = smaller for play diagram (5 in a row)
+export function MiniCard({ card, position, onClick, empty, fieldSize }) {
+  const sizeClass = fieldSize ? 'w-14 h-[4.2rem]' : 'w-20 h-24';
+  const textSize = fieldSize ? 'text-[8px]' : 'text-[10px]';
+  const subTextSize = fieldSize ? 'text-[6px]' : 'text-[8px]';
+
   if (empty || !card) {
     return (
       <button
         onClick={onClick}
-        className="w-20 h-24 rounded-lg border-2 border-dashed border-gray-500 flex flex-col items-center justify-center bg-gray-700/30 active:bg-gray-600 active:border-blue-500 active:scale-95 transition-all"
+        className={`${sizeClass} rounded-lg border-2 border-dashed border-gray-500 flex flex-col items-center justify-center bg-gray-700/30 active:bg-gray-600 active:border-blue-500 active:scale-95 transition-all`}
       >
-        <span className="text-2xl mb-1">+</span>
+        <span className={fieldSize ? 'text-lg mb-1' : 'text-2xl mb-1'}>+</span>
         <span className="text-gray-400 text-xs font-medium">{position}</span>
       </button>
     );
   }
-  
+
   const tierColor = TIER_COLORS[card.tier] || TIER_COLORS[1];
-  
+
   return (
     <button
       onClick={onClick}
-      className="w-20 h-24 rounded-lg overflow-hidden active:scale-95 active:opacity-80 transition-all"
+      className={`${sizeClass} rounded-lg overflow-hidden active:scale-95 active:opacity-80 transition-all pointer-events-none`}
       style={{ border: `2px solid ${tierColor}` }}
+      tabIndex={-1}
     >
-      <div className="h-full flex flex-col p-1 bg-gray-800">
+      <div className="h-full flex flex-col p-0.5 bg-gray-800">
         <div className="flex justify-between items-start">
-          <span 
-            className="text-[10px] px-1 rounded font-bold"
+          <span
+            className={`${textSize} px-0.5 rounded font-bold`}
             style={{ backgroundColor: POSITION_COLORS[card.position], color: '#fff' }}
           >
             {card.position}
           </span>
-          <span 
-            className="text-[10px] px-1 rounded font-bold"
+          <span
+            className={`${textSize} px-0.5 rounded font-bold`}
             style={{ backgroundColor: tierColor, color: card.tier >= 9 ? '#000' : '#fff' }}
           >
             {card.tier}
           </span>
         </div>
-        <div className="flex-1 flex items-center justify-center">
-          <span className="text-[10px] text-center text-white font-medium leading-tight">
+        <div className="flex-1 flex items-center justify-center min-h-0">
+          <span className={`${textSize} text-center text-white font-medium leading-tight truncate w-full px-0.5`}>
             {(card.player_name || card.player || '').split(' ').slice(-1)[0]}
           </span>
         </div>
-        <div className="text-[8px] text-gray-400 text-center">
+        <div className={`${subTextSize} text-gray-400 text-center`}>
           {card.season}
         </div>
       </div>
