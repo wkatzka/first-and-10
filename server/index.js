@@ -1791,73 +1791,66 @@ app.post('/api/admin/grant-single-card-pack', adminAuth, async (req, res) => {
   }
 });
 
+// Shared: grant one HOF (tier 11) card to a user. position optional (e.g. 'WR').
+// When position is set, only that position is granted (no fallback). Generates art synchronously when AI enabled.
+async function grantHofCardToUser(user, position) {
+  let hofPlayer = null;
+  if (position) {
+    hofPlayer = await packs.pickRandomPlayerFromTierAndPosition(11, position);
+    if (!hofPlayer) throw new Error(`No unminted HOF ${position} available`);
+    const cardPos = hofPlayer.position || hofPlayer.pos_group || hofPlayer.pos;
+    if (cardPos !== position) throw new Error(`Position mismatch: requested ${position}, got ${cardPos}`);
+  } else {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const p = await packs.pickRandomPlayerFromTier(11);
+      if (p && (p.tier === 11 || p.isHOF) && (await mintingLedger.isCardMinted(p)) === false) {
+        hofPlayer = p;
+        break;
+      }
+    }
+    if (!hofPlayer) throw new Error('No unminted Hall of Fame player available');
+  }
+  await mintingLedger.mintCard(hofPlayer, user.id);
+  const mintedCard = { ...hofPlayer, player_name: hofPlayer.player || hofPlayer.player_name };
+  const engine = buildEngineForCard({
+    player_name: mintedCard.player_name,
+    season: mintedCard.season,
+    position: mintedCard.position,
+    tier: mintedCard.tier,
+    composite_score: mintedCard.composite_score,
+  });
+  if (engine) {
+    mintedCard.engine_v = engine.engine_v;
+    mintedCard.engine_era = engine.engine_era;
+    mintedCard.engine_percentiles = engine.engine_percentiles;
+    mintedCard.engine_traits = engine.engine_traits;
+    mintedCard.engine_inferred = engine.engine_inferred;
+  }
+  mintedCard.stats = cardImageGenerator.getFormattedStats(mintedCard);
+  let imageUrl = '/cards/placeholder.svg';
+  let imagePending = false;
+  try {
+    imageUrl = await cardImageGenerator.getOrGenerateCardImage(mintedCard);
+  } catch (_) {
+    if (AI_ENABLED) imagePending = true;
+  }
+  mintedCard.image_url = imageUrl;
+  mintedCard.image_pending = imagePending;
+  const cardId = await db.addCard(user.id, mintedCard);
+  if (imagePending && AI_ENABLED) {
+    enqueueCardImageRegen({ id: cardId, ...mintedCard });
+  }
+  return { cardId, card: mintedCard };
+}
+
 // Admin: Grant one Hall of Fame (tier 11) card to a user (optional: position e.g. 'WR')
-// When position is specified we ONLY grant that position (no fallback to other positions).
-// Art is generated synchronously when AI is enabled so the card has an image immediately.
 app.post('/api/admin/grant-hof-card', adminAuth, async (req, res) => {
   try {
     const { username, position } = req.body;
     if (!username) return res.status(400).json({ error: 'username required' });
     const user = await db.getUserByUsernameCaseInsensitive(username);
     if (!user) return res.status(404).json({ error: 'User not found' });
-
-    let hofPlayer = null;
-    if (position) {
-      hofPlayer = await packs.pickRandomPlayerFromTierAndPosition(11, position);
-      // When position was requested, never fall back to another position (was causing e.g. 2 OL instead of 1 OL + 1 WR)
-      if (!hofPlayer) {
-        return res.status(500).json({ error: `No unminted HOF ${position} available` });
-      }
-      // Sanity check: ensure we actually got the requested position
-      const cardPos = hofPlayer.position || hofPlayer.pos_group || hofPlayer.pos;
-      if (cardPos !== position) {
-        return res.status(500).json({ error: `Position mismatch: requested ${position}, got ${cardPos}` });
-      }
-    } else {
-      for (let attempt = 0; attempt < 50; attempt++) {
-        const p = await packs.pickRandomPlayerFromTier(11);
-        if (p && (p.tier === 11 || p.isHOF) && (await mintingLedger.isCardMinted(p)) === false) {
-          hofPlayer = p;
-          break;
-        }
-      }
-      if (!hofPlayer) return res.status(500).json({ error: 'No unminted Hall of Fame player available' });
-    }
-
-    await mintingLedger.mintCard(hofPlayer, user.id);
-    const mintedCard = { ...hofPlayer, player_name: hofPlayer.player || hofPlayer.player_name };
-    const engine = buildEngineForCard({
-      player_name: mintedCard.player_name,
-      season: mintedCard.season,
-      position: mintedCard.position,
-      tier: mintedCard.tier,
-      composite_score: mintedCard.composite_score,
-    });
-    if (engine) {
-      mintedCard.engine_v = engine.engine_v;
-      mintedCard.engine_era = engine.engine_era;
-      mintedCard.engine_percentiles = engine.engine_percentiles;
-      mintedCard.engine_traits = engine.engine_traits;
-      mintedCard.engine_inferred = engine.engine_inferred;
-    }
-    mintedCard.stats = cardImageGenerator.getFormattedStats(mintedCard);
-    let imageUrl = '/cards/placeholder.svg';
-    let imagePending = false;
-    // Generate art synchronously when possible so admin-granted cards (e.g. John!'s WR) have images immediately
-    try {
-      imageUrl = await cardImageGenerator.getOrGenerateCardImage(mintedCard);
-    } catch (_) {
-      if (AI_ENABLED) {
-        imagePending = true;
-      }
-    }
-    mintedCard.image_url = imageUrl;
-    mintedCard.image_pending = imagePending;
-    const cardId = await db.addCard(user.id, mintedCard);
-    if (imagePending && AI_ENABLED) {
-      const fullCard = { id: cardId, ...mintedCard };
-      enqueueCardImageRegen(fullCard);
-    }
+    const { cardId, card: mintedCard } = await grantHofCardToUser(user, position || null);
     res.json({
       success: true,
       username: user.username,
@@ -2138,4 +2131,18 @@ app.listen(PORT, '0.0.0.0', async () => {
   packs.loadPlayers();
   scheduler.startScheduler();
   if (process.env.PRIVATE_KEY && dbPool.useDatabase()) packFulfillment.start(15000).catch(() => {});
+  // Ensure John! has a tier-11 WR (one-time fix; no-op if he already has one)
+  if (dbPool.useDatabase()) {
+    ensureJohnHasHofWR().catch((err) => console.warn('ensureJohnHasHofWR:', err.message));
+  }
 });
+
+async function ensureJohnHasHofWR() {
+  const user = await db.getUserByUsernameCaseInsensitive('John!');
+  if (!user) return;
+  const cards = await db.getUserCards(user.id);
+  const hasHofWR = cards.some((c) => (c.tier === 11 || c.isHOF) && (c.position === 'WR'));
+  if (hasHofWR) return;
+  await grantHofCardToUser(user, 'WR');
+  console.log('Granted John! a tier-11 WR (startup ensure).');
+}
