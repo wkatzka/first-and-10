@@ -1792,6 +1792,8 @@ app.post('/api/admin/grant-single-card-pack', adminAuth, async (req, res) => {
 });
 
 // Admin: Grant one Hall of Fame (tier 11) card to a user (optional: position e.g. 'WR')
+// When position is specified we ONLY grant that position (no fallback to other positions).
+// Art is generated synchronously when AI is enabled so the card has an image immediately.
 app.post('/api/admin/grant-hof-card', adminAuth, async (req, res) => {
   try {
     const { username, position } = req.body;
@@ -1802,8 +1804,16 @@ app.post('/api/admin/grant-hof-card', adminAuth, async (req, res) => {
     let hofPlayer = null;
     if (position) {
       hofPlayer = await packs.pickRandomPlayerFromTierAndPosition(11, position);
-    }
-    if (!hofPlayer) {
+      // When position was requested, never fall back to another position (was causing e.g. 2 OL instead of 1 OL + 1 WR)
+      if (!hofPlayer) {
+        return res.status(500).json({ error: `No unminted HOF ${position} available` });
+      }
+      // Sanity check: ensure we actually got the requested position
+      const cardPos = hofPlayer.position || hofPlayer.pos_group || hofPlayer.pos;
+      if (cardPos !== position) {
+        return res.status(500).json({ error: `Position mismatch: requested ${position}, got ${cardPos}` });
+      }
+    } else {
       for (let attempt = 0; attempt < 50; attempt++) {
         const p = await packs.pickRandomPlayerFromTier(11);
         if (p && (p.tier === 11 || p.isHOF) && (await mintingLedger.isCardMinted(p)) === false) {
@@ -1811,8 +1821,8 @@ app.post('/api/admin/grant-hof-card', adminAuth, async (req, res) => {
           break;
         }
       }
+      if (!hofPlayer) return res.status(500).json({ error: 'No unminted Hall of Fame player available' });
     }
-    if (!hofPlayer) return res.status(500).json({ error: position ? `No unminted HOF ${position} available` : 'No unminted Hall of Fame player available' });
 
     await mintingLedger.mintCard(hofPlayer, user.id);
     const mintedCard = { ...hofPlayer, player_name: hofPlayer.player || hofPlayer.player_name };
@@ -1832,13 +1842,22 @@ app.post('/api/admin/grant-hof-card', adminAuth, async (req, res) => {
     }
     mintedCard.stats = cardImageGenerator.getFormattedStats(mintedCard);
     let imageUrl = '/cards/placeholder.svg';
-    let imagePending = !!AI_ENABLED;
-    if (!AI_ENABLED) {
-      try { imageUrl = await cardImageGenerator.getOrGenerateCardImage(mintedCard); } catch (_) {}
+    let imagePending = false;
+    // Generate art synchronously when possible so admin-granted cards (e.g. John!'s WR) have images immediately
+    try {
+      imageUrl = await cardImageGenerator.getOrGenerateCardImage(mintedCard);
+    } catch (_) {
+      if (AI_ENABLED) {
+        imagePending = true;
+      }
     }
     mintedCard.image_url = imageUrl;
     mintedCard.image_pending = imagePending;
     const cardId = await db.addCard(user.id, mintedCard);
+    if (imagePending && AI_ENABLED) {
+      const fullCard = { id: cardId, ...mintedCard };
+      enqueueCardImageRegen(fullCard);
+    }
     res.json({
       success: true,
       username: user.username,
@@ -1904,7 +1923,7 @@ app.get('/api/admin/debug-images', async (req, res) => {
 // ADMIN: Regenerate missing images
 // =============================================================================
 
-app.post('/api/admin/regenerate-images', async (req, res) => {
+app.post('/api/admin/regenerate-images', adminAuth, async (req, res) => {
   if (!AI_ENABLED) {
     return res.status(400).json({ error: 'AI image generation not enabled (no OPENAI_API_KEY)' });
   }
