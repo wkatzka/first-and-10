@@ -49,15 +49,21 @@ export default function StrategySlider({
     let cancelled = false;
     setLoading(true);
     
+    console.log(`[Slider] Loading presets for side=${side}`);
     getRosterPresets(side)
       .then(data => {
+        console.log(`[Slider] Presets response:`, data);
         if (!cancelled && data?.presets) {
-          console.log(`Loaded ${data.presets.length} ${side} presets`);
+          console.log(`[Slider] Loaded ${data.presets.length} ${side} presets`);
+          if (data.presets.length > 0) {
+            console.log(`[Slider] First preset:`, data.presets[0]);
+            console.log(`[Slider] Last preset:`, data.presets[data.presets.length - 1]);
+          }
           setPresets(data.presets);
         }
       })
       .catch(err => {
-        console.error('Failed to load presets:', err);
+        console.error('[Slider] Failed to load presets:', err);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -99,6 +105,8 @@ export default function StrategySlider({
       ? detectedStrategy?.offenseRatio 
       : detectedStrategy?.defenseRatio;
     
+    console.log(`[Slider] getCurrentPresetIndex: side=${side}, currentRatio=${currentRatio}, presets=${presets.length}`);
+    
     if (currentRatio == null) return -1;
     
     // Find closest preset by ratio
@@ -111,6 +119,7 @@ export default function StrategySlider({
         closestIdx = i;
       }
     }
+    console.log(`[Slider] Found closest preset idx=${closestIdx}, presetRatio=${presets[closestIdx]?.ratio}, diff=${closestDiff}`);
     return closestIdx;
   }, [presets, side, detectedStrategy]);
 
@@ -230,11 +239,17 @@ export default function StrategySlider({
   // Click on preset dot to jump to it
   const handlePresetClick = async (e, index) => {
     e.stopPropagation();
-    if (disabled || applying || loading || index === currentIndex) return;
+    console.log(`[Slider] handlePresetClick: index=${index}, currentIndex=${currentIndex}, disabled=${disabled}, applying=${applying}`);
+    if (disabled || applying || loading || index === currentIndex) {
+      console.log(`[Slider] Click skipped - conditions not met`);
+      return;
+    }
     
+    console.log(`[Slider] Applying preset:`, presets[index]);
     setApplying(true);
     try {
-      await applyRosterPreset(side, presets[index].slots);
+      const result = await applyRosterPreset(side, presets[index].slots);
+      console.log(`[Slider] applyRosterPreset result:`, result);
       onPresetApplied?.();
     } catch (err) {
       console.error('Failed to apply preset:', err);
