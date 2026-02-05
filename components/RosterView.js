@@ -82,13 +82,12 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
       const [rosterData, cardsData, strategyData] = await Promise.all([
         getRoster(),
         getCards(),
-        getRosterStrategy().catch(() => null), // Gracefully handle if endpoint not available
+        getRosterStrategy().catch((e) => { console.error('Strategy fetch failed:', e); return null; }),
       ]);
       setRoster(rosterData);
       setCards(cardsData.cards);
-      if (strategyData) {
-        setDetectedStrategy(strategyData);
-      }
+      // Always update strategy (even if null, to clear stale data)
+      setDetectedStrategy(strategyData || null);
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -205,7 +204,7 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
           <div 
             className="fixed left-4 z-10 px-3 py-1.5 rounded-lg text-sm font-bold"
             style={{ 
-              top: '35px',
+              top: '8px',
               backgroundColor: 'rgba(0,0,0,0.7)',
               border: '1px solid rgba(255,255,255,0.2)',
               fontFamily: "'Rajdhani', sans-serif",
@@ -218,7 +217,7 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
           <div 
             className="fixed right-4 z-10 px-3 py-1.5 rounded-lg text-sm font-bold"
             style={{ 
-              top: '35px',
+              top: '8px',
               backgroundColor: 'rgba(0,0,0,0.7)',
               border: `1px solid ${isOverCap ? 'rgba(239,68,68,0.5)' : 'rgba(34,197,94,0.5)'}`,
               fontFamily: "'Rajdhani', sans-serif",
@@ -229,37 +228,6 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
             <span className="text-gray-500">/{currentCap}</span>
           </div>
           
-          {/* Detected Strategy Display */}
-          {detectedStrategy && (
-            <div 
-              className="fixed left-1/2 -translate-x-1/2 z-10 px-4 py-1.5 rounded-lg text-sm font-bold"
-              style={{ 
-                top: '75px',
-                backgroundColor: 'rgba(0,0,0,0.7)',
-                border: `1px solid ${STRATEGY_COLORS[
-                  diagramSide === 'offense' 
-                    ? detectedStrategy.offensiveStrategy 
-                    : detectedStrategy.defensiveStrategy
-                ] || '#a3a3a3'}40`,
-                fontFamily: "'Rajdhani', sans-serif",
-              }}
-            >
-              <span className="text-gray-400">Strategy: </span>
-              <span style={{ 
-                color: STRATEGY_COLORS[
-                  diagramSide === 'offense' 
-                    ? detectedStrategy.offensiveStrategy 
-                    : detectedStrategy.defensiveStrategy
-                ] || '#a3a3a3' 
-              }}>
-                {STRATEGY_LABELS[
-                  diagramSide === 'offense' 
-                    ? detectedStrategy.offensiveStrategy 
-                    : detectedStrategy.defensiveStrategy
-                ] || 'Unknown'}
-              </span>
-            </div>
-          )}
         </>
       )}
 
