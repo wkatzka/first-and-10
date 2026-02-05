@@ -860,12 +860,43 @@ function generateOffensePresets(cards, tierCap = null) {
     return 'balanced';
   };
   
+  // Ensure minimum 2 presets per strategy zone
+  // If a zone has < 2, pull the best (highest tierSum) from the full pool
+  const MIN_PER_STRATEGY = 2;
+  const strategies = ['run_heavy', 'balanced', 'pass_heavy'];
+  const tagged = optimized.map(p => ({ ...p, strategy: getStrategy(p.ratio) }));
+  
+  for (const strat of strategies) {
+    const inZone = tagged.filter(p => p.strategy === strat);
+    const needed = MIN_PER_STRATEGY - inZone.length;
+    if (needed > 0) {
+      // Find candidates from the full pool that aren't already in optimized
+      const optimizedKeys = new Set(tagged.map(p => 
+        Object.values(p.slots).sort().join('-')
+      ));
+      const candidates = presets
+        .filter(p => getStrategy(p.ratio) === strat)
+        .filter(p => !optimizedKeys.has(Object.values(p.slots).sort().join('-')))
+        .sort((a, b) => b.tierSum - a.tierSum) // best tier sum first
+        .slice(0, needed);
+      
+      for (const c of candidates) {
+        tagged.push({ ...c, strategy: strat });
+      }
+    }
+  }
+  
+  tagged.sort((a, b) => a.ratio - b.ratio);
+  
+  // Recalc min/max after potential additions
+  const finalMinRatio = tagged.length > 0 ? tagged[0].ratio : minRatio;
+  const finalMaxRatio = tagged.length > 0 ? tagged[tagged.length - 1].ratio : maxRatio;
+  
   // Add metadata to each preset
-  return optimized.map(p => ({
+  return tagged.map(p => ({
     ...p,
-    strategy: getStrategy(p.ratio),
-    minRatio,
-    maxRatio,
+    minRatio: finalMinRatio,
+    maxRatio: finalMaxRatio,
   }));
 }
 
@@ -995,12 +1026,42 @@ function generateDefensePresets(cards, tierCap = null) {
     return 'base_defense';
   };
   
+  // Ensure minimum 2 presets per strategy zone
+  // If a zone has < 2, pull the best (highest tierSum) from the full pool
+  const MIN_PER_STRATEGY = 2;
+  const strategies = ['run_stuff', 'base_defense', 'coverage_shell'];
+  const tagged = optimized.map(p => ({ ...p, strategy: getStrategy(p.ratio) }));
+  
+  for (const strat of strategies) {
+    const inZone = tagged.filter(p => p.strategy === strat);
+    const needed = MIN_PER_STRATEGY - inZone.length;
+    if (needed > 0) {
+      const optimizedKeys = new Set(tagged.map(p => 
+        Object.values(p.slots).sort().join('-')
+      ));
+      const candidates = presets
+        .filter(p => getStrategy(p.ratio) === strat)
+        .filter(p => !optimizedKeys.has(Object.values(p.slots).sort().join('-')))
+        .sort((a, b) => b.tierSum - a.tierSum)
+        .slice(0, needed);
+      
+      for (const c of candidates) {
+        tagged.push({ ...c, strategy: strat });
+      }
+    }
+  }
+  
+  tagged.sort((a, b) => a.ratio - b.ratio);
+  
+  // Recalc min/max after potential additions
+  const finalMinRatio = tagged.length > 0 ? tagged[0].ratio : minRatio;
+  const finalMaxRatio = tagged.length > 0 ? tagged[tagged.length - 1].ratio : maxRatio;
+  
   // Add metadata to each preset
-  return optimized.map(p => ({
+  return tagged.map(p => ({
     ...p,
-    strategy: getStrategy(p.ratio),
-    minRatio,
-    maxRatio,
+    minRatio: finalMinRatio,
+    maxRatio: finalMaxRatio,
   }));
 }
 
