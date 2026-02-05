@@ -1349,11 +1349,17 @@ app.get('/api/roster/presets', authMiddleware, async (req, res) => {
     
     if (side === 'defense') {
       const presets = gameEngine.generateDefensePresets(cards, tierCap);
+      const byStrat = {};
+      presets.forEach(p => { byStrat[p.strategy] = (byStrat[p.strategy] || 0) + 1; });
+      console.log(`[Presets] Defense for user ${req.user.id}: ${presets.length} presets, strategies:`, byStrat);
       return res.json({ presets, side: 'defense' });
     }
     
     // Default to offense
     const presets = gameEngine.generateOffensePresets(cards, tierCap);
+    const byStrat = {};
+    presets.forEach(p => { byStrat[p.strategy] = (byStrat[p.strategy] || 0) + 1; });
+    console.log(`[Presets] Offense for user ${req.user.id}: ${presets.length} presets, strategies:`, byStrat);
     res.json({ presets, side: 'offense' });
   } catch (err) {
     console.error('Failed to generate presets:', err);

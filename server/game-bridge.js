@@ -861,32 +861,65 @@ function generateOffensePresets(cards, tierCap = null) {
   };
   
   // Ensure minimum 2 presets per strategy zone
-  // If a zone has < 2, pull the best (highest tierSum) from the full pool
+  // If a zone has < 2, pull from the full pool — first matching-strategy, then closest-ratio
   const MIN_PER_STRATEGY = 2;
   const strategies = ['run_heavy', 'balanced', 'pass_heavy'];
   const tagged = optimized.map(p => ({ ...p, strategy: getStrategy(p.ratio) }));
   
+  // Sort full pool by ratio for easy "closest" lookups
+  const poolSorted = [...presets].sort((a, b) => a.ratio - b.ratio);
+  
   for (const strat of strategies) {
     const inZone = tagged.filter(p => p.strategy === strat);
     const needed = MIN_PER_STRATEGY - inZone.length;
-    if (needed > 0) {
-      // Find candidates from the full pool that aren't already in optimized
-      const optimizedKeys = new Set(tagged.map(p => 
-        Object.values(p.slots).sort().join('-')
-      ));
-      const candidates = presets
-        .filter(p => getStrategy(p.ratio) === strat)
-        .filter(p => !optimizedKeys.has(Object.values(p.slots).sort().join('-')))
-        .sort((a, b) => b.tierSum - a.tierSum) // best tier sum first
-        .slice(0, needed);
-      
+    if (needed <= 0) continue;
+    
+    const taggedKeys = new Set(tagged.map(p => Object.values(p.slots).sort().join('-')));
+    
+    // First try: find presets in the full pool that naturally fall in this strategy
+    let candidates = poolSorted
+      .filter(p => getStrategy(p.ratio) === strat)
+      .filter(p => !taggedKeys.has(Object.values(p.slots).sort().join('-')))
+      .sort((a, b) => b.tierSum - a.tierSum)
+      .slice(0, needed);
+    
+    // If not enough natural candidates, pick the CLOSEST rosters to this zone
+    // and force-assign them (they represent the "most run-like" or "most pass-like" the user can build)
+    if (candidates.length < needed) {
+      const stillNeeded = needed - candidates.length;
+      // Add any we found so far
       for (const c of candidates) {
-        tagged.push({ ...c, strategy: strat });
+        taggedKeys.add(Object.values(c.slots).sort().join('-'));
       }
+      
+      // Sort remaining pool by distance to the target zone center
+      let targetRatio;
+      if (strat === 'run_heavy') targetRatio = 0.9;       // center of run zone
+      else if (strat === 'pass_heavy') targetRatio = 2.2;  // center of pass zone
+      else targetRatio = 1.5;                               // center of balanced zone
+      
+      const closestCandidates = poolSorted
+        .filter(p => !taggedKeys.has(Object.values(p.slots).sort().join('-')))
+        .sort((a, b) => Math.abs(a.ratio - targetRatio) - Math.abs(b.ratio - targetRatio))
+        .slice(0, stillNeeded);
+      
+      candidates = [...candidates, ...closestCandidates];
+    }
+    
+    for (const c of candidates) {
+      // Force-tag with the target strategy (even if ratio doesn't match threshold)
+      tagged.push({ ...c, strategy: strat });
     }
   }
   
   tagged.sort((a, b) => a.ratio - b.ratio);
+  
+  // Log for debugging
+  const stratCounts = {};
+  for (const p of tagged) {
+    stratCounts[p.strategy] = (stratCounts[p.strategy] || 0) + 1;
+  }
+  console.log(`[Presets] Offense: ${tagged.length} total, by strategy:`, stratCounts);
   
   // Recalc min/max after potential additions
   const finalMinRatio = tagged.length > 0 ? tagged[0].ratio : minRatio;
@@ -1027,31 +1060,60 @@ function generateDefensePresets(cards, tierCap = null) {
   };
   
   // Ensure minimum 2 presets per strategy zone
-  // If a zone has < 2, pull the best (highest tierSum) from the full pool
+  // If a zone has < 2, pull from the full pool — first matching-strategy, then closest-ratio
   const MIN_PER_STRATEGY = 2;
   const strategies = ['run_stuff', 'base_defense', 'coverage_shell'];
   const tagged = optimized.map(p => ({ ...p, strategy: getStrategy(p.ratio) }));
   
+  const poolSorted = [...presets].sort((a, b) => a.ratio - b.ratio);
+  
   for (const strat of strategies) {
     const inZone = tagged.filter(p => p.strategy === strat);
     const needed = MIN_PER_STRATEGY - inZone.length;
-    if (needed > 0) {
-      const optimizedKeys = new Set(tagged.map(p => 
-        Object.values(p.slots).sort().join('-')
-      ));
-      const candidates = presets
-        .filter(p => getStrategy(p.ratio) === strat)
-        .filter(p => !optimizedKeys.has(Object.values(p.slots).sort().join('-')))
-        .sort((a, b) => b.tierSum - a.tierSum)
-        .slice(0, needed);
-      
+    if (needed <= 0) continue;
+    
+    const taggedKeys = new Set(tagged.map(p => Object.values(p.slots).sort().join('-')));
+    
+    // First try: natural matches in the full pool
+    let candidates = poolSorted
+      .filter(p => getStrategy(p.ratio) === strat)
+      .filter(p => !taggedKeys.has(Object.values(p.slots).sort().join('-')))
+      .sort((a, b) => b.tierSum - a.tierSum)
+      .slice(0, needed);
+    
+    // If not enough, pick closest rosters and force-assign
+    if (candidates.length < needed) {
+      const stillNeeded = needed - candidates.length;
       for (const c of candidates) {
-        tagged.push({ ...c, strategy: strat });
+        taggedKeys.add(Object.values(c.slots).sort().join('-'));
       }
+      
+      let targetRatio;
+      if (strat === 'run_stuff') targetRatio = -4;
+      else if (strat === 'coverage_shell') targetRatio = 4;
+      else targetRatio = 0;
+      
+      const closestCandidates = poolSorted
+        .filter(p => !taggedKeys.has(Object.values(p.slots).sort().join('-')))
+        .sort((a, b) => Math.abs(a.ratio - targetRatio) - Math.abs(b.ratio - targetRatio))
+        .slice(0, stillNeeded);
+      
+      candidates = [...candidates, ...closestCandidates];
+    }
+    
+    for (const c of candidates) {
+      tagged.push({ ...c, strategy: strat });
     }
   }
   
   tagged.sort((a, b) => a.ratio - b.ratio);
+  
+  // Log for debugging
+  const stratCounts = {};
+  for (const p of tagged) {
+    stratCounts[p.strategy] = (stratCounts[p.strategy] || 0) + 1;
+  }
+  console.log(`[Presets] Defense: ${tagged.length} total, by strategy:`, stratCounts);
   
   // Recalc min/max after potential additions
   const finalMinRatio = tagged.length > 0 ? tagged[0].ratio : minRatio;
