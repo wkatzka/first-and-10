@@ -48,6 +48,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
   if (!user) return null;
 
   const activeSegmentStyle = { backgroundColor: `${NAV_CYAN}20`, border: `2px solid ${NAV_CYAN}`, boxShadow: `0 0 12px ${NAV_CYAN}80` };
+  const buttonFont = { fontFamily: "'Rajdhani', sans-serif" };
   const OffenseDefenseSegment = () => (
     <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
       <button
@@ -56,7 +57,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
         className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
           diagramSide === 'offense' ? 'text-white' : 'text-gray-400 hover:text-white'
         }`}
-        style={diagramSide === 'offense' ? activeSegmentStyle : {}}
+        style={diagramSide === 'offense' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}
       >
         Offense
       </button>
@@ -66,7 +67,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
         className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
           diagramSide === 'defense' ? 'text-white' : 'text-gray-400 hover:text-white'
         }`}
-        style={diagramSide === 'defense' ? activeSegmentStyle : {}}
+        style={diagramSide === 'defense' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}
       >
         Defense
       </button>

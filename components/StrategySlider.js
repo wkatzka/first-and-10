@@ -88,48 +88,50 @@ export default function StrategySlider({
     return minRatio + (position / 100) * ratioRange;
   }, [minRatio, ratioRange]);
 
-  // Get boundary positions for visual markers
-  const getBoundaryPositions = useCallback(() => {
-    const thresholds = side === 'offense' ? OFFENSE_THRESHOLDS : DEFENSE_THRESHOLDS;
-    return {
-      first: ratioToPosition(thresholds.runToBalanced),
-      second: ratioToPosition(side === 'offense' ? thresholds.balancedToPass : thresholds.balancedToCoverage),
-    };
-  }, [side, ratioToPosition]);
-
-  // Nudge dots away from boundaries so they clearly sit in their strategy zone
-  const BOUNDARY_NUDGE = 4; // percentage points to nudge away from boundary
-  const BOUNDARY_THRESHOLD = 3; // if within this % of boundary, nudge
+  // FIXED: Always use even thirds for boundaries (33.33% and 66.66%)
+  // This ensures visual clarity regardless of the ratio distribution
+  const BOUNDARY_FIRST = 33.33;
+  const BOUNDARY_SECOND = 66.66;
   
-  const getNudgedPosition = useCallback((rawPos, strategy) => {
-    const bounds = getBoundaryPositions();
+  const boundaries = { first: BOUNDARY_FIRST, second: BOUNDARY_SECOND };
+
+  // Position dot within its strategy zone (left third, middle third, or right third)
+  // Dots are spread within their zone based on their relative position among same-strategy presets
+  const getPositionInZone = useCallback((preset, allPresets) => {
+    const strategy = preset.strategy;
     const leftStrategies = side === 'offense' ? ['run_heavy'] : ['run_stuff'];
+    const centerStrategies = side === 'offense' ? ['balanced'] : ['base_defense'];
     const rightStrategies = side === 'offense' ? ['pass_heavy'] : ['coverage_shell'];
     
-    // Check if near first boundary (left/center divide)
-    if (Math.abs(rawPos - bounds.first) < BOUNDARY_THRESHOLD) {
-      if (leftStrategies.includes(strategy)) {
-        // Nudge left (into run zone)
-        return Math.max(0, bounds.first - BOUNDARY_NUDGE);
-      } else {
-        // Nudge right (into balanced zone)
-        return Math.min(100, bounds.first + BOUNDARY_NUDGE);
-      }
+    // Determine which zone this preset belongs to
+    let zoneStart, zoneEnd;
+    if (leftStrategies.includes(strategy)) {
+      zoneStart = 2;
+      zoneEnd = BOUNDARY_FIRST - 2;
+    } else if (rightStrategies.includes(strategy)) {
+      zoneStart = BOUNDARY_SECOND + 2;
+      zoneEnd = 98;
+    } else {
+      // Center zone
+      zoneStart = BOUNDARY_FIRST + 2;
+      zoneEnd = BOUNDARY_SECOND - 2;
     }
     
-    // Check if near second boundary (center/right divide)
-    if (Math.abs(rawPos - bounds.second) < BOUNDARY_THRESHOLD) {
-      if (rightStrategies.includes(strategy)) {
-        // Nudge right (into pass zone)
-        return Math.min(100, bounds.second + BOUNDARY_NUDGE);
-      } else {
-        // Nudge left (into balanced zone)
-        return Math.max(0, bounds.second - BOUNDARY_NUDGE);
-      }
+    // Find all presets in the same strategy zone
+    const sameZonePresets = allPresets.filter(p => p.strategy === strategy);
+    const indexInZone = sameZonePresets.findIndex(p => p.ratio === preset.ratio);
+    const countInZone = sameZonePresets.length;
+    
+    if (countInZone === 1) {
+      // Only one dot in zone - center it
+      return (zoneStart + zoneEnd) / 2;
     }
     
-    return rawPos;
-  }, [getBoundaryPositions, side]);
+    // Spread dots evenly within the zone
+    const zoneWidth = zoneEnd - zoneStart;
+    const spacing = zoneWidth / (countInZone - 1);
+    return zoneStart + (indexInZone * spacing);
+  }, [side]);
 
   // Find which preset matches current roster (by comparing ratio)
   const getCurrentPresetIndex = useCallback(() => {
@@ -296,8 +298,6 @@ export default function StrategySlider({
   const leftLabel = side === 'offense' ? 'Run' : 'Run Stop';
   const centerLabel = side === 'offense' ? 'Balanced' : 'Base';
   const rightLabel = side === 'offense' ? 'Pass' : 'Coverage';
-
-  const boundaries = getBoundaryPositions();
   
   // Get the current strategy for label highlighting
   const colors = side === 'offense' ? OFFENSE_COLORS : DEFENSE_COLORS;
@@ -376,47 +376,42 @@ export default function StrategySlider({
 
       {/* Track with preset dots */}
       <div className="relative h-8 mx-2 mb-1">
-        {/* Gradient track background - uses correct colors for offense/defense */}
+        {/* Gradient track background - three even zones */}
         <div 
           className="absolute top-1/2 left-0 right-0 h-1.5 rounded-full"
           style={{
             transform: 'translateY(-50%)',
             background: `linear-gradient(to right, 
               ${leftColor}40 0%, 
-              ${leftColor}40 ${boundaries.first}%, 
-              ${centerColor}40 ${boundaries.first}%, 
-              ${centerColor}40 ${boundaries.second}%, 
-              ${rightColor}40 ${boundaries.second}%, 
+              ${leftColor}40 ${BOUNDARY_FIRST}%, 
+              ${centerColor}40 ${BOUNDARY_FIRST}%, 
+              ${centerColor}40 ${BOUNDARY_SECOND}%, 
+              ${rightColor}40 ${BOUNDARY_SECOND}%, 
               ${rightColor}40 100%)`,
           }}
         />
 
-        {/* Strategy boundary markers */}
-        {boundaries.first > 0 && boundaries.first < 100 && (
-          <div
-            className="absolute top-1/2 w-0.5 h-4 rounded-full"
-            style={{
-              left: `${boundaries.first}%`,
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: 'rgba(255,255,255,0.3)',
-            }}
-          />
-        )}
-        {boundaries.second > 0 && boundaries.second < 100 && (
-          <div
-            className="absolute top-1/2 w-0.5 h-4 rounded-full"
-            style={{
-              left: `${boundaries.second}%`,
-              transform: 'translate(-50%, -50%)',
-              backgroundColor: 'rgba(255,255,255,0.3)',
-            }}
-          />
-        )}
+        {/* Strategy boundary markers - always at 1/3 and 2/3 */}
+        <div
+          className="absolute top-1/2 w-0.5 h-4 rounded-full"
+          style={{
+            left: `${BOUNDARY_FIRST}%`,
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'rgba(255,255,255,0.4)',
+          }}
+        />
+        <div
+          className="absolute top-1/2 w-0.5 h-4 rounded-full"
+          style={{
+            left: `${BOUNDARY_SECOND}%`,
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'rgba(255,255,255,0.4)',
+          }}
+        />
 
-        {/* Preset dots - positioned by ratio, nudged away from boundaries for clarity */}
+        {/* Preset dots - positioned within their strategy zone */}
         {presets.map((preset, i) => {
-          const rawPos = ratioToPosition(preset.ratio);
-          const pos = getNudgedPosition(rawPos, preset.strategy);
+          const pos = getPositionInZone(preset, presets);
           const isActive = i === currentIndex && !dragging;
           const dotColor = getColorForStrategy(preset.strategy);
           
