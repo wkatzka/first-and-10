@@ -24,7 +24,7 @@ const {
 } = require('./playstyle');
 const { OFFENSIVE_STRATEGIES, DEFENSIVE_STRATEGIES } = require('./constants');
 
-const OFF_KEYS = ['pass_heavy', 'balanced', 'run_dominant'];
+const OFF_KEYS = ['pass_heavy', 'balanced', 'run_heavy'];
 const DEF_KEYS = ['coverage_shell', 'base_defense', 'run_stuff'];
 
 // =============================================================================
@@ -100,7 +100,7 @@ function applyTierCap(roster, maxTierSum) {
 // =============================================================================
 // BUILD ROSTERS THAT DERIVE TO SPECIFIC STRATEGIES
 // =============================================================================
-// Offense: pass_heavy (high QB+WR, low RB/OL), run_dominant (high RB+OL, low QB/WR), balanced (even).
+// Offense: pass_heavy (high QB+WR, low RB/OL), run_heavy (high RB+OL, low QB/WR), balanced (even).
 // Defense: coverage_shell (high DB), run_stuff (high DL+LB), base_defense (even).
 
 function createRosterForOffensiveStrategy(offKey) {
@@ -111,7 +111,7 @@ function createRosterForOffensiveStrategy(offKey) {
       DL: d, LB: d, DB: d, K: 6, P: 5,
     });
   }
-  if (offKey === 'run_dominant') {
+  if (offKey === 'run_heavy') {
     return createTestRoster({
       QB: 4, RB: 8, WR: 4, TE: 6, OL: 8,
       DL: d, LB: d, DB: d, K: 6, P: 5,
@@ -220,11 +220,11 @@ function runStrategyMatrix(numGamesPerCell = 150, tierCap = null) {
 function getMatchupFavorability(homeOff, homeDef, awayOff, awayDef) {
   const beats = {
     coverage_shell: 'pass_heavy',
-    run_stuff: 'run_dominant',
+    run_stuff: 'run_heavy',
     base_defense: 'balanced',
   };
   const losesTo = {
-    coverage_shell: 'run_dominant',
+    coverage_shell: 'run_heavy',
     run_stuff: 'balanced',
     base_defense: 'pass_heavy',
   };
@@ -290,8 +290,8 @@ function printStrategyMatrixSummary(rawResults, tierCapLabel = 'No cap') {
 
   for (const [key, r] of Object.entries(rawResults)) {
     const [homeOff, homeDef, awayOff, awayDef] = key.split('|');
-    const beats = { coverage_shell: 'pass_heavy', run_stuff: 'run_dominant', base_defense: 'balanced' };
-    const losesTo = { coverage_shell: 'run_dominant', run_stuff: 'balanced', base_defense: 'pass_heavy' };
+    const beats = { coverage_shell: 'pass_heavy', run_stuff: 'run_heavy', base_defense: 'balanced' };
+    const losesTo = { coverage_shell: 'run_heavy', run_stuff: 'balanced', base_defense: 'pass_heavy' };
     const homeDefBeatsAwayOff = beats[homeDef] === awayOff;
     const homeDefLosesToAwayOff = losesTo[homeDef] === awayOff;
     const awayDefBeatsHomeOff = beats[awayDef] === homeOff;
@@ -333,8 +333,8 @@ function printCapSweepResults(capResults, numGamesPerCell) {
     let whenDefLoses = [];
     for (const [key, r] of Object.entries(raw)) {
       const [homeOff, homeDef, awayOff, awayDef] = key.split('|');
-      const beats = { coverage_shell: 'pass_heavy', run_stuff: 'run_dominant', base_defense: 'balanced' };
-      const losesTo = { coverage_shell: 'run_dominant', run_stuff: 'balanced', base_defense: 'pass_heavy' };
+      const beats = { coverage_shell: 'pass_heavy', run_stuff: 'run_heavy', base_defense: 'balanced' };
+      const losesTo = { coverage_shell: 'run_heavy', run_stuff: 'balanced', base_defense: 'pass_heavy' };
       const homeDefBeatsAwayOff = beats[homeDef] === awayOff;
       const awayDefLosesToHomeOff = losesTo[awayDef] === homeOff;
       const homeDefLosesToAwayOff = losesTo[homeDef] === awayOff;

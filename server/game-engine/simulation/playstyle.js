@@ -76,7 +76,7 @@ function getPlaystyleConfig(qb) {
 
 /**
  * Determine the strategy matchup result for offense
- * @param {string} myOffense - My offensive strategy (pass_heavy, balanced, run_dominant)
+ * @param {string} myOffense - My offensive strategy (pass_heavy, balanced, run_heavy)
  * @param {string} theirDefense - Opponent's defensive strategy
  * @returns {string} - 'advantage', 'captured', or 'neutral'
  */
@@ -446,8 +446,8 @@ function getOffensiveStrategyFromRatings(offenseRatings) {
   // Pass-heavy: QB playstyle is PASS_HEAVY OR passing tiers significantly exceed rushing tiers
   if (style === 'PASS_HEAVY' || tierRatio > 1.20) return 'pass_heavy';
   
-  // Run-dominant: QB playstyle is DUAL_THREAT OR rushing tiers significantly exceed passing tiers
-  if (style === 'DUAL_THREAT' || tierRatio < 0.85) return 'run_dominant';
+  // Run-heavy: QB playstyle is DUAL_THREAT OR rushing tiers significantly exceed passing tiers
+  if (style === 'DUAL_THREAT' || tierRatio < 0.85) return 'run_heavy';
   
   return 'balanced';
 }

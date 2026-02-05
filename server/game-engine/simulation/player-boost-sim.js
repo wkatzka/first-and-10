@@ -29,7 +29,7 @@ const STRATEGY_BOOSTS = {
     base_defense:    { QB: -0.2, WR: -0.1, RB: -0.2, OL: -0.1 }, // captured: base beats balanced
     coverage_shell:  {},                       // neutral
   },
-  run_dominant: {
+  run_heavy: {
     coverage_shell:  { RB: +0.3, OL: +0.3 },  // advantage: coverage loses to run
     run_stuff:       { RB: -0.3, OL: -0.3 },  // captured: run_stuff beats run
     base_defense:    {},                       // neutral
@@ -40,18 +40,18 @@ const STRATEGY_BOOSTS = {
 const DEFENSE_BOOSTS = {
   coverage_shell: {
     pass_heavy:   { DB: +0.3 },               // advantage: coverage beats pass
-    run_dominant: { DB: -0.3 },               // captured: run beats coverage
+    run_heavy: { DB: -0.3 },               // captured: run beats coverage
     balanced:     {},
   },
   run_stuff: {
-    run_dominant: { DL: +0.3, LB: +0.3 },     // advantage: run_stuff beats run
+    run_heavy: { DL: +0.3, LB: +0.3 },     // advantage: run_stuff beats run
     balanced:     { DL: -0.2, LB: -0.2 },     // captured: balanced beats run_stuff
     pass_heavy:   {},
   },
   base_defense: {
     balanced:     { DL: +0.2, LB: +0.2, DB: +0.2 }, // advantage: base beats balanced
     pass_heavy:   { DL: -0.2, LB: -0.2, DB: -0.2 }, // captured: pass beats base
-    run_dominant: {},
+    run_heavy: {},
   },
 };
 
@@ -102,7 +102,7 @@ function createRosterWithStrategies(offKey, defKey) {
   const d = 5;
   const off =
     offKey === 'pass_heavy' ? { QB: 8, RB: 4, WR: 8, TE: 6, OL: 4 }
-    : offKey === 'run_dominant' ? { QB: 4, RB: 8, WR: 4, TE: 6, OL: 8 }
+    : offKey === 'run_heavy' ? { QB: 4, RB: 8, WR: 4, TE: 6, OL: 8 }
     : { QB: 6, RB: 6, WR: 6, TE: 6, OL: 6 };
   const def =
     defKey === 'coverage_shell' ? { DL: 4, LB: 4, DB: 8 }
@@ -229,25 +229,25 @@ function main() {
     console.log(`${label.padEnd(11)} | ${adv.padStart(23)}% | ${cap.padStart(22)}% | ${neu.padStart(22)}% | ${swing.toFixed(1)}`);
   }
 
-  // Test run_dominant user vs different defenses
+  // Test run_heavy user vs different defenses
   console.log('\n' + '='.repeat(80));
-  console.log('RUN DOMINANT OFFENSE: advantage vs captured');
+  console.log('RUN HEAVY OFFENSE: advantage vs captured');
   console.log('='.repeat(80));
-  console.log('\nUser: run_dominant O, base_defense D');
+  console.log('\nUser: run_heavy O, base_defense D');
   console.log('Opponent: balanced O, defense varies\n');
 
-  const runDominantResults = {};
+  const runHeavyResults = {};
   for (const cap of caps) {
     const label = cap == null ? 'No cap' : `≤${cap}`;
-    const advantage = runMatchup('run_dominant', 'base_defense', 'balanced', 'coverage_shell', numGames, cap);
-    const captured = runMatchup('run_dominant', 'base_defense', 'balanced', 'run_stuff', numGames, cap);
-    const neutral = runMatchup('run_dominant', 'base_defense', 'balanced', 'base_defense', numGames, cap);
-    runDominantResults[label] = { advantage, captured, neutral };
+    const advantage = runMatchup('run_heavy', 'base_defense', 'balanced', 'coverage_shell', numGames, cap);
+    const captured = runMatchup('run_heavy', 'base_defense', 'balanced', 'run_stuff', numGames, cap);
+    const neutral = runMatchup('run_heavy', 'base_defense', 'balanced', 'base_defense', numGames, cap);
+    runHeavyResults[label] = { advantage, captured, neutral };
   }
 
   console.log('Tier cap    | Advantage (vs coverage) | Captured (vs run_stuff) | Neutral (vs base_def) | Swing (pp)');
   console.log('-'.repeat(100));
-  for (const [label, r] of Object.entries(runDominantResults)) {
+  for (const [label, r] of Object.entries(runHeavyResults)) {
     const adv = (r.advantage.userWinPct * 100).toFixed(1);
     const cap = (r.captured.userWinPct * 100).toFixed(1);
     const neu = (r.neutral.userWinPct * 100).toFixed(1);

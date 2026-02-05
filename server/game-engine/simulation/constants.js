@@ -284,12 +284,12 @@ const SCORING = {
 const OFFENSIVE_STRATEGIES = {
   pass_heavy:   { name: 'Pass Heavy',   label: 'Pass Heavy' },
   balanced:     { name: 'Balanced',     label: 'Balanced' },
-  run_dominant: { name: 'Run Dominant', label: 'Run Dominant' },
+  run_heavy: { name: 'Run Heavy', label: 'Run Heavy' },
 };
 
 const DEFENSIVE_STRATEGIES = {
-  coverage_shell: { name: 'Coverage Shell (Nickel/Dime)', beats: 'pass_heavy',   losesTo: 'run_dominant' },
-  run_stuff:      { name: 'Run Stuff (Stacked Box)',      beats: 'run_dominant', losesTo: 'balanced' },
+  coverage_shell: { name: 'Coverage Shell (Nickel/Dime)', beats: 'pass_heavy',   losesTo: 'run_heavy' },
+  run_stuff:      { name: 'Run Stuff (Stacked Box)',      beats: 'run_heavy', losesTo: 'balanced' },
   base_defense:   { name: 'Base Defense (4-3/3-4)',       beats: 'balanced',     losesTo: 'pass_heavy' },
 };
 
@@ -299,17 +299,17 @@ const STRATEGY_MATCHUP_MODIFIERS = {
   coverage_shell: {
     pass_heavy:   { pass: 1.00, run: 1.00 }, // handled by rating boosts now
     balanced:     { pass: 1.00, run: 1.00 },
-    run_dominant: { pass: 1.00, run: 1.00 },
+    run_heavy: { pass: 1.00, run: 1.00 },
   },
   run_stuff: {
     pass_heavy:   { pass: 1.00, run: 1.00 },
     balanced:     { pass: 1.00, run: 1.00 },
-    run_dominant: { pass: 1.00, run: 1.00 },
+    run_heavy: { pass: 1.00, run: 1.00 },
   },
   base_defense: {
     pass_heavy:   { pass: 1.00, run: 1.00 },
     balanced:     { pass: 1.00, run: 1.00 },
-    run_dominant: { pass: 1.00, run: 1.00 },
+    run_heavy: { pass: 1.00, run: 1.00 },
   },
 };
 
@@ -347,7 +347,7 @@ const OFFENSE_STRATEGY_BOOSTS = {
     run_stuff:       'neutral',
     base_defense:    'neutral',
   },
-  run_dominant: {
+  run_heavy: {
     coverage_shell:  'advantage',   // RUN beats PASS D (can't stop the run)
     run_stuff:       'captured',    // RUN D beats RUN O
     base_defense:    'neutral',     // Balanced D = neutral
@@ -358,17 +358,17 @@ const OFFENSE_STRATEGY_BOOSTS = {
 const DEFENSE_STRATEGY_BOOSTS = {
   coverage_shell: {                 // Pass Defense
     pass_heavy:   'advantage',      // Beats pass offense
-    run_dominant: 'captured',       // Loses to run offense
+    run_heavy: 'captured',       // Loses to run offense
     balanced:     'neutral',
   },
   run_stuff: {                      // Run Defense
-    run_dominant: 'advantage',      // Beats run offense
+    run_heavy: 'advantage',      // Beats run offense
     pass_heavy:   'captured',       // Loses to pass offense
     balanced:     'neutral',
   },
   base_defense: {                   // Balanced Defense
     pass_heavy:   'neutral',        // Neutral vs everything
-    run_dominant: 'neutral',
+    run_heavy: 'neutral',
     balanced:     'neutral',
   },
 };
@@ -379,7 +379,7 @@ const STRATEGY_AFFECTED_POSITIONS = {
   offense: {
     pass_heavy:   ['QB', 'WR', 'TE'],       // passing game positions
     balanced:     ['QB', 'WR', 'RB', 'OL'], // all skill positions
-    run_dominant: ['RB', 'OL', 'TE'],       // run game positions
+    run_heavy: ['RB', 'OL', 'TE'],       // run game positions
   },
   // Defensive strategies affect these defensive positions
   defense: {

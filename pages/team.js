@@ -1,9 +1,9 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import RosterView from '../components/RosterView';
 import StrategySlider from '../components/StrategySlider';
-import { autoFillRoster, getRosterStrategy, fillToRatio } from '../lib/api';
+import { autoFillRoster, getRosterStrategy } from '../lib/api';
 
 const NAV_CYAN = '#00e5ff';
 
@@ -13,7 +13,6 @@ export default function Team({ user, onLogout, unreadMessages }) {
   const [detectedStrategy, setDetectedStrategy] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [saving, setSaving] = useState(false);
-  const pendingRatioCall = useRef(null);
 
   useEffect(() => {
     if (!user) {
@@ -54,28 +53,6 @@ export default function Team({ user, onLogout, unreadMessages }) {
     }
   };
 
-  // Handle ratio change from slider drag - live card swapping
-  const handleRatioChange = useCallback(async (targetRatio) => {
-    // Cancel any pending call
-    if (pendingRatioCall.current) {
-      pendingRatioCall.current.cancelled = true;
-    }
-    
-    const thisCall = { cancelled: false };
-    pendingRatioCall.current = thisCall;
-    
-    try {
-      await fillToRatio(diagramSide, targetRatio);
-      if (!thisCall.cancelled) {
-        setRefreshTrigger((t) => t + 1);
-      }
-    } catch (err) {
-      if (!thisCall.cancelled) {
-        console.error('Fill to ratio failed:', err);
-      }
-    }
-  }, [diagramSide]);
-
   if (!user) return null;
 
   const activeSegmentStyle = { backgroundColor: `${NAV_CYAN}20`, border: `2px solid ${NAV_CYAN}`, boxShadow: `0 0 12px ${NAV_CYAN}80` };
@@ -112,7 +89,6 @@ export default function Team({ user, onLogout, unreadMessages }) {
           side={diagramSide}
           detectedStrategy={detectedStrategy}
           onStrategySelect={handleStrategySelect}
-          onRatioChange={handleRatioChange}
           disabled={saving}
         />
       </div>
