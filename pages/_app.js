@@ -15,13 +15,29 @@ const graduate = Graduate({
   display: 'swap',
 });
 
+// iPad Mini width is 768px - disable animations on larger screens
+const ANIMATION_MAX_WIDTH = 768;
+
 export default function App({ Component, pageProps }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeConferences, setActiveConferences] = useState([]);
   const [openConferenceGameId, setOpenConferenceGameId] = useState(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [useAnimatedBg, setUseAnimatedBg] = useState(false); // Default to static until we check
   const router = useRouter();
+  
+  // Check screen size for animation toggle
+  useEffect(() => {
+    const checkScreenSize = () => {
+      // Only enable animations on small screens (phone/tablet)
+      setUseAnimatedBg(window.innerWidth <= ANIMATION_MAX_WIDTH);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
   
   useEffect(() => {
     // Check for existing session
@@ -137,7 +153,7 @@ export default function App({ Component, pageProps }) {
       >
         .
       </span>
-      {isLive ? <StaticFieldBackground /> : <PlayfieldBackground />}
+      {isLive && useAnimatedBg ? <PlayfieldBackground /> : <StaticFieldBackground />}
       <Component 
         {...pageProps} 
         user={user} 
