@@ -1209,6 +1209,52 @@ app.post('/api/roster/auto-fill', authMiddleware, async (req, res) => {
   }
 });
 
+// Auto-fill roster to target a specific ratio (for continuous slider)
+// Takes targetOffenseRatio or targetDefenseRatio
+app.post('/api/roster/fill-to-ratio', authMiddleware, async (req, res) => {
+  try {
+    const { side, targetRatio } = req.body;
+    if (!side || targetRatio == null) {
+      return res.status(400).json({ error: 'side and targetRatio required' });
+    }
+    
+    const cards = await db.getUserCards(req.user.id);
+    const currentRoster = await db.getFullRoster(req.user.id);
+    
+    let slots;
+    if (side === 'offense') {
+      // Fill offense to target ratio, keep current defense
+      slots = gameEngine.autoFillToOffenseRatio(cards, targetRatio, { offense: OFFENSE_TIER_CAP, defense: DEFENSE_TIER_CAP });
+      // Preserve current defense slots
+      const current = currentRoster?.roster || {};
+      if (current.dl_card_id) slots.dl_card_id = current.dl_card_id;
+      if (current.lb_card_id) slots.lb_card_id = current.lb_card_id;
+      if (current.db1_card_id) slots.db1_card_id = current.db1_card_id;
+      if (current.db2_card_id) slots.db2_card_id = current.db2_card_id;
+    } else {
+      // Fill defense to target ratio, keep current offense
+      const defenseSlots = gameEngine.autoFillToDefenseRatio(cards, targetRatio, { offense: OFFENSE_TIER_CAP, defense: DEFENSE_TIER_CAP });
+      const current = currentRoster?.roster || {};
+      slots = {
+        qb_card_id: current.qb_card_id,
+        rb_card_id: current.rb_card_id,
+        wr1_card_id: current.wr1_card_id,
+        wr2_card_id: current.wr2_card_id,
+        te_card_id: current.te_card_id,
+        ol_card_id: current.ol_card_id,
+        k_card_id: current.k_card_id,
+        ...defenseSlots,
+      };
+    }
+    
+    await db.updateRoster(req.user.id, slots);
+    const fullRoster = await db.getFullRoster(req.user.id);
+    res.json(fullRoster);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Detect strategy from current roster
 // Returns the detected offensive and defensive strategies based on roster composition
 app.get('/api/roster/strategy', authMiddleware, async (req, res) => {

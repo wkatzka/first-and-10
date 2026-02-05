@@ -484,11 +484,251 @@ function calculateRosterPower(fullRoster) {
   };
 }
 
+/**
+ * Auto-fill roster to target a specific offense ratio.
+ * Ratio = (QB tier + WR avg tier) / (RB tier + OL tier)
+ * Higher ratio = more pass-heavy, lower = more run-heavy
+ * 
+ * @param {Array} cards - user's cards
+ * @param {number} targetRatio - target offense ratio (0.5 to 1.5+)
+ * @param {Object|null} tierCap - { offense: number, defense: number }
+ * @returns {Object} slots to fill
+ */
+function autoFillToOffenseRatio(cards, targetRatio = 1.0, tierCap = null) {
+  const byPosition = {};
+  for (const card of cards) {
+    const pos = card.position;
+    if (!byPosition[pos]) byPosition[pos] = [];
+    byPosition[pos].push(card);
+  }
+  
+  // Sort all positions by tier (descending)
+  for (const pos of Object.keys(byPosition)) {
+    byPosition[pos].sort((a, b) => (b.tier || 0) - (a.tier || 0));
+  }
+  
+  const slots = {};
+  const usedIds = new Set();
+  
+  // Helper to pick best available card for a position
+  const pickBest = (position) => {
+    const available = (byPosition[position] || []).filter(c => !usedIds.has(c.id));
+    if (available.length === 0) return null;
+    usedIds.add(available[0].id);
+    return available[0];
+  };
+  
+  // Helper to pick card at specific tier index for a position
+  const pickAtTierRank = (position, rank) => {
+    const available = (byPosition[position] || []).filter(c => !usedIds.has(c.id));
+    if (available.length === 0) return null;
+    const idx = Math.min(rank, available.length - 1);
+    usedIds.add(available[idx].id);
+    return available[idx];
+  };
+  
+  // Calculate what ratio we'd get with all best cards
+  const qbs = byPosition['QB'] || [];
+  const rbs = byPosition['RB'] || [];
+  const wrs = byPosition['WR'] || [];
+  const ols = byPosition['OL'] || [];
+  
+  // Determine bias based on target ratio
+  // targetRatio > 1.0 means pass-heavy: prioritize high-tier QB/WR
+  // targetRatio < 1.0 means run-heavy: prioritize high-tier RB/OL
+  const passBias = targetRatio > 1.0;
+  const runBias = targetRatio < 1.0;
+  
+  // For pass-heavy: pick best QB/WR, then fill RB/OL to achieve ratio
+  // For run-heavy: pick best RB/OL, then fill QB/WR to achieve ratio
+  // For balanced: pick best everywhere
+  
+  if (passBias) {
+    // Prioritize pass positions with best tiers
+    if (qbs.length) { slots.qb_card_id = qbs[0].id; usedIds.add(qbs[0].id); }
+    const wrAvail = wrs.filter(c => !usedIds.has(c.id));
+    if (wrAvail.length >= 1) { slots.wr1_card_id = wrAvail[0].id; usedIds.add(wrAvail[0].id); }
+    if (wrAvail.length >= 2) { slots.wr2_card_id = wrAvail[1].id; usedIds.add(wrAvail[1].id); }
+    
+    // Now fill run positions - pick lower-tier to increase ratio
+    // The more extreme the target, the lower tier we pick
+    const runRank = Math.min(Math.floor((targetRatio - 1.0) * 3), 2); // 0, 1, or 2
+    const rbCard = pickAtTierRank('RB', runRank);
+    if (rbCard) slots.rb_card_id = rbCard.id;
+    const olCard = pickAtTierRank('OL', runRank);
+    if (olCard) slots.ol_card_id = olCard.id;
+  } else if (runBias) {
+    // Prioritize run positions with best tiers
+    if (rbs.length) { slots.rb_card_id = rbs[0].id; usedIds.add(rbs[0].id); }
+    if (ols.length) { slots.ol_card_id = ols[0].id; usedIds.add(ols[0].id); }
+    
+    // Fill pass positions with lower tier to decrease ratio
+    const passRank = Math.min(Math.floor((1.0 - targetRatio) * 3), 2); // 0, 1, or 2
+    const qbCard = pickAtTierRank('QB', passRank);
+    if (qbCard) slots.qb_card_id = qbCard.id;
+    const wrAvail = (byPosition['WR'] || []).filter(c => !usedIds.has(c.id));
+    if (wrAvail.length >= 1) { 
+      const wr1 = wrAvail[Math.min(passRank, wrAvail.length - 1)];
+      slots.wr1_card_id = wr1.id; 
+      usedIds.add(wr1.id); 
+    }
+    const wrAvail2 = (byPosition['WR'] || []).filter(c => !usedIds.has(c.id));
+    if (wrAvail2.length >= 1) { 
+      const wr2 = wrAvail2[Math.min(passRank, wrAvail2.length - 1)];
+      slots.wr2_card_id = wr2.id; 
+      usedIds.add(wr2.id); 
+    }
+  } else {
+    // Balanced - pick best everywhere
+    const qb = pickBest('QB'); if (qb) slots.qb_card_id = qb.id;
+    const rb = pickBest('RB'); if (rb) slots.rb_card_id = rb.id;
+    const wr1 = pickBest('WR'); if (wr1) slots.wr1_card_id = wr1.id;
+    const wr2 = pickBest('WR'); if (wr2) slots.wr2_card_id = wr2.id;
+    const ol = pickBest('OL'); if (ol) slots.ol_card_id = ol.id;
+  }
+  
+  // Fill remaining offense positions
+  if (!slots.qb_card_id) { const c = pickBest('QB'); if (c) slots.qb_card_id = c.id; }
+  if (!slots.rb_card_id) { const c = pickBest('RB'); if (c) slots.rb_card_id = c.id; }
+  if (!slots.wr1_card_id) { const c = pickBest('WR'); if (c) slots.wr1_card_id = c.id; }
+  if (!slots.wr2_card_id) { const c = pickBest('WR'); if (c) slots.wr2_card_id = c.id; }
+  if (!slots.ol_card_id) { const c = pickBest('OL'); if (c) slots.ol_card_id = c.id; }
+  
+  // Fill TE (neutral position)
+  const te = pickBest('TE'); if (te) slots.te_card_id = te.id;
+  
+  // Fill defense with best available (ratio doesn't affect defense)
+  const dl = pickBest('DL'); if (dl) slots.dl_card_id = dl.id;
+  const lb = pickBest('LB'); if (lb) slots.lb_card_id = lb.id;
+  const db1 = pickBest('DB'); if (db1) slots.db1_card_id = db1.id;
+  const db2 = pickBest('DB'); if (db2) slots.db2_card_id = db2.id;
+  
+  // Fill K
+  const k = pickBest('K'); if (k) slots.k_card_id = k.id;
+  
+  // Apply tier cap if needed (reuse existing logic)
+  if (tierCap) {
+    const cardMap = {};
+    for (const card of cards) cardMap[card.id] = card;
+    
+    const offenseSlots = ['qb_card_id', 'rb_card_id', 'wr1_card_id', 'wr2_card_id', 'te_card_id', 'ol_card_id'];
+    const defenseSlots = ['dl_card_id', 'lb_card_id', 'db1_card_id', 'db2_card_id'];
+    
+    const getSideSum = (sideSlots) => {
+      let sum = 0;
+      for (const slotId of sideSlots) {
+        const cardId = slots[slotId];
+        if (cardId && cardMap[cardId]) sum += cardMap[cardId].tier;
+      }
+      return sum;
+    };
+    
+    // Simple cap enforcement: if over, swap down
+    while (tierCap.offense && getSideSum(offenseSlots) > tierCap.offense) {
+      let swapped = false;
+      for (const slotId of offenseSlots) {
+        const cardId = slots[slotId];
+        if (!cardId) continue;
+        const current = cardMap[cardId];
+        if (!current) continue;
+        const pos = slotId.replace('_card_id', '').replace(/[12]/, '').toUpperCase();
+        const lower = (byPosition[pos] || []).find(c => c.tier < current.tier && !Object.values(slots).includes(c.id));
+        if (lower) {
+          slots[slotId] = lower.id;
+          swapped = true;
+          break;
+        }
+      }
+      if (!swapped) break;
+    }
+  }
+  
+  return slots;
+}
+
+/**
+ * Auto-fill roster to target a specific defense ratio.
+ * Ratio = DB tier - ((DL tier + LB tier) / 2)
+ * Positive = coverage-heavy, negative = run-stuff-heavy
+ * 
+ * @param {Array} cards - user's cards
+ * @param {number} targetRatio - target defense ratio (-3 to +3)
+ * @param {Object|null} tierCap - { offense: number, defense: number }
+ * @returns {Object} defense slots only
+ */
+function autoFillToDefenseRatio(cards, targetRatio = 0, tierCap = null) {
+  const byPosition = {};
+  for (const card of cards) {
+    const pos = card.position;
+    if (!byPosition[pos]) byPosition[pos] = [];
+    byPosition[pos].push(card);
+  }
+  
+  for (const pos of Object.keys(byPosition)) {
+    byPosition[pos].sort((a, b) => (b.tier || 0) - (a.tier || 0));
+  }
+  
+  const slots = {};
+  const usedIds = new Set();
+  
+  const pickBest = (position) => {
+    const available = (byPosition[position] || []).filter(c => !usedIds.has(c.id));
+    if (available.length === 0) return null;
+    usedIds.add(available[0].id);
+    return available[0];
+  };
+  
+  const pickAtTierRank = (position, rank) => {
+    const available = (byPosition[position] || []).filter(c => !usedIds.has(c.id));
+    if (available.length === 0) return null;
+    const idx = Math.min(rank, available.length - 1);
+    usedIds.add(available[idx].id);
+    return available[idx];
+  };
+  
+  const coverageBias = targetRatio > 0;
+  const runStuffBias = targetRatio < 0;
+  
+  if (coverageBias) {
+    // Prioritize DBs
+    const db1 = pickBest('DB'); if (db1) slots.db1_card_id = db1.id;
+    const db2 = pickBest('DB'); if (db2) slots.db2_card_id = db2.id;
+    // Lower tier for DL/LB
+    const rank = Math.min(Math.floor(targetRatio), 2);
+    const dl = pickAtTierRank('DL', rank); if (dl) slots.dl_card_id = dl.id;
+    const lb = pickAtTierRank('LB', rank); if (lb) slots.lb_card_id = lb.id;
+  } else if (runStuffBias) {
+    // Prioritize DL/LB
+    const dl = pickBest('DL'); if (dl) slots.dl_card_id = dl.id;
+    const lb = pickBest('LB'); if (lb) slots.lb_card_id = lb.id;
+    // Lower tier for DBs
+    const rank = Math.min(Math.floor(-targetRatio), 2);
+    const db1 = pickAtTierRank('DB', rank); if (db1) slots.db1_card_id = db1.id;
+    const db2 = pickAtTierRank('DB', rank); if (db2) slots.db2_card_id = db2.id;
+  } else {
+    // Balanced
+    const dl = pickBest('DL'); if (dl) slots.dl_card_id = dl.id;
+    const lb = pickBest('LB'); if (lb) slots.lb_card_id = lb.id;
+    const db1 = pickBest('DB'); if (db1) slots.db1_card_id = db1.id;
+    const db2 = pickBest('DB'); if (db2) slots.db2_card_id = db2.id;
+  }
+  
+  // Fill any missing
+  if (!slots.dl_card_id) { const c = pickBest('DL'); if (c) slots.dl_card_id = c.id; }
+  if (!slots.lb_card_id) { const c = pickBest('LB'); if (c) slots.lb_card_id = c.id; }
+  if (!slots.db1_card_id) { const c = pickBest('DB'); if (c) slots.db1_card_id = c.id; }
+  if (!slots.db2_card_id) { const c = pickBest('DB'); if (c) slots.db2_card_id = c.id; }
+  
+  return slots;
+}
+
 module.exports = {
   cardToPlayer,
   dbRosterToEngineRoster,
   fillMissingPositions,
   simulateGameFromDB,
   autoFillRoster,
+  autoFillToOffenseRatio,
+  autoFillToDefenseRatio,
   calculateRosterPower,
 };
