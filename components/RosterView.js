@@ -2,7 +2,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import ChalkPlayDiagram from './ChalkPlayDiagram';
 import CardModal from './CardModal';
-import { getRoster, getCards, updateRoster } from '../lib/api';
+import { getRoster, getCards, updateRoster, getRosterStrategy } from '../lib/api';
+import {
+  detectOffensiveStrategy,
+  detectDefensiveStrategy,
+  detectStrategyWithSwap,
+  STRATEGY_LABELS,
+  STRATEGY_COLORS,
+} from '../lib/strategyDetection';
 
 // Tier caps for roster building (separate for offense and defense)
 const OFFENSE_TIER_CAP = 42; // 6 slots: QB, RB, WR1, WR2, TE, OL (avg ~T7)
@@ -62,6 +69,7 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
   const [showCapWarning, setShowCapWarning] = useState(false);
   const [tappedSlot, setTappedSlot] = useState(null); // For the View/Swap popup
   const [viewingCard, setViewingCard] = useState(null); // For full card modal
+  const [detectedStrategy, setDetectedStrategy] = useState(null); // Server-authoritative strategy
 
   useEffect(() => {
     if (!user) return;
@@ -71,12 +79,16 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
 
   const loadData = async () => {
     try {
-      const [rosterData, cardsData] = await Promise.all([
+      const [rosterData, cardsData, strategyData] = await Promise.all([
         getRoster(),
         getCards(),
+        getRosterStrategy().catch(() => null), // Gracefully handle if endpoint not available
       ]);
       setRoster(rosterData);
       setCards(cardsData.cards);
+      if (strategyData) {
+        setDetectedStrategy(strategyData);
+      }
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -138,8 +150,11 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
       const newRoster = await updateRoster({
         [selectedSlot.id]: card ? card.id : null,
       });
-        setRoster(newRoster);
+      setRoster(newRoster);
       setSelectedSlot(null);
+      // Refresh detected strategy from server
+      const strategyData = await getRosterStrategy().catch(() => null);
+      if (strategyData) setDetectedStrategy(strategyData);
     } catch (err) {
       console.error('Failed to update roster:', err);
       alert(err.message);
@@ -190,7 +205,7 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
           <div 
             className="fixed left-4 z-10 px-3 py-1.5 rounded-lg text-sm font-bold"
             style={{ 
-              top: '200px',
+              top: '35px',
               backgroundColor: 'rgba(0,0,0,0.7)',
               border: '1px solid rgba(255,255,255,0.2)',
               fontFamily: "'Rajdhani', sans-serif",
@@ -203,7 +218,7 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
           <div 
             className="fixed right-4 z-10 px-3 py-1.5 rounded-lg text-sm font-bold"
             style={{ 
-              top: '200px',
+              top: '35px',
               backgroundColor: 'rgba(0,0,0,0.7)',
               border: `1px solid ${isOverCap ? 'rgba(239,68,68,0.5)' : 'rgba(34,197,94,0.5)'}`,
               fontFamily: "'Rajdhani', sans-serif",
@@ -213,6 +228,38 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
             <span style={{ color: isOverCap ? '#ef4444' : '#22c55e' }}>{currentSum}</span>
             <span className="text-gray-500">/{currentCap}</span>
           </div>
+          
+          {/* Detected Strategy Display */}
+          {detectedStrategy && (
+            <div 
+              className="fixed left-1/2 -translate-x-1/2 z-10 px-4 py-1.5 rounded-lg text-sm font-bold"
+              style={{ 
+                top: '75px',
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                border: `1px solid ${STRATEGY_COLORS[
+                  diagramSide === 'offense' 
+                    ? detectedStrategy.offensiveStrategy 
+                    : detectedStrategy.defensiveStrategy
+                ] || '#a3a3a3'}40`,
+                fontFamily: "'Rajdhani', sans-serif",
+              }}
+            >
+              <span className="text-gray-400">Strategy: </span>
+              <span style={{ 
+                color: STRATEGY_COLORS[
+                  diagramSide === 'offense' 
+                    ? detectedStrategy.offensiveStrategy 
+                    : detectedStrategy.defensiveStrategy
+                ] || '#a3a3a3' 
+              }}>
+                {STRATEGY_LABELS[
+                  diagramSide === 'offense' 
+                    ? detectedStrategy.offensiveStrategy 
+                    : detectedStrategy.defensiveStrategy
+                ] || 'Unknown'}
+              </span>
+            </div>
+          )}
         </>
       )}
 
@@ -339,6 +386,32 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
               </button>
             </div>
 
+            {/* Current Strategy Indicator */}
+            {detectedStrategy && (
+              <div 
+                className="mb-3 p-2 rounded-lg text-sm"
+                style={{ 
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                  fontFamily: "'Rajdhani', sans-serif",
+                }}
+              >
+                <span className="text-gray-400">Current Strategy: </span>
+                <span style={{ 
+                  color: STRATEGY_COLORS[
+                    OFFENSE_SLOTS.includes(selectedSlot.id) 
+                      ? detectedStrategy.offensiveStrategy 
+                      : detectedStrategy.defensiveStrategy
+                  ] || '#a3a3a3' 
+                }}>
+                  {STRATEGY_LABELS[
+                    OFFENSE_SLOTS.includes(selectedSlot.id) 
+                      ? detectedStrategy.offensiveStrategy 
+                      : detectedStrategy.defensiveStrategy
+                  ] || 'Unknown'}
+                </span>
+              </div>
+            )}
+            
             {/* Clear Slot Option */}
             {roster?.cards?.[selectedSlot.id] && (
               <button
@@ -371,6 +444,18 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
                     const isUsed = usedCardIds.has(card.id) && roster?.cards?.[selectedSlot.id]?.id !== card.id;
                     const isCurrentlySelected = roster?.cards?.[selectedSlot.id]?.id === card.id;
                     const tierColor = card.tier >= 9 ? '#EAB308' : card.tier >= 7 ? '#A855F7' : card.tier >= 5 ? '#3B82F6' : '#6B7280';
+                    
+                    // Calculate strategy preview for this card
+                    const isOffenseSlot = OFFENSE_SLOTS.includes(selectedSlot.id);
+                    const previewCards = { ...(roster?.cards || {}) };
+                    previewCards[selectedSlot.id] = card;
+                    const previewStrategy = isOffenseSlot 
+                      ? detectOffensiveStrategy(previewCards) 
+                      : detectDefensiveStrategy(previewCards);
+                    const currentStrategy = isOffenseSlot 
+                      ? detectedStrategy?.offensiveStrategy 
+                      : detectedStrategy?.defensiveStrategy;
+                    const strategyWillChange = previewStrategy !== currentStrategy && !isCurrentlySelected;
 
                     return (
                       <button
@@ -406,6 +491,15 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
                           <div className="text-xs mt-2" style={{ color: tierColor }}>
                             OVR {Math.round(card.composite_score || 0)}
                           </div>
+                          {/* Strategy change indicator */}
+                          {strategyWillChange && (
+                            <div 
+                              className="text-xs mt-1" 
+                              style={{ color: STRATEGY_COLORS[previewStrategy] || '#a3a3a3' }}
+                            >
+                              → {STRATEGY_LABELS[previewStrategy] || previewStrategy}
+                            </div>
+                          )}
                         </div>
 
                         {/* Selection indicator */}

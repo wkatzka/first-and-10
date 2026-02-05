@@ -211,8 +211,8 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
     if (mode === 'offense') {
       const margin = 0.08;
       const step = (1 - 2 * margin) / 4;
-      // Upside-down U shape: outer cards (WR1, WR2) slightly lower, middle cards higher
-      const yOffsets = [18, 0, -8, 0, 18]; // WR1, TE, OL, RB, WR2 (positive = lower on screen)
+      // Upside-down U shape: outer cards (WR1, WR2) lower, middle cards higher
+      const yOffsets = [28, 6, -8, 6, 28]; // WR1, TE, OL, RB, WR2 (positive = lower on screen)
       const positions = OFFENSE_SLOTS.map((slotId, i) => ({
         slotId,
         x: w * (margin + i * step),
@@ -224,8 +224,8 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
     }
     const marginD = 0.1;
     const stepD = (1 - 2 * marginD) / 3;
-    // Defense: stagger end cards (DB1 and DB2) slightly
-    const yOffsets = [12, 0, 0, 12]; // DB1, DL, LB, DB2 - end cards slightly lower
+    // Defense: stagger end cards (DB1 and DB2) lower to avoid blocking sideline "10"
+    const yOffsets = [22, 0, 0, 22]; // DB1, DL, LB, DB2 - end cards lower
     const positions = DEFENSE_SLOTS.map((slotId, i) => ({
       slotId,
       x: w * (marginD + i * stepD),

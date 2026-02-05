@@ -20,6 +20,12 @@ const pressConference = require('./press-conference');
 const messages = require('./messages');
 const imageRegenQueue = require('./image-regen-queue');
 const { buildEngineForCard } = require('./game-engine/player-traits');
+const {
+  calculateOffensiveRatings,
+  calculateDefensiveRatings,
+  getOffensiveStrategyFromRatings,
+  getDefensiveStrategyFromRatings,
+} = require('./game-engine/simulation/playstyle');
 let packFulfillment;
 try {
   packFulfillment = require('./pack-fulfillment');
@@ -1198,6 +1204,61 @@ app.post('/api/roster/auto-fill', authMiddleware, async (req, res) => {
     await db.updateRoster(req.user.id, slots);
     const fullRoster = await db.getFullRoster(req.user.id);
     res.json(fullRoster);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Detect strategy from current roster
+// Returns the detected offensive and defensive strategies based on roster composition
+app.get('/api/roster/strategy', authMiddleware, async (req, res) => {
+  try {
+    const fullRoster = await db.getFullRoster(req.user.id);
+    const cards = fullRoster?.cards || {};
+    
+    // Build roster object for rating calculation
+    const roster = {
+      QB: cards.qb_card_id || null,
+      RB: cards.rb_card_id || null,
+      WRs: [cards.wr1_card_id, cards.wr2_card_id].filter(Boolean),
+      TE: cards.te_card_id || null,
+      OL: cards.ol_card_id || null,
+      DL: cards.dl_card_id || null,
+      LB: cards.lb_card_id || null,
+      DBs: [cards.db1_card_id, cards.db2_card_id].filter(Boolean),
+      K: cards.k_card_id || null,
+    };
+    
+    // Calculate ratings and derive strategies
+    const offenseRatings = calculateOffensiveRatings(roster);
+    const defenseRatings = calculateDefensiveRatings(roster);
+    
+    const offensiveStrategy = getOffensiveStrategyFromRatings(offenseRatings);
+    const defensiveStrategy = getDefensiveStrategyFromRatings(defenseRatings);
+    
+    // Calculate tier sums for display
+    const tierSums = calculateRosterTierSums(cards);
+    
+    res.json({
+      offensiveStrategy,
+      defensiveStrategy,
+      offenseTierSum: tierSums.offense,
+      defenseTierSum: tierSums.defense,
+      offenseTierCap: OFFENSE_TIER_CAP,
+      defenseTierCap: DEFENSE_TIER_CAP,
+      // Include some detail for debugging/display
+      details: {
+        qbTier: offenseRatings.qbTier,
+        wrAvgTier: offenseRatings.wrAvgTier,
+        rbTier: offenseRatings.rbTier,
+        olTier: offenseRatings.olTier,
+        teAvgTier: offenseRatings.teAvgTier,
+        dlAvgTier: defenseRatings.dlAvgTier,
+        lbAvgTier: defenseRatings.lbAvgTier,
+        dbAvgTier: defenseRatings.dbAvgTier,
+        qbStyle: offenseRatings.style,
+      }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
