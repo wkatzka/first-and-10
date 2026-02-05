@@ -153,7 +153,8 @@ export default function App({ Component, pageProps }) {
       >
         .
       </span>
-      {isLive && useAnimatedBg ? <PlayfieldBackground /> : <StaticFieldBackground />}
+      {/* Always use static background - animated one causes performance issues */}
+      <StaticFieldBackground />
       <Component 
         {...pageProps} 
         user={user} 
