@@ -49,51 +49,29 @@ export default function Team({ user, onLogout, unreadMessages }) {
 
   const activeSegmentStyle = { backgroundColor: `${NAV_CYAN}20`, border: `2px solid ${NAV_CYAN}`, boxShadow: `0 0 12px ${NAV_CYAN}80` };
   const buttonFont = { fontFamily: "'Rajdhani', sans-serif" };
-  const OffenseDefenseSegment = () => (
-    <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
-      <button
-        type="button"
-        onClick={() => setDiagramSide('offense')}
-        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
-          diagramSide === 'offense' ? 'text-white' : 'text-gray-400 hover:text-white'
-        }`}
-        style={diagramSide === 'offense' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}
-      >
-        Offense
-      </button>
-      <button
-        type="button"
-        onClick={() => setDiagramSide('defense')}
-        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
-          diagramSide === 'defense' ? 'text-white' : 'text-gray-400 hover:text-white'
-        }`}
-        style={diagramSide === 'defense' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}
-      >
-        Defense
-      </button>
-    </div>
-  );
 
-  const Bar = ({ className = '' }) => (
-    <div className={`flex gap-2 items-center ${className}`}>
-      <OffenseDefenseSegment />
-      <div className="flex-1 min-w-0">
-        <StrategySlider
-          key={sliderKey}
-          side={diagramSide}
-          detectedStrategy={detectedStrategy}
-          onPresetApplied={handlePresetApplied}
-        />
-      </div>
-    </div>
-  );
+  // Inline the bar content directly instead of creating local component functions.
+  // Local components (const Bar = ...) create a NEW function identity each render,
+  // causing React to unmount + remount StrategySlider, losing all state.
 
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="pb-28 md:pb-0">
         {/* Desktop: bar at top, same row */}
         <div className="hidden md:block max-w-md mb-4 relative z-50">
-          <Bar />
+          <div className="flex gap-2 items-center">
+            <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
+              <button type="button" onClick={() => setDiagramSide('offense')}
+                className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${diagramSide === 'offense' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                style={diagramSide === 'offense' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}>Offense</button>
+              <button type="button" onClick={() => setDiagramSide('defense')}
+                className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${diagramSide === 'defense' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                style={diagramSide === 'defense' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}>Defense</button>
+            </div>
+            <div className="flex-1 min-w-0">
+              <StrategySlider key={`desktop-${sliderKey}`} side={diagramSide} detectedStrategy={detectedStrategy} onPresetApplied={handlePresetApplied} />
+            </div>
+          </div>
         </div>
 
         <RosterView user={user} diagramSide={diagramSide} refreshTrigger={refreshTrigger} />
@@ -102,7 +80,19 @@ export default function Team({ user, onLogout, unreadMessages }) {
       {/* Mobile: bar fixed above bottom nav with clearance so buttons aren't cut off by tiles */}
       <div className="md:hidden fixed left-0 right-0 z-40 px-3 safe-area-pb" style={{ bottom: '7.25rem' }}>
         <div className="mx-auto max-w-7xl">
-          <Bar />
+          <div className="flex gap-2 items-center">
+            <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
+              <button type="button" onClick={() => setDiagramSide('offense')}
+                className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${diagramSide === 'offense' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                style={diagramSide === 'offense' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}>Offense</button>
+              <button type="button" onClick={() => setDiagramSide('defense')}
+                className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${diagramSide === 'defense' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                style={diagramSide === 'defense' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}>Defense</button>
+            </div>
+            <div className="flex-1 min-w-0">
+              <StrategySlider key={`mobile-${sliderKey}`} side={diagramSide} detectedStrategy={detectedStrategy} onPresetApplied={handlePresetApplied} />
+            </div>
+          </div>
         </div>
       </div>
 
