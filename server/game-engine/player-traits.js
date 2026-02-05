@@ -381,6 +381,21 @@ function buildEngineForCard({ player_name, player, season, position, tier, compo
     traits.clutch = clamp100(pctPack.xpMade ?? 50); // XP consistency as clutch proxy
   }
 
+  // ==========================================================================
+  // TIER-BASED TRAIT CEILING
+  // ==========================================================================
+  // Cap traits based on player tier to maintain clear hierarchy:
+  // T11 (HOF) = max 100, T10 = max 95, T9 = max 90, ... T1 = max 50
+  // Formula: maxTrait = 45 + (tier * 5)
+  // No floor - let traits naturally vary based on percentile data
+  const playerTier = tier != null ? Math.max(1, Math.min(11, Number(tier))) : 5;
+  const maxTraitForTier = 45 + (playerTier * 5); // T1=50, T5=70, T8=85, T10=95, T11=100
+  
+  for (const key of Object.keys(traits)) {
+    // Cap trait value at tier-appropriate ceiling (no floor)
+    traits[key] = Math.round(Math.min(maxTraitForTier, traits[key]));
+  }
+
   return {
     engine_v: 1,
     engine_era: era,
