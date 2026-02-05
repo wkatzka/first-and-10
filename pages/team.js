@@ -92,7 +92,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="pb-28 md:pb-0">
         {/* Desktop: bar at top, same row */}
-        <div className="hidden md:block max-w-md mb-4">
+        <div className="hidden md:block max-w-md mb-4 relative z-50">
           <Bar />
         </div>
 
