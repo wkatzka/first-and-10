@@ -33,7 +33,8 @@ export default function StrategySlider({
   const [applying, setApplying] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState(null);
-  const [startPosition, setStartPosition] = useState(null); // track start for tap detection
+  const [startPosition, setStartPosition] = useState(null);
+  const [appliedIndex, setAppliedIndex] = useState(null); // tracks last slider-applied preset
   const sliderRef = useRef(null);
 
   // Load presets when side changes
@@ -45,6 +46,7 @@ export default function StrategySlider({
       .then(data => {
         if (!cancelled && data?.presets) {
           setPresets(data.presets);
+          setAppliedIndex(null); // reset on reload
         }
       })
       .catch(err => {
@@ -56,6 +58,15 @@ export default function StrategySlider({
     
     return () => { cancelled = true; };
   }, [side]);
+
+  // Clear appliedIndex when detectedStrategy changes externally (manual card swap)
+  // We use a ref to avoid clearing during our own apply
+  const isApplyingRef = useRef(false);
+  useEffect(() => {
+    if (!isApplyingRef.current) {
+      setAppliedIndex(null);
+    }
+  }, [detectedStrategy]);
 
   // Strategy zone helpers
   const leftStrategies = side === 'offense' ? ['run_heavy'] : ['run_stuff'];
@@ -99,10 +110,18 @@ export default function StrategySlider({
     return positions;
   }, [presets, getZoneBounds]);
 
-  // Find which preset matches current roster (by comparing ratio)
+  // Find which preset matches current roster
+  // Prefer appliedIndex (set when user clicks a dot) over ratio matching
+  // This avoids ambiguity when multiple presets share the same ratio
   const getCurrentPresetIndex = useCallback(() => {
     if (presets.length === 0) return -1;
     
+    // If we recently applied a preset via the slider, use that index
+    if (appliedIndex != null && appliedIndex >= 0 && appliedIndex < presets.length) {
+      return appliedIndex;
+    }
+    
+    // Fallback: match by ratio (used on initial load / after manual card swap)
     const currentRatio = side === 'offense' 
       ? detectedStrategy?.offenseRatio 
       : detectedStrategy?.defenseRatio;
@@ -119,7 +138,7 @@ export default function StrategySlider({
       }
     }
     return closestIdx;
-  }, [presets, side, detectedStrategy]);
+  }, [presets, side, detectedStrategy, appliedIndex]);
 
   // Find nearest dot by VISUAL POSITION
   const findNearestDotByPosition = useCallback((pct) => {
@@ -151,11 +170,17 @@ export default function StrategySlider({
     if (index === currentIndex) return;
     
     setApplying(true);
+    setAppliedIndex(index); // lock to this dot immediately
+    isApplyingRef.current = true; // prevent useEffect from clearing appliedIndex
     try {
       await applyRosterPreset(side, presets[index].slots);
       onPresetApplied?.();
+      // Small delay to let detectedStrategy update without clearing appliedIndex
+      setTimeout(() => { isApplyingRef.current = false; }, 500);
     } catch (err) {
       console.error('Failed to apply preset:', err);
+      setAppliedIndex(null);
+      isApplyingRef.current = false;
     } finally {
       setApplying(false);
     }
