@@ -264,6 +264,23 @@ export default function StrategySlider({
   const rightLabel = side === 'offense' ? 'Pass' : 'Coverage';
 
   const boundaries = getBoundaryPositions();
+  
+  // Get the current strategy for label highlighting
+  const colors = side === 'offense' ? OFFENSE_COLORS : DEFENSE_COLORS;
+  const currentStrategy = currentPreset?.strategy || (side === 'offense' ? 'balanced' : 'base_defense');
+  
+  // Determine which label should glow based on actual strategy (not position)
+  const leftStrategies = side === 'offense' ? ['run_heavy'] : ['run_stuff'];
+  const centerStrategies = side === 'offense' ? ['balanced'] : ['base_defense'];
+  const rightStrategies = side === 'offense' ? ['pass_heavy'] : ['coverage_shell'];
+  
+  const isLeftActive = leftStrategies.includes(currentStrategy);
+  const isCenterActive = centerStrategies.includes(currentStrategy);
+  const isRightActive = rightStrategies.includes(currentStrategy);
+  
+  const leftColor = side === 'offense' ? OFFENSE_COLORS.run_heavy : DEFENSE_COLORS.run_stuff;
+  const centerColor = side === 'offense' ? OFFENSE_COLORS.balanced : DEFENSE_COLORS.base_defense;
+  const rightColor = side === 'offense' ? OFFENSE_COLORS.pass_heavy : DEFENSE_COLORS.coverage_shell;
 
   if (loading) {
     return (
@@ -298,26 +315,26 @@ export default function StrategySlider({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Labels row */}
+      {/* Labels row - glow based on actual strategy, not position */}
       <div className="flex justify-between px-2 pt-1.5 pb-0.5 relative z-10">
         <span className="text-xs font-semibold" style={{ 
           fontFamily: "'Rajdhani', sans-serif",
-          color: displayPosition < boundaries.first ? '#fff' : '#6b7280',
-          textShadow: displayPosition < boundaries.first ? `0 0 8px ${OFFENSE_COLORS.run_heavy}` : 'none',
+          color: isLeftActive ? '#fff' : '#6b7280',
+          textShadow: isLeftActive ? `0 0 8px ${leftColor}` : 'none',
         }}>
           {leftLabel}
         </span>
         <span className="text-xs font-semibold" style={{ 
           fontFamily: "'Rajdhani', sans-serif",
-          color: displayPosition >= boundaries.first && displayPosition <= boundaries.second ? '#fff' : '#6b7280',
-          textShadow: displayPosition >= boundaries.first && displayPosition <= boundaries.second ? `0 0 8px ${OFFENSE_COLORS.balanced}` : 'none',
+          color: isCenterActive ? '#fff' : '#6b7280',
+          textShadow: isCenterActive ? `0 0 8px ${centerColor}` : 'none',
         }}>
           {centerLabel}
         </span>
         <span className="text-xs font-semibold" style={{ 
           fontFamily: "'Rajdhani', sans-serif",
-          color: displayPosition > boundaries.second ? '#fff' : '#6b7280',
-          textShadow: displayPosition > boundaries.second ? `0 0 8px ${OFFENSE_COLORS.pass_heavy}` : 'none',
+          color: isRightActive ? '#fff' : '#6b7280',
+          textShadow: isRightActive ? `0 0 8px ${rightColor}` : 'none',
         }}>
           {rightLabel}
         </span>
@@ -325,18 +342,18 @@ export default function StrategySlider({
 
       {/* Track with preset dots */}
       <div className="relative h-8 mx-2 mb-1">
-        {/* Gradient track background */}
+        {/* Gradient track background - uses correct colors for offense/defense */}
         <div 
           className="absolute top-1/2 left-0 right-0 h-1.5 rounded-full"
           style={{
             transform: 'translateY(-50%)',
             background: `linear-gradient(to right, 
-              ${OFFENSE_COLORS.run_heavy}40 0%, 
-              ${OFFENSE_COLORS.run_heavy}40 ${boundaries.first}%, 
-              ${OFFENSE_COLORS.balanced}40 ${boundaries.first}%, 
-              ${OFFENSE_COLORS.balanced}40 ${boundaries.second}%, 
-              ${OFFENSE_COLORS.pass_heavy}40 ${boundaries.second}%, 
-              ${OFFENSE_COLORS.pass_heavy}40 100%)`,
+              ${leftColor}40 0%, 
+              ${leftColor}40 ${boundaries.first}%, 
+              ${centerColor}40 ${boundaries.first}%, 
+              ${centerColor}40 ${boundaries.second}%, 
+              ${rightColor}40 ${boundaries.second}%, 
+              ${rightColor}40 100%)`,
           }}
         />
 
@@ -362,11 +379,11 @@ export default function StrategySlider({
           />
         )}
 
-        {/* Preset dots - positioned by actual ratio */}
+        {/* Preset dots - positioned by actual ratio, colored by strategy */}
         {presets.map((preset, i) => {
           const pos = ratioToPosition(preset.ratio);
           const isActive = i === currentIndex && !dragging;
-          const color = getColorForStrategy(preset.strategy);
+          const dotColor = getColorForStrategy(preset.strategy);
           
           return (
             <button
@@ -377,12 +394,14 @@ export default function StrategySlider({
               className="absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-150"
               style={{
                 left: `${pos}%`,
-                width: isActive ? '16px' : '8px',
-                height: isActive ? '16px' : '8px',
+                width: isActive ? '14px' : '8px',
+                height: isActive ? '14px' : '8px',
                 borderRadius: '50%',
-                backgroundColor: isActive ? color : `${color}60`,
-                border: isActive ? `2px solid white` : `1px solid ${color}`,
-                boxShadow: isActive ? `0 0 12px ${color}` : 'none',
+                // Active: full brightness, no border, strong glow
+                // Inactive: dimmer, no border, subtle
+                backgroundColor: isActive ? dotColor : `${dotColor}50`,
+                border: 'none',
+                boxShadow: isActive ? `0 0 12px ${dotColor}, 0 0 20px ${dotColor}80` : 'none',
                 cursor: (disabled || applying) ? 'not-allowed' : 'pointer',
                 zIndex: isActive ? 5 : 2,
               }}
