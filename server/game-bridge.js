@@ -722,6 +722,244 @@ function autoFillToDefenseRatio(cards, targetRatio = 0, tierCap = null) {
   return slots;
 }
 
+/**
+ * Generate all unique roster presets for offense.
+ * Returns distinct configurations sorted by their strategic ratio.
+ * Each preset is the best achievable roster for that point on the spectrum.
+ */
+function generateOffensePresets(cards, tierCap = null) {
+  const byPosition = {};
+  for (const card of cards) {
+    const pos = card.position;
+    if (!byPosition[pos]) byPosition[pos] = [];
+    byPosition[pos].push(card);
+  }
+  
+  // Sort all positions by tier descending
+  for (const pos of Object.keys(byPosition)) {
+    byPosition[pos].sort((a, b) => (b.tier || 0) - (a.tier || 0));
+  }
+  
+  const qbs = byPosition['QB'] || [];
+  const rbs = byPosition['RB'] || [];
+  const wrs = byPosition['WR'] || [];
+  const tes = byPosition['TE'] || [];
+  const ols = byPosition['OL'] || [];
+  
+  // If user lacks cards for any position, return empty
+  if (qbs.length === 0 || rbs.length === 0 || wrs.length < 2 || tes.length === 0 || ols.length === 0) {
+    return [];
+  }
+  
+  const presets = [];
+  const seenConfigs = new Set();
+  
+  // Helper to calculate ratio for a config
+  const calcRatio = (qb, rb, wr1, wr2, te, ol) => {
+    const passTiers = (qb?.tier || 1) + (wr1?.tier || 1) + (wr2?.tier || 1);
+    const runTiers = (rb?.tier || 1) + (ol?.tier || 1);
+    return passTiers / Math.max(runTiers, 1);
+  };
+  
+  // Helper to calculate tier sum
+  const calcTierSum = (qb, rb, wr1, wr2, te, ol) => {
+    return (qb?.tier || 0) + (rb?.tier || 0) + (wr1?.tier || 0) + (wr2?.tier || 0) + (te?.tier || 0) + (ol?.tier || 0);
+  };
+  
+  // Generate configurations by trying different tier combinations
+  // Try top 3 cards from each position to generate diversity
+  const maxDepth = 3;
+  
+  for (let qi = 0; qi < Math.min(maxDepth, qbs.length); qi++) {
+    for (let ri = 0; ri < Math.min(maxDepth, rbs.length); ri++) {
+      for (let wi1 = 0; wi1 < Math.min(maxDepth, wrs.length - 1); wi1++) {
+        for (let wi2 = wi1 + 1; wi2 < Math.min(maxDepth + 1, wrs.length); wi2++) {
+          for (let ti = 0; ti < Math.min(maxDepth, tes.length); ti++) {
+            for (let oi = 0; oi < Math.min(maxDepth, ols.length); oi++) {
+              const qb = qbs[qi];
+              const rb = rbs[ri];
+              const wr1 = wrs[wi1];
+              const wr2 = wrs[wi2];
+              const te = tes[ti];
+              const ol = ols[oi];
+              
+              // Check tier cap
+              const tierSum = calcTierSum(qb, rb, wr1, wr2, te, ol);
+              if (tierCap?.offense && tierSum > tierCap.offense) continue;
+              
+              // Create unique key for this config
+              const configKey = [qb.id, rb.id, wr1.id, wr2.id, te.id, ol.id].sort().join('-');
+              if (seenConfigs.has(configKey)) continue;
+              seenConfigs.add(configKey);
+              
+              const ratio = calcRatio(qb, rb, wr1, wr2, te, ol);
+              
+              presets.push({
+                slots: {
+                  qb_card_id: qb.id,
+                  rb_card_id: rb.id,
+                  wr1_card_id: wr1.id,
+                  wr2_card_id: wr2.id,
+                  te_card_id: te.id,
+                  ol_card_id: ol.id,
+                },
+                ratio,
+                tierSum,
+                cards: { qb, rb, wr1, wr2, te, ol },
+              });
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  // Sort by ratio and dedupe similar ratios (keep best tier sum for each ratio band)
+  presets.sort((a, b) => a.ratio - b.ratio);
+  
+  // Bin presets into ~7 ratio bands and keep best (highest tier sum under cap) for each
+  const numBands = 7;
+  if (presets.length === 0) return [];
+  
+  const minRatio = presets[0].ratio;
+  const maxRatio = presets[presets.length - 1].ratio;
+  const bandSize = (maxRatio - minRatio) / numBands || 0.1;
+  
+  const bands = {};
+  for (const preset of presets) {
+    const band = Math.floor((preset.ratio - minRatio) / bandSize);
+    const key = Math.min(band, numBands - 1);
+    if (!bands[key] || preset.tierSum > bands[key].tierSum) {
+      bands[key] = preset;
+    }
+  }
+  
+  // Get unique presets from bands
+  const result = Object.values(bands);
+  result.sort((a, b) => a.ratio - b.ratio);
+  
+  // Label them
+  return result.map((p, i) => ({
+    ...p,
+    label: i === 0 ? 'Run Heavy' : i === result.length - 1 ? 'Pass Heavy' : 
+           i === Math.floor(result.length / 2) ? 'Balanced' : '',
+    strategy: p.ratio < 0.9 ? 'run_heavy' : p.ratio > 1.3 ? 'pass_heavy' : 'balanced',
+  }));
+}
+
+/**
+ * Generate all unique roster presets for defense.
+ * Returns distinct configurations sorted by their strategic ratio.
+ */
+function generateDefensePresets(cards, tierCap = null) {
+  const byPosition = {};
+  for (const card of cards) {
+    const pos = card.position;
+    if (!byPosition[pos]) byPosition[pos] = [];
+    byPosition[pos].push(card);
+  }
+  
+  // Sort all positions by tier descending
+  for (const pos of Object.keys(byPosition)) {
+    byPosition[pos].sort((a, b) => (b.tier || 0) - (a.tier || 0));
+  }
+  
+  const dls = byPosition['DL'] || [];
+  const lbs = byPosition['LB'] || [];
+  const dbs = byPosition['DB'] || [];
+  
+  // If user lacks cards for any position, return empty
+  if (dls.length === 0 || lbs.length === 0 || dbs.length < 2) {
+    return [];
+  }
+  
+  const presets = [];
+  const seenConfigs = new Set();
+  
+  // Helper to calculate ratio for a config
+  // Positive = coverage-heavy (high DB tiers), Negative = run-stuff (high DL/LB tiers)
+  const calcRatio = (dl, lb, db1, db2) => {
+    const coverageTiers = (db1?.tier || 1) + (db2?.tier || 1);
+    const runStuffTiers = (dl?.tier || 1) + (lb?.tier || 1);
+    return coverageTiers - runStuffTiers;
+  };
+  
+  // Helper to calculate tier sum
+  const calcTierSum = (dl, lb, db1, db2) => {
+    return (dl?.tier || 0) + (lb?.tier || 0) + (db1?.tier || 0) + (db2?.tier || 0);
+  };
+  
+  // Generate configurations by trying different tier combinations
+  const maxDepth = 4;
+  
+  for (let di = 0; di < Math.min(maxDepth, dls.length); di++) {
+    for (let li = 0; li < Math.min(maxDepth, lbs.length); li++) {
+      for (let bi1 = 0; bi1 < Math.min(maxDepth, dbs.length - 1); bi1++) {
+        for (let bi2 = bi1 + 1; bi2 < Math.min(maxDepth + 1, dbs.length); bi2++) {
+          const dl = dls[di];
+          const lb = lbs[li];
+          const db1 = dbs[bi1];
+          const db2 = dbs[bi2];
+          
+          // Check tier cap
+          const tierSum = calcTierSum(dl, lb, db1, db2);
+          if (tierCap?.defense && tierSum > tierCap.defense) continue;
+          
+          // Create unique key for this config
+          const configKey = [dl.id, lb.id, db1.id, db2.id].sort().join('-');
+          if (seenConfigs.has(configKey)) continue;
+          seenConfigs.add(configKey);
+          
+          const ratio = calcRatio(dl, lb, db1, db2);
+          
+          presets.push({
+            slots: {
+              dl_card_id: dl.id,
+              lb_card_id: lb.id,
+              db1_card_id: db1.id,
+              db2_card_id: db2.id,
+            },
+            ratio,
+            tierSum,
+            cards: { dl, lb, db1, db2 },
+          });
+        }
+      }
+    }
+  }
+  
+  // Sort by ratio
+  presets.sort((a, b) => a.ratio - b.ratio);
+  
+  // Bin presets into ~5 ratio bands and keep best for each
+  const numBands = 5;
+  if (presets.length === 0) return [];
+  
+  const minRatio = presets[0].ratio;
+  const maxRatio = presets[presets.length - 1].ratio;
+  const bandSize = (maxRatio - minRatio) / numBands || 0.5;
+  
+  const bands = {};
+  for (const preset of presets) {
+    const band = Math.floor((preset.ratio - minRatio) / bandSize);
+    const key = Math.min(band, numBands - 1);
+    if (!bands[key] || preset.tierSum > bands[key].tierSum) {
+      bands[key] = preset;
+    }
+  }
+  
+  const result = Object.values(bands);
+  result.sort((a, b) => a.ratio - b.ratio);
+  
+  // Label them
+  return result.map((p, i) => ({
+    ...p,
+    label: i === 0 ? 'Run Stuff' : i === result.length - 1 ? 'Coverage' : 
+           i === Math.floor(result.length / 2) ? 'Base' : '',
+    strategy: p.ratio < -2 ? 'run_stuff' : p.ratio > 2 ? 'coverage_shell' : 'base_defense',
+  }));
+}
+
 module.exports = {
   cardToPlayer,
   dbRosterToEngineRoster,
@@ -731,4 +969,6 @@ module.exports = {
   autoFillToOffenseRatio,
   autoFillToDefenseRatio,
   calculateRosterPower,
+  generateOffensePresets,
+  generateDefensePresets,
 };

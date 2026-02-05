@@ -1330,6 +1330,79 @@ app.get('/api/roster/strategy', authMiddleware, async (req, res) => {
   }
 });
 
+// Get all achievable roster presets for slider snapping
+// Returns an array of preset configurations the user can achieve with their cards
+app.get('/api/roster/presets', authMiddleware, async (req, res) => {
+  try {
+    const { side } = req.query; // 'offense' or 'defense'
+    const cards = await db.getUserCards(req.user.id);
+    const tierCap = { offense: OFFENSE_TIER_CAP, defense: DEFENSE_TIER_CAP };
+    
+    if (side === 'defense') {
+      const presets = gameEngine.generateDefensePresets(cards, tierCap);
+      return res.json({ presets, side: 'defense' });
+    }
+    
+    // Default to offense
+    const presets = gameEngine.generateOffensePresets(cards, tierCap);
+    res.json({ presets, side: 'offense' });
+  } catch (err) {
+    console.error('Failed to generate presets:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Apply a specific preset to the roster (for slider snap)
+app.post('/api/roster/apply-preset', authMiddleware, async (req, res) => {
+  try {
+    const { side, slots } = req.body;
+    
+    if (!slots || typeof slots !== 'object') {
+      return res.status(400).json({ error: 'Invalid preset slots' });
+    }
+    
+    // Get current roster to preserve the other side
+    const fullRoster = await db.getFullRoster(req.user.id);
+    const currentCards = fullRoster?.cards || {};
+    
+    // Build merged slots - preserve the side we're not changing
+    const offenseSlots = ['qb_card_id', 'rb_card_id', 'wr1_card_id', 'wr2_card_id', 'te_card_id', 'ol_card_id'];
+    const defenseSlots = ['dl_card_id', 'lb_card_id', 'db1_card_id', 'db2_card_id'];
+    
+    const mergedSlots = {};
+    
+    if (side === 'defense') {
+      // Preserve offense, apply defense preset
+      for (const slot of offenseSlots) {
+        if (currentCards[slot]) mergedSlots[slot] = currentCards[slot].id || currentCards[slot];
+      }
+      for (const slot of defenseSlots) {
+        if (slots[slot]) mergedSlots[slot] = slots[slot];
+      }
+    } else {
+      // Preserve defense, apply offense preset
+      for (const slot of offenseSlots) {
+        if (slots[slot]) mergedSlots[slot] = slots[slot];
+      }
+      for (const slot of defenseSlots) {
+        if (currentCards[slot]) mergedSlots[slot] = currentCards[slot].id || currentCards[slot];
+      }
+    }
+    
+    // Preserve K
+    if (currentCards.k_card_id) {
+      mergedSlots.k_card_id = currentCards.k_card_id.id || currentCards.k_card_id;
+    }
+    
+    await db.updateRosterSlots(req.user.id, mergedSlots);
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to apply preset:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // =============================================================================
 // GAME ROUTES
 // =============================================================================

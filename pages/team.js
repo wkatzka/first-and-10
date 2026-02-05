@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import RosterView from '../components/RosterView';
 import StrategySlider from '../components/StrategySlider';
-import { autoFillRoster, getRosterStrategy } from '../lib/api';
+import { getRosterStrategy } from '../lib/api';
 
 const NAV_CYAN = '#00e5ff';
 
@@ -12,7 +12,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
   const [diagramSide, setDiagramSide] = useState('offense');
   const [detectedStrategy, setDetectedStrategy] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [saving, setSaving] = useState(false);
+  const [sliderKey, setSliderKey] = useState(0);
 
   useEffect(() => {
     if (!user) {
@@ -35,23 +35,15 @@ export default function Team({ user, onLogout, unreadMessages }) {
     if (user) fetchStrategy();
   }, [user, refreshTrigger, fetchStrategy]);
 
-  // Handle strategy slider selection (click) - triggers strategy-based auto-fill
-  const handleStrategySelect = async (value) => {
-    setSaving(true);
-    try {
-      const currentOffense = detectedStrategy?.offensiveStrategy || 'balanced';
-      const currentDefense = detectedStrategy?.defensiveStrategy || 'base_defense';
-      const offense = diagramSide === 'offense' ? value : currentOffense;
-      const defense = diagramSide === 'defense' ? value : currentDefense;
-      await autoFillRoster(offense, defense);
-      setRefreshTrigger((t) => t + 1);
-    } catch (err) {
-      console.error('Auto-fill failed:', err);
-      alert(err.message || 'Failed to auto-fill roster');
-    } finally {
-      setSaving(false);
-    }
-  };
+  // Called when slider applies a preset - refresh roster view and strategy
+  const handlePresetApplied = useCallback(() => {
+    setRefreshTrigger((t) => t + 1);
+  }, []);
+
+  // Reload slider presets when side changes
+  useEffect(() => {
+    setSliderKey(k => k + 1);
+  }, [diagramSide]);
 
   if (!user) return null;
 
@@ -86,10 +78,10 @@ export default function Team({ user, onLogout, unreadMessages }) {
       <OffenseDefenseSegment />
       <div className="flex-1 min-w-0">
         <StrategySlider
+          key={sliderKey}
           side={diagramSide}
           detectedStrategy={detectedStrategy}
-          onStrategySelect={handleStrategySelect}
-          disabled={saving}
+          onPresetApplied={handlePresetApplied}
         />
       </div>
     </div>
