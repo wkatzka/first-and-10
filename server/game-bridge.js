@@ -724,8 +724,8 @@ function autoFillToDefenseRatio(cards, targetRatio = 0, tierCap = null) {
 
 /**
  * Generate all unique roster presets for offense.
- * Returns distinct configurations sorted by their strategic ratio.
- * Each preset is the best achievable roster for that point on the spectrum.
+ * Returns ALL distinct configurations sorted by their strategic ratio.
+ * Each unique card combination is a preset.
  */
 function generateOffensePresets(cards, tierCap = null) {
   const byPosition = {};
@@ -755,6 +755,7 @@ function generateOffensePresets(cards, tierCap = null) {
   const seenConfigs = new Set();
   
   // Helper to calculate ratio for a config
+  // Ratio = (pass tiers: QB + WR1 + WR2) / (run tiers: RB + OL)
   const calcRatio = (qb, rb, wr1, wr2, te, ol) => {
     const passTiers = (qb?.tier || 1) + (wr1?.tier || 1) + (wr2?.tier || 1);
     const runTiers = (rb?.tier || 1) + (ol?.tier || 1);
@@ -766,23 +767,15 @@ function generateOffensePresets(cards, tierCap = null) {
     return (qb?.tier || 0) + (rb?.tier || 0) + (wr1?.tier || 0) + (wr2?.tier || 0) + (te?.tier || 0) + (ol?.tier || 0);
   };
   
-  // Generate configurations by trying different tier combinations
-  // Try top 3 cards from each position to generate diversity
-  const maxDepth = 3;
-  
-  for (let qi = 0; qi < Math.min(maxDepth, qbs.length); qi++) {
-    for (let ri = 0; ri < Math.min(maxDepth, rbs.length); ri++) {
-      for (let wi1 = 0; wi1 < Math.min(maxDepth, wrs.length - 1); wi1++) {
-        for (let wi2 = wi1 + 1; wi2 < Math.min(maxDepth + 1, wrs.length); wi2++) {
-          for (let ti = 0; ti < Math.min(maxDepth, tes.length); ti++) {
-            for (let oi = 0; oi < Math.min(maxDepth, ols.length); oi++) {
-              const qb = qbs[qi];
-              const rb = rbs[ri];
-              const wr1 = wrs[wi1];
-              const wr2 = wrs[wi2];
-              const te = tes[ti];
-              const ol = ols[oi];
-              
+  // Generate ALL valid configurations
+  for (const qb of qbs) {
+    for (const rb of rbs) {
+      for (let wi1 = 0; wi1 < wrs.length - 1; wi1++) {
+        for (let wi2 = wi1 + 1; wi2 < wrs.length; wi2++) {
+          const wr1 = wrs[wi1];
+          const wr2 = wrs[wi2];
+          for (const te of tes) {
+            for (const ol of ols) {
               // Check tier cap
               const tierSum = calcTierSum(qb, rb, wr1, wr2, te, ol);
               if (tierCap?.offense && tierSum > tierCap.offense) continue;
@@ -805,7 +798,6 @@ function generateOffensePresets(cards, tierCap = null) {
                 },
                 ratio,
                 tierSum,
-                cards: { qb, rb, wr1, wr2, te, ol },
               });
             }
           }
@@ -814,42 +806,35 @@ function generateOffensePresets(cards, tierCap = null) {
     }
   }
   
-  // Sort by ratio and dedupe similar ratios (keep best tier sum for each ratio band)
+  // Sort by ratio
   presets.sort((a, b) => a.ratio - b.ratio);
   
-  // Bin presets into ~7 ratio bands and keep best (highest tier sum under cap) for each
-  const numBands = 7;
   if (presets.length === 0) return [];
   
+  // Calculate min/max for relative positioning
   const minRatio = presets[0].ratio;
   const maxRatio = presets[presets.length - 1].ratio;
-  const bandSize = (maxRatio - minRatio) / numBands || 0.1;
   
-  const bands = {};
-  for (const preset of presets) {
-    const band = Math.floor((preset.ratio - minRatio) / bandSize);
-    const key = Math.min(band, numBands - 1);
-    if (!bands[key] || preset.tierSum > bands[key].tierSum) {
-      bands[key] = preset;
-    }
-  }
+  // Strategy thresholds (offense)
+  // run_heavy: ratio < 0.85, balanced: 0.85-1.20, pass_heavy: > 1.20
+  const getStrategy = (ratio) => {
+    if (ratio < 0.85) return 'run_heavy';
+    if (ratio > 1.20) return 'pass_heavy';
+    return 'balanced';
+  };
   
-  // Get unique presets from bands
-  const result = Object.values(bands);
-  result.sort((a, b) => a.ratio - b.ratio);
-  
-  // Label them
-  return result.map((p, i) => ({
+  // Add metadata to each preset
+  return presets.map(p => ({
     ...p,
-    label: i === 0 ? 'Run Heavy' : i === result.length - 1 ? 'Pass Heavy' : 
-           i === Math.floor(result.length / 2) ? 'Balanced' : '',
-    strategy: p.ratio < 0.9 ? 'run_heavy' : p.ratio > 1.3 ? 'pass_heavy' : 'balanced',
+    strategy: getStrategy(p.ratio),
+    minRatio,
+    maxRatio,
   }));
 }
 
 /**
  * Generate all unique roster presets for defense.
- * Returns distinct configurations sorted by their strategic ratio.
+ * Returns ALL distinct configurations sorted by their strategic ratio.
  */
 function generateDefensePresets(cards, tierCap = null) {
   const byPosition = {};
@@ -889,15 +874,11 @@ function generateDefensePresets(cards, tierCap = null) {
     return (dl?.tier || 0) + (lb?.tier || 0) + (db1?.tier || 0) + (db2?.tier || 0);
   };
   
-  // Generate configurations by trying different tier combinations
-  const maxDepth = 4;
-  
-  for (let di = 0; di < Math.min(maxDepth, dls.length); di++) {
-    for (let li = 0; li < Math.min(maxDepth, lbs.length); li++) {
-      for (let bi1 = 0; bi1 < Math.min(maxDepth, dbs.length - 1); bi1++) {
-        for (let bi2 = bi1 + 1; bi2 < Math.min(maxDepth + 1, dbs.length); bi2++) {
-          const dl = dls[di];
-          const lb = lbs[li];
+  // Generate ALL valid configurations
+  for (const dl of dls) {
+    for (const lb of lbs) {
+      for (let bi1 = 0; bi1 < dbs.length - 1; bi1++) {
+        for (let bi2 = bi1 + 1; bi2 < dbs.length; bi2++) {
           const db1 = dbs[bi1];
           const db2 = dbs[bi2];
           
@@ -921,7 +902,6 @@ function generateDefensePresets(cards, tierCap = null) {
             },
             ratio,
             tierSum,
-            cards: { dl, lb, db1, db2 },
           });
         }
       }
@@ -931,32 +911,26 @@ function generateDefensePresets(cards, tierCap = null) {
   // Sort by ratio
   presets.sort((a, b) => a.ratio - b.ratio);
   
-  // Bin presets into ~5 ratio bands and keep best for each
-  const numBands = 5;
   if (presets.length === 0) return [];
   
+  // Calculate min/max for relative positioning
   const minRatio = presets[0].ratio;
   const maxRatio = presets[presets.length - 1].ratio;
-  const bandSize = (maxRatio - minRatio) / numBands || 0.5;
   
-  const bands = {};
-  for (const preset of presets) {
-    const band = Math.floor((preset.ratio - minRatio) / bandSize);
-    const key = Math.min(band, numBands - 1);
-    if (!bands[key] || preset.tierSum > bands[key].tierSum) {
-      bands[key] = preset;
-    }
-  }
+  // Strategy thresholds (defense)
+  // run_stuff: ratio < -2, base_defense: -2 to 2, coverage_shell: > 2
+  const getStrategy = (ratio) => {
+    if (ratio < -2) return 'run_stuff';
+    if (ratio > 2) return 'coverage_shell';
+    return 'base_defense';
+  };
   
-  const result = Object.values(bands);
-  result.sort((a, b) => a.ratio - b.ratio);
-  
-  // Label them
-  return result.map((p, i) => ({
+  // Add metadata to each preset
+  return presets.map(p => ({
     ...p,
-    label: i === 0 ? 'Run Stuff' : i === result.length - 1 ? 'Coverage' : 
-           i === Math.floor(result.length / 2) ? 'Base' : '',
-    strategy: p.ratio < -2 ? 'run_stuff' : p.ratio > 2 ? 'coverage_shell' : 'base_defense',
+    strategy: getStrategy(p.ratio),
+    minRatio,
+    maxRatio,
   }));
 }
 
