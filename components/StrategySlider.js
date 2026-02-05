@@ -45,6 +45,9 @@ export default function StrategySlider({
     getRosterPresets(side)
       .then(data => {
         if (!cancelled && data?.presets) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/04bf6a28-d7a2-43df-a19b-014adbbc98f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StrategySlider.js:presetsLoaded',message:'presets loaded',data:{count:data.presets.length,strategies:data.presets.map(p=>p.strategy),ratios:data.presets.map(p=>p.ratio)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H5'})}).catch(()=>{});
+          // #endregion
           setPresets(data.presets);
           setAppliedIndex(null); // reset on reload
         }
@@ -252,6 +255,9 @@ export default function StrategySlider({
 
   // Mouse events on track
   const handleMouseDown = (e) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/04bf6a28-d7a2-43df-a19b-014adbbc98f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StrategySlider.js:handleMouseDown',message:'mousedown fired',data:{disabled,applying,loading,presetsLen:presets.length,clientX:e.clientX},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H5'})}).catch(()=>{});
+    // #endregion
     e.preventDefault();
     handlePointerDown(e.clientX);
   };
