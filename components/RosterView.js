@@ -204,7 +204,7 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
           <div 
             className="fixed left-4 z-10 px-3 py-1.5 rounded-lg text-sm font-bold"
             style={{ 
-              top: 'calc(env(safe-area-inset-top, 0px) + 4px)',
+              top: 'calc(env(safe-area-inset-top, 0px) - 16px)',
               backgroundColor: 'rgba(0,0,0,0.7)',
               border: '1px solid rgba(255,255,255,0.2)',
               fontFamily: "'Rajdhani', sans-serif",
@@ -217,7 +217,7 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
           <div 
             className="fixed right-4 z-10 px-3 py-1.5 rounded-lg text-sm font-bold"
             style={{ 
-              top: 'calc(env(safe-area-inset-top, 0px) + 4px)',
+              top: 'calc(env(safe-area-inset-top, 0px) - 16px)',
               backgroundColor: 'rgba(0,0,0,0.7)',
               border: `1px solid ${isOverCap ? 'rgba(239,68,68,0.5)' : 'rgba(34,197,94,0.5)'}`,
               fontFamily: "'Rajdhani', sans-serif",
