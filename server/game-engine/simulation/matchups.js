@@ -296,23 +296,23 @@ function calculateRush(rb, lbTier, holeSize) {
   // Base yards
   let yards = outcomes.YARDS_BASE + (diff * outcomes.YARDS_PER_TIER);
   
-  // Hole size modifier
+  // Hole size modifier - REBALANCED: reduced bonuses
   if (holeSize === 'big') {
-    yards += 3 + roll() * 4;
+    yards += 2 + roll() * 3;      // Reduced from 3 + roll()*4
   } else if (holeSize === 'tight') {
-    yards -= 1 + roll() * 2;
+    yards -= 1.5 + roll() * 2.5;  // Increased penalty
   }
   
-  // Broken tackle chance
-  const brokenTackleChance = 0.10 + (rbTier - 5) * 0.03;
+  // Broken tackle chance - REBALANCED: reduced
+  const brokenTackleChance = 0.07 + (rbTier - 5) * 0.02;  // Reduced from 0.10 + 0.03
   const brokenTackle = roll() < brokenTackleChance;
   
   if (brokenTackle) {
-    yards += 3 + roll() * 6;
+    yards += 2 + roll() * 4;      // Reduced from 3 + roll()*6
   }
   
-  // Breakaway chance (big run)
-  if (roll() < outcomes.BREAKAWAY_CHANCE + (rbTier - 5) * 0.01) {
+  // Breakaway chance (big run) - REBALANCED
+  if (roll() < outcomes.BREAKAWAY_CHANCE + (rbTier - 5) * 0.008) {
     yards = outcomes.BREAKAWAY_YARDS.min + roll() * (outcomes.BREAKAWAY_YARDS.max - outcomes.BREAKAWAY_YARDS.min);
   }
   

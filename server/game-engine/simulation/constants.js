@@ -141,48 +141,50 @@ const POSITION_WEIGHTS = {
 const PLAY_OUTCOMES = {
   PASS: {
     // Sack chances based on OL vs DL matchup differential
-    SACK_BASE: 0.07,              // 7% base sack rate
-    SACK_PER_DIFF: 0.03,          // +3% per tier difference (DL winning)
+    // REBALANCED: Reduced sack rate to make passing more viable
+    SACK_BASE: 0.055,             // 5.5% base sack rate (was 7%)
+    SACK_PER_DIFF: 0.025,         // +2.5% per tier difference (was 3%)
     
     // Pressure (affects accuracy)
-    PRESSURE_BASE: 0.25,
-    PRESSURE_PER_DIFF: 0.05,
-    PRESSURE_ACCURACY_PENALTY: 0.15,
+    PRESSURE_BASE: 0.22,          // Reduced from 0.25
+    PRESSURE_PER_DIFF: 0.04,      // Reduced from 0.05
+    PRESSURE_ACCURACY_PENALTY: 0.12, // Reduced from 0.15
     
     // Completion chances
-    COMPLETION_BASE: 0.62,        // League average
+    COMPLETION_BASE: 0.65,        // Increased from 0.62 (modern NFL avg ~65%)
     COMPLETION_PER_TIER: 0.04,    // Per tier advantage (WR vs DB)
     
     // Interception
-    INT_BASE: 0.025,              // 2.5% base
-    INT_PRESSURE_BONUS: 0.02,     // +2% when pressured
-    INT_COVERAGE_BONUS: 0.015,    // Per tier DB > WR
+    INT_BASE: 0.020,              // Reduced from 2.5% (NFL avg ~2.1%)
+    INT_PRESSURE_BONUS: 0.015,    // Reduced from 2%
+    INT_COVERAGE_BONUS: 0.012,    // Per tier DB > WR
     
     // Yards
-    SHORT_YARDS: { min: 2, max: 8 },
-    MEDIUM_YARDS: { min: 8, max: 18 },
-    DEEP_YARDS: { min: 18, max: 45 },
-    YAC_BASE: 3,
-    YAC_PER_TIER: 1.5,
+    SHORT_YARDS: { min: 3, max: 9 },   // Slightly better (was 2-8)
+    MEDIUM_YARDS: { min: 9, max: 20 }, // Slightly better (was 8-18)
+    DEEP_YARDS: { min: 20, max: 50 },  // Slightly better (was 18-45)
+    YAC_BASE: 4,                       // Increased from 3
+    YAC_PER_TIER: 1.8,                 // Increased from 1.5
   },
   
   RUN: {
     // Tackle for loss
-    TFL_BASE: 0.08,
-    TFL_PER_DIFF: 0.04,           // Per tier DL/LB > OL
+    // REBALANCED: Increased negative play chances
+    TFL_BASE: 0.10,               // Increased from 0.08
+    TFL_PER_DIFF: 0.05,           // Increased from 0.04
     
-    // Base yards
-    YARDS_BASE: 3.5,
-    YARDS_PER_TIER: 0.8,          // Per tier RB advantage
-    YARDS_OL_FACTOR: 0.6,         // Per tier OL advantage
+    // Base yards - REDUCED to balance with passing
+    YARDS_BASE: 3.0,              // Reduced from 3.5 (NFL avg ~4.3 but with more failure)
+    YARDS_PER_TIER: 0.6,          // Reduced from 0.8
+    YARDS_OL_FACTOR: 0.5,         // Reduced from 0.6
     
-    // Breakaway (big run)
-    BREAKAWAY_CHANCE: 0.05,
-    BREAKAWAY_YARDS: { min: 15, max: 50 },
+    // Breakaway (big run) - REDUCED
+    BREAKAWAY_CHANCE: 0.03,       // Reduced from 0.05
+    BREAKAWAY_YARDS: { min: 12, max: 40 }, // Reduced from 15-50
     
     // Fumble
-    FUMBLE_BASE: 0.015,
-    FUMBLE_HIT_BONUS: 0.01,       // When defense wins matchup badly
+    FUMBLE_BASE: 0.018,           // Slightly increased from 0.015
+    FUMBLE_HIT_BONUS: 0.012,      // When defense wins matchup badly
   },
   
   SPECIAL_TEAMS: {
@@ -322,45 +324,52 @@ const STRATEGY_MATCHUP_MODIFIERS = {
 // - captured: their defense beats your offense type (or their offense beats your defense)
 // - neutral: no rock-paper-scissors edge either way
 
-const STRATEGY_BOOST_AMOUNT = 0.007; // 0.7% tier multiplier (tuned for ~10 pp swing on double advantage)
+const STRATEGY_BOOST_AMOUNT = 0.010; // 1.0% tier multiplier (increased for more meaningful strategy impact)
+
+// =============================================================================
+// INTUITIVE FOOTBALL STRATEGY MATCHUPS
+// =============================================================================
+// Pass offense beats Run defense (they're not covering receivers)
+// Run offense beats Pass defense (coverage can't stop the run)
+// Balanced is always NEUTRAL - safe but no upside
+//
+// This creates a clear risk/reward: specialize to exploit mismatches, or play balanced for safety.
 
 // Offensive strategy vs opponent's defensive strategy
-// Returns which positions on OFFENSE get boosted/nerfed
 const OFFENSE_STRATEGY_BOOSTS = {
   pass_heavy: {
-    base_defense:    'advantage',   // base loses to pass_heavy
-    coverage_shell:  'captured',    // coverage beats pass_heavy
-    run_stuff:       'neutral',
+    run_stuff:       'advantage',   // PASS beats RUN D (not covering)
+    coverage_shell:  'captured',    // PASS D beats PASS O
+    base_defense:    'neutral',     // Balanced D = neutral
   },
   balanced: {
-    run_stuff:       'advantage',   // run_stuff loses to balanced
-    base_defense:    'captured',    // base beats balanced
-    coverage_shell:  'neutral',
+    coverage_shell:  'neutral',     // Balanced is always neutral
+    run_stuff:       'neutral',
+    base_defense:    'neutral',
   },
   run_dominant: {
-    coverage_shell:  'advantage',   // coverage loses to run
-    run_stuff:       'captured',    // run_stuff beats run
-    base_defense:    'neutral',
+    coverage_shell:  'advantage',   // RUN beats PASS D (can't stop the run)
+    run_stuff:       'captured',    // RUN D beats RUN O
+    base_defense:    'neutral',     // Balanced D = neutral
   },
 };
 
 // Defensive strategy vs opponent's offensive strategy
-// Returns which positions on DEFENSE get boosted/nerfed
 const DEFENSE_STRATEGY_BOOSTS = {
-  coverage_shell: {
-    pass_heavy:   'advantage',      // coverage beats pass
-    run_dominant: 'captured',       // run beats coverage
+  coverage_shell: {                 // Pass Defense
+    pass_heavy:   'advantage',      // Beats pass offense
+    run_dominant: 'captured',       // Loses to run offense
     balanced:     'neutral',
   },
-  run_stuff: {
-    run_dominant: 'advantage',      // run_stuff beats run
-    balanced:     'captured',       // balanced beats run_stuff
-    pass_heavy:   'neutral',
+  run_stuff: {                      // Run Defense
+    run_dominant: 'advantage',      // Beats run offense
+    pass_heavy:   'captured',       // Loses to pass offense
+    balanced:     'neutral',
   },
-  base_defense: {
-    balanced:     'advantage',      // base beats balanced
-    pass_heavy:   'captured',       // pass beats base
+  base_defense: {                   // Balanced Defense
+    pass_heavy:   'neutral',        // Neutral vs everything
     run_dominant: 'neutral',
+    balanced:     'neutral',
   },
 };
 

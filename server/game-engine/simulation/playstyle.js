@@ -31,6 +31,11 @@ function classifyQBPlaystyle(qb) {
   const rushYdsPerGame = qb.rush_yds_pg || 0;
   const passingYards = qb.yds_pg || qb.passing_yds_pg || 0;
   
+  // If no meaningful stats, default to BALANCED (don't use GAME_MANAGER which has biased weights)
+  if (attPerGame < 5 && rushYdsPerGame < 5) {
+    return 'BALANCED';
+  }
+  
   // Calculate ratios
   const totalAttempts = attPerGame + rushAttPerGame;
   const passRatio = totalAttempts > 0 ? attPerGame / totalAttempts : 0.9;
@@ -45,8 +50,8 @@ function classifyQBPlaystyle(qb) {
     return 'PASS_HEAVY';
   }
   
-  // Game manager: low volume but efficient
-  if (attPerGame < 25 && passRatio > 0.85) {
+  // Game manager: low volume but efficient (must have SOME attempts to qualify)
+  if (attPerGame >= 15 && attPerGame < 25 && passRatio > 0.85) {
     return 'GAME_MANAGER';
   }
   
@@ -429,9 +434,21 @@ function getPassTendency(offenseRatings, opponentDefense, strategyContext = null
 // and per-play yardage multipliers on top of those base outcomes.
 function getOffensiveStrategyFromRatings(offenseRatings) {
   if (!offenseRatings) return 'balanced';
-  const { style, passRating, runRating } = offenseRatings;
-  if (style === 'PASS_HEAVY' || (passRating >= runRating + 1.5)) return 'pass_heavy';
-  if (style === 'DUAL_THREAT' || (runRating >= passRating + 1.5)) return 'run_dominant';
+  const { style, qbTier, wrAvgTier, rbTier, olTier } = offenseRatings;
+  
+  // PRIMARY: Use TIER distribution for strategy detection (more reliable than ratings)
+  // This prevents synergy bonuses and config weights from falsely biasing detection
+  const passTierSum = (qbTier || 5) + (wrAvgTier || 5);
+  const runTierSum = (rbTier || 5) + (olTier || 5);
+  const tierRatio = passTierSum / Math.max(1, runTierSum);
+  
+  // SECONDARY: Consider QB playstyle for extreme cases
+  // Pass-heavy: QB playstyle is PASS_HEAVY OR passing tiers significantly exceed rushing tiers
+  if (style === 'PASS_HEAVY' || tierRatio > 1.20) return 'pass_heavy';
+  
+  // Run-dominant: QB playstyle is DUAL_THREAT OR rushing tiers significantly exceed passing tiers
+  if (style === 'DUAL_THREAT' || tierRatio < 0.85) return 'run_dominant';
+  
   return 'balanced';
 }
 
