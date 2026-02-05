@@ -104,6 +104,12 @@ function runMigrations(db) {
     if (traitsChanged) changed = true;
   }
 
+  // Migration v2: Regenerate traits with Option C tier caps (T11=100, T10=90, etc.)
+  if (!db.migrations.card_traits_v2) {
+    const traitsChanged = regenerateCardTraitsV2(db);
+    if (traitsChanged) changed = true;
+  }
+
   // Migration: ensure season stat lines exist for every card (idempotent)
   if (!db.migrations.card_stats_v1) {
     const statsChanged = backfillCardStatsV1(db);
@@ -166,6 +172,52 @@ function backfillCardTraitsV1(db) {
   db.migrations.card_traits_v1 = true;
   console.log(`Traits migration: updated ${updated} cards (skipped ${skipped})`);
   return updated > 0 || true;
+}
+
+function regenerateCardTraitsV2(db) {
+  // This migration regenerates ALL card traits with the new Option C tier caps:
+  // T11=100, T10=90, T9=80, T8=70, T7=60, T6=55, T5=50, T4=45, T3=40, T2=35, T1=30
+  if (db.migrations?.card_traits_v2) return false;
+  if (!Array.isArray(db.cards) || db.cards.length === 0) {
+    db.migrations.card_traits_v2 = true;
+    return true;
+  }
+
+  let { buildEngineForCard } = { buildEngineForCard: null };
+  try {
+    ({ buildEngineForCard } = require('./game-engine/player-traits'));
+  } catch (e) {
+    console.error('Traits v2 migration: failed to load trait engine:', e?.message || e);
+    return false;
+  }
+
+  let updated = 0;
+
+  for (const card of db.cards) {
+    // Force regenerate all cards to apply new Option C caps
+    const engine = buildEngineForCard({
+      player_name: card.player_name,
+      season: card.season,
+      position: card.position,
+      tier: card.tier,
+      composite_score: card.composite_score,
+    });
+
+    if (!engine) {
+      continue;
+    }
+
+    card.engine_v = 2; // Mark as v2
+    card.engine_era = engine.engine_era;
+    card.engine_percentiles = engine.engine_percentiles;
+    card.engine_traits = engine.engine_traits;
+    card.engine_inferred = engine.engine_inferred;
+    updated++;
+  }
+
+  db.migrations.card_traits_v2 = true;
+  console.log(`Traits v2 migration (Option C caps): updated ${updated} cards`);
+  return true;
 }
 
 function backfillCardStatsV1(db) {
