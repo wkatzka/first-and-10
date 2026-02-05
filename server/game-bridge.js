@@ -811,9 +811,25 @@ function generateOffensePresets(cards, tierCap = null) {
   
   if (presets.length === 0) return [];
   
+  // OPTIMIZATION: For similar ratios, only keep the roster with highest tier sum
+  // Group by ratio rounded to 2 decimal places, keep best tier sum in each group
+  const ratioGroups = {};
+  for (const preset of presets) {
+    const key = preset.ratio.toFixed(2);
+    if (!ratioGroups[key] || preset.tierSum > ratioGroups[key].tierSum) {
+      ratioGroups[key] = preset;
+    }
+  }
+  
+  // Get optimized presets
+  const optimized = Object.values(ratioGroups);
+  optimized.sort((a, b) => a.ratio - b.ratio);
+  
+  if (optimized.length === 0) return [];
+  
   // Calculate min/max for relative positioning
-  const minRatio = presets[0].ratio;
-  const maxRatio = presets[presets.length - 1].ratio;
+  const minRatio = optimized[0].ratio;
+  const maxRatio = optimized[optimized.length - 1].ratio;
   
   // Strategy thresholds (offense)
   // run_heavy: ratio < 0.85, balanced: 0.85-1.20, pass_heavy: > 1.20
@@ -824,7 +840,7 @@ function generateOffensePresets(cards, tierCap = null) {
   };
   
   // Add metadata to each preset
-  return presets.map(p => ({
+  return optimized.map(p => ({
     ...p,
     strategy: getStrategy(p.ratio),
     minRatio,
@@ -913,9 +929,25 @@ function generateDefensePresets(cards, tierCap = null) {
   
   if (presets.length === 0) return [];
   
+  // OPTIMIZATION: For similar ratios, only keep the roster with highest tier sum
+  // Group by ratio (integers for defense since range is larger), keep best tier sum
+  const ratioGroups = {};
+  for (const preset of presets) {
+    const key = Math.round(preset.ratio); // Round to integer for defense
+    if (!ratioGroups[key] || preset.tierSum > ratioGroups[key].tierSum) {
+      ratioGroups[key] = preset;
+    }
+  }
+  
+  // Get optimized presets
+  const optimized = Object.values(ratioGroups);
+  optimized.sort((a, b) => a.ratio - b.ratio);
+  
+  if (optimized.length === 0) return [];
+  
   // Calculate min/max for relative positioning
-  const minRatio = presets[0].ratio;
-  const maxRatio = presets[presets.length - 1].ratio;
+  const minRatio = optimized[0].ratio;
+  const maxRatio = optimized[optimized.length - 1].ratio;
   
   // Strategy thresholds (defense)
   // run_stuff: ratio < -2, base_defense: -2 to 2, coverage_shell: > 2
@@ -926,7 +958,7 @@ function generateDefensePresets(cards, tierCap = null) {
   };
   
   // Add metadata to each preset
-  return presets.map(p => ({
+  return optimized.map(p => ({
     ...p,
     strategy: getStrategy(p.ratio),
     minRatio,
