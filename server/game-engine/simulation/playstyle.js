@@ -209,7 +209,10 @@ function calculateOffensiveRatings(roster, ratingMults = null) {
   
   // Keep tier values for synergy checks (use base tiers, not boosted)
   const qbTier = qb.tier || 5;
-  const wrAvgTier = avgTier(roster.WRs || []);
+  const wrs = roster.WRs || [];
+  const wr1Tier = wrs[0]?.tier || 5;
+  const wr2Tier = wrs[1]?.tier || 5;
+  const wrAvgTier = avgTier(wrs);
   const rbTier = roster.RB?.tier || avgTier(roster.RBs || []) || 5;
   const teAvgTier = roster.TE?.tier || 5;
   const olTier = roster.OL?.tier || avgTier(roster.OLs || []) || 5;
@@ -247,6 +250,8 @@ function calculateOffensiveRatings(roster, ratingMults = null) {
     runRating: Math.max(1, Math.min(13, runRating)),
     protectionRating,
     qbTier,
+    wr1Tier,
+    wr2Tier,
     wrAvgTier,
     rbTier,
     teAvgTier,
@@ -434,20 +439,26 @@ function getPassTendency(offenseRatings, opponentDefense, strategyContext = null
 // and per-play yardage multipliers on top of those base outcomes.
 function getOffensiveStrategyFromRatings(offenseRatings) {
   if (!offenseRatings) return 'balanced';
-  const { style, qbTier, wrAvgTier, rbTier, olTier } = offenseRatings;
+  const { style, qbTier, wrAvgTier, rbTier, olTier, wr1Tier, wr2Tier } = offenseRatings;
   
   // PRIMARY: Use TIER distribution for strategy detection (more reliable than ratings)
   // This prevents synergy bonuses and config weights from falsely biasing detection
-  const passTierSum = (qbTier || 5) + (wrAvgTier || 5);
+  // Use sum of all 3 pass positions (QB + WR1 + WR2) vs 2 run positions (RB + OL)
+  // Natural "even" ratio is 1.5 (e.g., 15/10 with all T5)
+  // If individual WR tiers available, use them; otherwise double the average
+  const wrTierSum = (wr1Tier !== undefined && wr2Tier !== undefined) 
+    ? (wr1Tier + wr2Tier) 
+    : ((wrAvgTier || 5) * 2);
+  const passTierSum = (qbTier || 5) + wrTierSum;
   const runTierSum = (rbTier || 5) + (olTier || 5);
   const tierRatio = passTierSum / Math.max(1, runTierSum);
   
-  // SECONDARY: Consider QB playstyle for extreme cases
-  // Pass-heavy: QB playstyle is PASS_HEAVY OR passing tiers significantly exceed rushing tiers
-  if (style === 'PASS_HEAVY' || tierRatio > 1.20) return 'pass_heavy';
+  // Thresholds centered on 1.5 (natural ratio with equal tiers)
+  // Pass-heavy: passing tiers significantly exceed rushing tiers (ratio > 1.8)
+  if (style === 'PASS_HEAVY' || tierRatio > 1.80) return 'pass_heavy';
   
-  // Run-heavy: QB playstyle is DUAL_THREAT OR rushing tiers significantly exceed passing tiers
-  if (style === 'DUAL_THREAT' || tierRatio < 0.85) return 'run_heavy';
+  // Run-heavy: rushing tiers significantly exceed passing tiers (ratio < 1.2)
+  if (style === 'DUAL_THREAT' || tierRatio < 1.20) return 'run_heavy';
   
   return 'balanced';
 }

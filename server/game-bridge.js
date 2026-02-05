@@ -851,10 +851,12 @@ function generateOffensePresets(cards, tierCap = null) {
   if (optimized.length === 0) return [];
   
   // Strategy thresholds (offense)
-  // run_heavy: ratio < 0.85, balanced: 0.85-1.20, pass_heavy: > 1.20
+  // Ratio = (QB + WR1 + WR2) / (RB + OL) = 3 positions / 2 positions
+  // Natural "even" ratio with equal tiers is 1.5 (e.g., 15/10 with all T5)
+  // run_heavy: ratio < 1.2 (run positions stronger), balanced: 1.2-1.8, pass_heavy: > 1.8
   const getStrategy = (ratio) => {
-    if (ratio < 0.85) return 'run_heavy';
-    if (ratio > 1.20) return 'pass_heavy';
+    if (ratio < 1.20) return 'run_heavy';
+    if (ratio > 1.80) return 'pass_heavy';
     return 'balanced';
   };
   

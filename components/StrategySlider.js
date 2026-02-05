@@ -20,9 +20,10 @@ const DEFENSE_COLORS = {
 };
 
 // Strategy thresholds for offense (ratio = pass tiers / run tiers)
+// Natural "even" ratio is 1.5 (3 pass positions / 2 run positions)
 const OFFENSE_THRESHOLDS = {
-  runToBalanced: 0.85,  // Below this = run_heavy
-  balancedToPass: 1.20, // Above this = pass_heavy
+  runToBalanced: 1.20,  // Below this = run_heavy
+  balancedToPass: 1.80, // Above this = pass_heavy
 };
 
 // Strategy thresholds for defense (ratio = coverage tiers - run stuff tiers)
