@@ -382,14 +382,26 @@ function buildEngineForCard({ player_name, player, season, position, tier, compo
   }
 
   // ==========================================================================
-  // TIER-BASED TRAIT CEILING
+  // TIER-BASED TRAIT CEILING (Option C)
   // ==========================================================================
-  // Cap traits based on player tier to maintain clear hierarchy:
-  // T11 (HOF) = max 100, T10 = max 95, T9 = max 90, ... T1 = max 50
-  // Formula: maxTrait = 45 + (tier * 5)
+  // Cap traits based on player tier to maintain clear visual hierarchy:
+  // Higher tiers (7-11): 10-point gaps for clear elite differentiation
+  // Lower tiers (1-6): 5-point gaps
+  //
+  // T11 (HOF) = 100, T10 = 90, T9 = 80, T8 = 70, T7 = 60
+  // T6 = 55, T5 = 50, T4 = 45, T3 = 40, T2 = 35, T1 = 30
+  //
   // No floor - let traits naturally vary based on percentile data
   const playerTier = tier != null ? Math.max(1, Math.min(11, Number(tier))) : 5;
-  const maxTraitForTier = 45 + (playerTier * 5); // T1=50, T5=70, T8=85, T10=95, T11=100
+  
+  let maxTraitForTier;
+  if (playerTier >= 7) {
+    // T7=60, T8=70, T9=80, T10=90, T11=100
+    maxTraitForTier = 60 + (playerTier - 7) * 10;
+  } else {
+    // T1=30, T2=35, T3=40, T4=45, T5=50, T6=55
+    maxTraitForTier = 30 + (playerTier - 1) * 5;
+  }
   
   for (const key of Object.keys(traits)) {
     // Cap trait value at tier-appropriate ceiling (no floor)
