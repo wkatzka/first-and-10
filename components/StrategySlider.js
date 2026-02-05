@@ -2,6 +2,7 @@
  * StrategySlider - Unified strategy control with continuous positioning
  * User can drag to live-swap cards OR click segments for strategy-based auto-fill
  * Shows exact position within segments based on tier ratios
+ * Glow effect crossfades between segments as position changes
  */
 import { useState, useRef, useCallback, useEffect } from 'react';
 
@@ -57,11 +58,23 @@ function getIndicatorColor(position, segments) {
   return segments[1].color;
 }
 
+// Calculate glow intensity for each segment based on position (0-1)
+function getSegmentGlow(position, segmentIndex) {
+  // Segment centers: 0=16.67%, 1=50%, 2=83.33%
+  const segmentCenters = [16.67, 50, 83.33];
+  const center = segmentCenters[segmentIndex];
+  const distance = Math.abs(position - center);
+  // Full glow within 16.67% of center, fade to 0 at 33%
+  if (distance <= 16.67) return 1;
+  if (distance >= 33.33) return 0;
+  return 1 - ((distance - 16.67) / 16.67);
+}
+
 export default function StrategySlider({ 
   side = 'offense', 
   detectedStrategy, 
   onStrategySelect,
-  onRatioChange, // New: called during drag with target ratio
+  onRatioChange,
   disabled = false,
 }) {
   const segments = side === 'offense' ? OFFENSE_SEGMENTS : DEFENSE_SEGMENTS;
@@ -69,6 +82,8 @@ export default function StrategySlider({
   const [dragPosition, setDragPosition] = useState(null);
   const sliderRef = useRef(null);
   const lastCallTime = useRef(0);
+  const dragStartPos = useRef(null);
+  const hasDragged = useRef(false);
 
   // Calculate continuous position from ratio
   const ratio = side === 'offense' 
@@ -81,7 +96,6 @@ export default function StrategySlider({
   
   // Use drag position while dragging, otherwise actual position
   const displayPosition = dragging && dragPosition != null ? dragPosition : actualPosition;
-  const activeSegmentIndex = displayPosition < 33.33 ? 0 : displayPosition > 66.67 ? 2 : 1;
   const indicatorColor = getIndicatorColor(displayPosition, segments);
 
   // Convert position to ratio and call the ratio change handler (throttled)
@@ -93,9 +107,14 @@ export default function StrategySlider({
     const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
     setDragPosition(pct);
     
-    // Throttle API calls to every 250ms
+    // Check if we've moved enough to consider it a drag (5px threshold)
+    if (dragStartPos.current != null && Math.abs(clientX - dragStartPos.current) > 5) {
+      hasDragged.current = true;
+    }
+    
+    // Throttle API calls to every 100ms for responsiveness
     const now = Date.now();
-    if (now - lastCallTime.current >= 250 && onRatioChange) {
+    if (now - lastCallTime.current >= 100 && onRatioChange && hasDragged.current) {
       lastCallTime.current = now;
       const targetRatio = side === 'offense' 
         ? positionToOffenseRatio(pct)
@@ -105,7 +124,7 @@ export default function StrategySlider({
   }, [side, disabled, onRatioChange]);
 
   const handleDragEnd = useCallback(() => {
-    if (dragPosition != null && onRatioChange) {
+    if (hasDragged.current && dragPosition != null && onRatioChange) {
       // Final call with exact position
       const targetRatio = side === 'offense' 
         ? positionToOffenseRatio(dragPosition)
@@ -114,12 +133,17 @@ export default function StrategySlider({
     }
     setDragging(false);
     setDragPosition(null);
+    dragStartPos.current = null;
+    hasDragged.current = false;
   }, [dragPosition, side, onRatioChange]);
 
-  // Mouse events
-  const handleMouseDown = (e) => {
+  // Mouse events on the track area (not buttons)
+  const handleTrackMouseDown = (e) => {
     if (disabled) return;
     e.preventDefault();
+    e.stopPropagation();
+    dragStartPos.current = e.clientX;
+    hasDragged.current = false;
     setDragging(true);
     handleDragMove(e.clientX);
   };
@@ -142,12 +166,15 @@ export default function StrategySlider({
   // Touch events
   const handleTouchStart = (e) => {
     if (disabled) return;
+    dragStartPos.current = e.touches[0].clientX;
+    hasDragged.current = false;
     setDragging(true);
     handleDragMove(e.touches[0].clientX);
   };
 
   const handleTouchMove = (e) => {
     if (!dragging) return;
+    e.preventDefault();
     handleDragMove(e.touches[0].clientX);
   };
 
@@ -155,15 +182,17 @@ export default function StrategySlider({
     handleDragEnd();
   };
 
-  // Click on segment still triggers strategy-based auto-fill
-  const handleSegmentClick = (segment) => {
-    if (disabled || dragging) return;
+  // Click on segment triggers strategy-based auto-fill
+  const handleSegmentClick = (e, segment) => {
+    e.stopPropagation();
+    if (disabled) return;
     onStrategySelect?.(segment.value);
   };
 
   const getSegmentStyle = (index) => {
-    const isActive = index === activeSegmentIndex;
     const segment = segments[index];
+    const glowIntensity = getSegmentGlow(displayPosition, index);
+    const isActive = glowIntensity > 0.5;
     
     return {
       flex: 1,
@@ -171,14 +200,16 @@ export default function StrategySlider({
       fontSize: '12px',
       fontWeight: isActive ? '700' : '500',
       fontFamily: "'Rajdhani', sans-serif",
-      color: isActive ? '#fff' : '#9ca3af',
-      backgroundColor: 'transparent',
-      transition: dragging ? 'none' : 'all 0.2s ease',
-      cursor: disabled ? 'not-allowed' : 'grab',
+      color: glowIntensity > 0.3 ? '#fff' : '#9ca3af',
+      backgroundColor: `${segment.color}${Math.round(glowIntensity * 25).toString(16).padStart(2, '0')}`,
+      textShadow: glowIntensity > 0.3 ? `0 0 ${8 * glowIntensity}px ${segment.color}` : 'none',
+      transition: 'all 0.15s ease',
+      cursor: disabled ? 'not-allowed' : 'pointer',
       opacity: disabled ? 0.5 : 1,
       textAlign: 'center',
       whiteSpace: 'nowrap',
-      borderBottom: '2px solid transparent',
+      border: 'none',
+      outline: 'none',
       userSelect: 'none',
     };
   };
@@ -186,23 +217,29 @@ export default function StrategySlider({
   return (
     <div 
       ref={sliderRef}
-      className="relative rounded-lg overflow-hidden touch-none"
+      className="relative rounded-lg overflow-hidden"
       style={{
         backgroundColor: 'rgba(0,0,0,0.5)',
         border: '1px solid rgba(255,255,255,0.1)',
-        cursor: dragging ? 'grabbing' : 'grab',
       }}
-      onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Segment labels (clickable for strategy fill) */}
-      <div className="flex" style={{ pointerEvents: dragging ? 'none' : 'auto' }}>
+      {/* Segment buttons - clickable for strategy fill */}
+      <div className="flex relative z-10">
         {segments.map((segment, index) => (
           <button
             key={segment.value}
-            onClick={() => handleSegmentClick(segment)}
+            onClick={(e) => handleSegmentClick(e, segment)}
+            onMouseDown={(e) => {
+              // Allow drag to start from buttons too
+              if (disabled) return;
+              dragStartPos.current = e.clientX;
+              hasDragged.current = false;
+              setDragging(true);
+              handleDragMove(e.clientX);
+            }}
             disabled={disabled}
             style={getSegmentStyle(index)}
           >
@@ -222,8 +259,10 @@ export default function StrategySlider({
           height: dragging ? '6px' : '4px',
           backgroundColor: indicatorColor,
           borderRadius: '2px 2px 0 0',
-          transition: dragging ? 'width 0.1s, height 0.1s' : 'all 0.3s ease',
+          transition: dragging ? 'width 0.1s, height 0.1s' : 'all 0.2s ease',
           boxShadow: `0 0 ${dragging ? '12px' : '8px'} ${indicatorColor}`,
+          pointerEvents: 'none',
+          zIndex: 5,
         }}
       />
       
@@ -237,6 +276,7 @@ export default function StrategySlider({
           height: '2px',
           background: 'linear-gradient(to right, #4ade8040 0%, #4ade8040 33.33%, #a3a3a340 33.33%, #a3a3a340 66.67%, #60a5fa40 66.67%, #60a5fa40 100%)',
           pointerEvents: 'none',
+          zIndex: 1,
         }}
       />
     </div>
