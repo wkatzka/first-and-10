@@ -756,6 +756,15 @@ function generateOffensePresets(cards, tierCap = null) {
   const totalCards = cards.length;
   const targetDots = Math.max(5, Math.min(15, 5 + Math.floor(totalCards / 20)));
   
+  // PERFORMANCE: Only consider top N cards per position (sorted by tier)
+  // This dramatically reduces combinations while keeping strategic variety
+  const maxPerPosition = 5;
+  const topQBs = qbs.slice(0, maxPerPosition);
+  const topRBs = rbs.slice(0, maxPerPosition);
+  const topWRs = wrs.slice(0, maxPerPosition + 1); // +1 because we pick 2
+  const topTEs = tes.slice(0, maxPerPosition);
+  const topOLs = ols.slice(0, maxPerPosition);
+  
   const presets = [];
   const seenConfigs = new Set();
   
@@ -772,15 +781,16 @@ function generateOffensePresets(cards, tierCap = null) {
     return (qb?.tier || 0) + (rb?.tier || 0) + (wr1?.tier || 0) + (wr2?.tier || 0) + (te?.tier || 0) + (ol?.tier || 0);
   };
   
-  // Generate ALL valid configurations
-  for (const qb of qbs) {
-    for (const rb of rbs) {
-      for (let wi1 = 0; wi1 < wrs.length - 1; wi1++) {
-        for (let wi2 = wi1 + 1; wi2 < wrs.length; wi2++) {
-          const wr1 = wrs[wi1];
-          const wr2 = wrs[wi2];
-          for (const te of tes) {
-            for (const ol of ols) {
+  // Generate configurations from top cards only
+  // Max combinations: 5 * 5 * 15 * 5 * 5 = 9,375 (fast)
+  for (const qb of topQBs) {
+    for (const rb of topRBs) {
+      for (let wi1 = 0; wi1 < topWRs.length - 1; wi1++) {
+        for (let wi2 = wi1 + 1; wi2 < topWRs.length; wi2++) {
+          const wr1 = topWRs[wi1];
+          const wr2 = topWRs[wi2];
+          for (const te of topTEs) {
+            for (const ol of topOLs) {
               // Check tier cap
               const tierSum = calcTierSum(qb, rb, wr1, wr2, te, ol);
               if (tierCap?.offense && tierSum > tierCap.offense) continue;
@@ -889,6 +899,12 @@ function generateDefensePresets(cards, tierCap = null) {
   const totalCards = cards.length;
   const targetDots = Math.max(5, Math.min(15, 5 + Math.floor(totalCards / 20)));
   
+  // PERFORMANCE: Only consider top N cards per position (sorted by tier)
+  const maxPerPosition = 5;
+  const topDLs = dls.slice(0, maxPerPosition);
+  const topLBs = lbs.slice(0, maxPerPosition);
+  const topDBs = dbs.slice(0, maxPerPosition + 1); // +1 because we pick 2
+  
   const presets = [];
   const seenConfigs = new Set();
   
@@ -905,13 +921,14 @@ function generateDefensePresets(cards, tierCap = null) {
     return (dl?.tier || 0) + (lb?.tier || 0) + (db1?.tier || 0) + (db2?.tier || 0);
   };
   
-  // Generate ALL valid configurations
-  for (const dl of dls) {
-    for (const lb of lbs) {
-      for (let bi1 = 0; bi1 < dbs.length - 1; bi1++) {
-        for (let bi2 = bi1 + 1; bi2 < dbs.length; bi2++) {
-          const db1 = dbs[bi1];
-          const db2 = dbs[bi2];
+  // Generate configurations from top cards only
+  // Max combinations: 5 * 5 * 15 = 375 (very fast)
+  for (const dl of topDLs) {
+    for (const lb of topLBs) {
+      for (let bi1 = 0; bi1 < topDBs.length - 1; bi1++) {
+        for (let bi2 = bi1 + 1; bi2 < topDBs.length; bi2++) {
+          const db1 = topDBs[bi1];
+          const db2 = topDBs[bi2];
           
           // Check tier cap
           const tierSum = calcTierSum(dl, lb, db1, db2);
