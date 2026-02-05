@@ -1,10 +1,10 @@
 /**
- * StrategySlider - Preset-based strategy control with ratio-positioned dots
- * Each dot represents a unique card combination positioned by its actual ratio
- * Visual boundaries show where strategies change
- * Snaps to nearest preset on release
+ * StrategySlider - Preset-based strategy control with zone-positioned dots
+ * Each dot represents a unique card combination positioned within its strategy zone
+ * Visual boundaries at 1/3 and 2/3 divide three equal strategy zones
+ * Snaps to nearest dot (by visual position) on release
  */
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { getRosterPresets, applyRosterPreset } from '../lib/api';
 
 const OFFENSE_COLORS = {
@@ -19,18 +19,12 @@ const DEFENSE_COLORS = {
   coverage_shell: '#60a5fa',
 };
 
-// Strategy thresholds for offense (ratio = pass tiers / run tiers)
-// Natural "even" ratio is 1.5 (3 pass positions / 2 run positions)
-const OFFENSE_THRESHOLDS = {
-  runToBalanced: 1.20,  // Below this = run_heavy
-  balancedToPass: 1.80, // Above this = pass_heavy
-};
+// Fixed boundaries at even thirds
+const BOUNDARY_FIRST = 33.33;
+const BOUNDARY_SECOND = 66.66;
 
-// Strategy thresholds for defense (ratio = coverage tiers - run stuff tiers)
-const DEFENSE_THRESHOLDS = {
-  runToBalanced: -2,   // Below this = run_stuff
-  balancedToCoverage: 2, // Above this = coverage_shell
-};
+// Zone padding from boundaries (so dots don't sit right on a line)
+const ZONE_PAD = 3;
 
 export default function StrategySlider({ 
   side = 'offense', 
@@ -50,16 +44,9 @@ export default function StrategySlider({
     let cancelled = false;
     setLoading(true);
     
-    console.log(`[Slider] Loading presets for side=${side}`);
     getRosterPresets(side)
       .then(data => {
-        console.log(`[Slider] Presets response:`, data);
         if (!cancelled && data?.presets) {
-          console.log(`[Slider] Loaded ${data.presets.length} ${side} presets`);
-          if (data.presets.length > 0) {
-            console.log(`[Slider] First preset:`, data.presets[0]);
-            console.log(`[Slider] Last preset:`, data.presets[data.presets.length - 1]);
-          }
           setPresets(data.presets);
         }
       })
@@ -73,66 +60,50 @@ export default function StrategySlider({
     return () => { cancelled = true; };
   }, [side]);
 
-  // Get min/max ratios from presets (for relative positioning)
-  const minRatio = presets.length > 0 ? presets[0].minRatio : 0;
-  const maxRatio = presets.length > 0 ? presets[0].maxRatio : 1;
-  const ratioRange = maxRatio - minRatio || 1;
+  // Strategy zone helpers
+  const leftStrategies = side === 'offense' ? ['run_heavy'] : ['run_stuff'];
+  const centerStrategies = side === 'offense' ? ['balanced'] : ['base_defense'];
+  const rightStrategies = side === 'offense' ? ['pass_heavy'] : ['coverage_shell'];
 
-  // Convert ratio to position (0-100%)
-  const ratioToPosition = useCallback((ratio) => {
-    if (ratioRange === 0) return 50;
-    return ((ratio - minRatio) / ratioRange) * 100;
-  }, [minRatio, ratioRange]);
-
-  // Convert position (0-100%) back to ratio
-  const positionToRatio = useCallback((position) => {
-    return minRatio + (position / 100) * ratioRange;
-  }, [minRatio, ratioRange]);
-
-  // FIXED: Always use even thirds for boundaries (33.33% and 66.66%)
-  // This ensures visual clarity regardless of the ratio distribution
-  const BOUNDARY_FIRST = 33.33;
-  const BOUNDARY_SECOND = 66.66;
-  
-  const boundaries = { first: BOUNDARY_FIRST, second: BOUNDARY_SECOND };
-
-  // Position dot within its strategy zone (left third, middle third, or right third)
-  // Dots are spread within their zone based on their relative position among same-strategy presets
-  const getPositionInZone = useCallback((preset, allPresets) => {
-    const strategy = preset.strategy;
-    const leftStrategies = side === 'offense' ? ['run_heavy'] : ['run_stuff'];
-    const centerStrategies = side === 'offense' ? ['balanced'] : ['base_defense'];
-    const rightStrategies = side === 'offense' ? ['pass_heavy'] : ['coverage_shell'];
-    
-    // Determine which zone this preset belongs to
-    let zoneStart, zoneEnd;
+  const getZoneBounds = useCallback((strategy) => {
     if (leftStrategies.includes(strategy)) {
-      zoneStart = 2;
-      zoneEnd = BOUNDARY_FIRST - 2;
-    } else if (rightStrategies.includes(strategy)) {
-      zoneStart = BOUNDARY_SECOND + 2;
-      zoneEnd = 98;
-    } else {
-      // Center zone
-      zoneStart = BOUNDARY_FIRST + 2;
-      zoneEnd = BOUNDARY_SECOND - 2;
+      return { start: ZONE_PAD, end: BOUNDARY_FIRST - ZONE_PAD };
     }
-    
-    // Find all presets in the same strategy zone
-    const sameZonePresets = allPresets.filter(p => p.strategy === strategy);
-    const indexInZone = sameZonePresets.findIndex(p => p.ratio === preset.ratio);
-    const countInZone = sameZonePresets.length;
-    
-    if (countInZone === 1) {
-      // Only one dot in zone - center it
-      return (zoneStart + zoneEnd) / 2;
+    if (rightStrategies.includes(strategy)) {
+      return { start: BOUNDARY_SECOND + ZONE_PAD, end: 100 - ZONE_PAD };
     }
-    
-    // Spread dots evenly within the zone
-    const zoneWidth = zoneEnd - zoneStart;
-    const spacing = zoneWidth / (countInZone - 1);
-    return zoneStart + (indexInZone * spacing);
+    return { start: BOUNDARY_FIRST + ZONE_PAD, end: BOUNDARY_SECOND - ZONE_PAD };
   }, [side]);
+
+  // Pre-compute visual positions for all dots (memoized)
+  const dotPositions = useMemo(() => {
+    if (presets.length === 0) return [];
+
+    // Group presets by strategy
+    const groups = {};
+    presets.forEach((preset, i) => {
+      const s = preset.strategy;
+      if (!groups[s]) groups[s] = [];
+      groups[s].push(i);
+    });
+
+    // Assign positions within each zone
+    const positions = new Array(presets.length);
+    for (const [strategy, indices] of Object.entries(groups)) {
+      const { start, end } = getZoneBounds(strategy);
+      const count = indices.length;
+      if (count === 1) {
+        positions[indices[0]] = (start + end) / 2;
+      } else {
+        const width = end - start;
+        const spacing = width / (count - 1);
+        indices.forEach((presetIdx, zoneIdx) => {
+          positions[presetIdx] = start + zoneIdx * spacing;
+        });
+      }
+    }
+    return positions;
+  }, [presets, getZoneBounds]);
 
   // Find which preset matches current roster (by comparing ratio)
   const getCurrentPresetIndex = useCallback(() => {
@@ -141,8 +112,6 @@ export default function StrategySlider({
     const currentRatio = side === 'offense' 
       ? detectedStrategy?.offenseRatio 
       : detectedStrategy?.defenseRatio;
-    
-    console.log(`[Slider] getCurrentPresetIndex: side=${side}, currentRatio=${currentRatio}, presets=${presets.length}`);
     
     if (currentRatio == null) return -1;
     
@@ -156,89 +125,93 @@ export default function StrategySlider({
         closestIdx = i;
       }
     }
-    console.log(`[Slider] Found closest preset idx=${closestIdx}, presetRatio=${presets[closestIdx]?.ratio}, diff=${closestDiff}`);
     return closestIdx;
   }, [presets, side, detectedStrategy]);
 
-  // Find nearest preset to a position (0-100)
-  const findNearestPreset = useCallback((position) => {
-    if (presets.length === 0) return null;
-    
-    const targetRatio = positionToRatio(position);
+  // Find nearest dot by VISUAL POSITION (not ratio)
+  const findNearestDotByPosition = useCallback((pct) => {
+    if (dotPositions.length === 0) return -1;
     
     let closestIdx = 0;
-    let closestDiff = Infinity;
-    for (let i = 0; i < presets.length; i++) {
-      const diff = Math.abs(presets[i].ratio - targetRatio);
-      if (diff < closestDiff) {
-        closestDiff = diff;
+    let closestDist = Infinity;
+    for (let i = 0; i < dotPositions.length; i++) {
+      const dist = Math.abs(dotPositions[i] - pct);
+      if (dist < closestDist) {
+        closestDist = dist;
         closestIdx = i;
       }
     }
-    return { index: closestIdx, preset: presets[closestIdx] };
-  }, [presets, positionToRatio]);
+    return closestIdx;
+  }, [dotPositions]);
 
-  // Current display position
+  // Current state
   const currentIndex = getCurrentPresetIndex();
   const currentPreset = currentIndex >= 0 ? presets[currentIndex] : null;
-  const displayPosition = dragging && dragPosition != null 
-    ? dragPosition 
-    : currentPreset ? ratioToPosition(currentPreset.ratio) : 50;
 
   // Get color based on strategy
   const getColorForStrategy = (strategy) => {
     const colors = side === 'offense' ? OFFENSE_COLORS : DEFENSE_COLORS;
-    return colors[strategy] || colors.balanced || colors.base_defense;
+    return colors[strategy] || '#a3a3a3';
   };
 
   const indicatorColor = currentPreset 
     ? getColorForStrategy(currentPreset.strategy)
     : '#a3a3a3';
 
-  // Handle drag
-  const handleDragMove = useCallback((clientX) => {
-    if (!sliderRef.current || disabled || applying) return;
+  // Apply a preset by index
+  const applyPreset = useCallback(async (index) => {
+    if (index < 0 || index >= presets.length) return;
+    if (index === currentIndex) return;
     
-    const rect = sliderRef.current.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
-    setDragPosition(pct);
-  }, [disabled, applying]);
-
-  const handleDragEnd = useCallback(async () => {
-    if (dragPosition == null || presets.length === 0) {
-      setDragging(false);
-      setDragPosition(null);
-      return;
-    }
-
-    const nearest = findNearestPreset(dragPosition);
-    setDragging(false);
-    setDragPosition(null);
-    
-    if (!nearest) return;
-    
-    // Skip if same preset
-    if (nearest.index === currentIndex) return;
-    
-    // Apply the preset
     setApplying(true);
     try {
-      await applyRosterPreset(side, nearest.preset.slots);
+      await applyRosterPreset(side, presets[index].slots);
       onPresetApplied?.();
     } catch (err) {
       console.error('Failed to apply preset:', err);
     } finally {
       setApplying(false);
     }
-  }, [dragPosition, presets, findNearestPreset, currentIndex, side, onPresetApplied]);
+  }, [presets, currentIndex, side, onPresetApplied]);
+
+  // Get position % from clientX
+  const getPositionFromClient = useCallback((clientX) => {
+    if (!sliderRef.current) return null;
+    const rect = sliderRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    return Math.max(0, Math.min(100, (x / rect.width) * 100));
+  }, []);
+
+  // Drag handlers
+  const handleDragMove = useCallback((clientX) => {
+    if (disabled || applying) return;
+    const pct = getPositionFromClient(clientX);
+    if (pct != null) setDragPosition(pct);
+  }, [disabled, applying, getPositionFromClient]);
+
+  const handleDragEnd = useCallback(async () => {
+    if (dragPosition == null) {
+      setDragging(false);
+      setDragPosition(null);
+      return;
+    }
+
+    const nearestIdx = findNearestDotByPosition(dragPosition);
+    setDragging(false);
+    setDragPosition(null);
+    
+    if (nearestIdx >= 0) {
+      await applyPreset(nearestIdx);
+    }
+  }, [dragPosition, findNearestDotByPosition, applyPreset]);
 
   // Mouse events
   const handleMouseDown = (e) => {
     if (disabled || applying || loading) return;
     e.preventDefault();
     setDragging(true);
-    handleDragMove(e.clientX);
+    const pct = getPositionFromClient(e.clientX);
+    if (pct != null) setDragPosition(pct);
   };
 
   useEffect(() => {
@@ -260,7 +233,8 @@ export default function StrategySlider({
   const handleTouchStart = (e) => {
     if (disabled || applying || loading) return;
     setDragging(true);
-    handleDragMove(e.touches[0].clientX);
+    const pct = getPositionFromClient(e.touches[0].clientX);
+    if (pct != null) setDragPosition(pct);
   };
 
   const handleTouchMove = (e) => {
@@ -273,26 +247,11 @@ export default function StrategySlider({
     handleDragEnd();
   };
 
-  // Click on preset dot to jump to it
+  // Click on preset dot
   const handlePresetClick = async (e, index) => {
     e.stopPropagation();
-    console.log(`[Slider] handlePresetClick: index=${index}, currentIndex=${currentIndex}, disabled=${disabled}, applying=${applying}`);
-    if (disabled || applying || loading || index === currentIndex) {
-      console.log(`[Slider] Click skipped - conditions not met`);
-      return;
-    }
-    
-    console.log(`[Slider] Applying preset:`, presets[index]);
-    setApplying(true);
-    try {
-      const result = await applyRosterPreset(side, presets[index].slots);
-      console.log(`[Slider] applyRosterPreset result:`, result);
-      onPresetApplied?.();
-    } catch (err) {
-      console.error('Failed to apply preset:', err);
-    } finally {
-      setApplying(false);
-    }
+    if (disabled || applying || loading) return;
+    await applyPreset(index);
   };
 
   // Labels
@@ -300,14 +259,7 @@ export default function StrategySlider({
   const centerLabel = side === 'offense' ? 'Balanced' : 'Base';
   const rightLabel = side === 'offense' ? 'Pass' : 'Coverage';
   
-  // Get the current strategy for label highlighting
-  const colors = side === 'offense' ? OFFENSE_COLORS : DEFENSE_COLORS;
   const currentStrategy = currentPreset?.strategy || (side === 'offense' ? 'balanced' : 'base_defense');
-  
-  // Determine which label should glow based on actual strategy (not position)
-  const leftStrategies = side === 'offense' ? ['run_heavy'] : ['run_stuff'];
-  const centerStrategies = side === 'offense' ? ['balanced'] : ['base_defense'];
-  const rightStrategies = side === 'offense' ? ['pass_heavy'] : ['coverage_shell'];
   
   const isLeftActive = leftStrategies.includes(currentStrategy);
   const isCenterActive = centerStrategies.includes(currentStrategy);
@@ -316,6 +268,11 @@ export default function StrategySlider({
   const leftColor = side === 'offense' ? OFFENSE_COLORS.run_heavy : DEFENSE_COLORS.run_stuff;
   const centerColor = side === 'offense' ? OFFENSE_COLORS.balanced : DEFENSE_COLORS.base_defense;
   const rightColor = side === 'offense' ? OFFENSE_COLORS.pass_heavy : DEFENSE_COLORS.coverage_shell;
+
+  // Highlight nearest dot while dragging
+  const dragNearestIdx = dragging && dragPosition != null 
+    ? findNearestDotByPosition(dragPosition)
+    : -1;
 
   if (loading) {
     return (
@@ -344,13 +301,14 @@ export default function StrategySlider({
         border: '1px solid rgba(255,255,255,0.1)',
         cursor: (disabled || applying) ? 'not-allowed' : 'grab',
         opacity: (disabled || applying) ? 0.6 : 1,
+        touchAction: 'none',
       }}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Labels row - glow based on actual strategy, not position */}
+      {/* Labels row */}
       <div className="flex justify-between px-2 pt-1.5 pb-0.5 relative z-10">
         <span className="text-xs font-semibold" style={{ 
           fontFamily: "'Rajdhani', sans-serif",
@@ -377,7 +335,7 @@ export default function StrategySlider({
 
       {/* Track with preset dots */}
       <div className="relative h-8 mx-2 mb-1">
-        {/* Gradient track background - three even zones */}
+        {/* Three-zone gradient track */}
         <div 
           className="absolute top-1/2 left-0 right-0 h-1.5 rounded-full"
           style={{
@@ -392,28 +350,22 @@ export default function StrategySlider({
           }}
         />
 
-        {/* Strategy boundary markers - always at 1/3 and 2/3 */}
-        <div
-          className="absolute top-1/2 w-0.5 h-4 rounded-full"
-          style={{
-            left: `${BOUNDARY_FIRST}%`,
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: 'rgba(255,255,255,0.4)',
-          }}
+        {/* Boundary markers */}
+        <div className="absolute top-1/2 w-0.5 h-4 rounded-full"
+          style={{ left: `${BOUNDARY_FIRST}%`, transform: 'translate(-50%, -50%)', backgroundColor: 'rgba(255,255,255,0.4)' }}
         />
-        <div
-          className="absolute top-1/2 w-0.5 h-4 rounded-full"
-          style={{
-            left: `${BOUNDARY_SECOND}%`,
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: 'rgba(255,255,255,0.4)',
-          }}
+        <div className="absolute top-1/2 w-0.5 h-4 rounded-full"
+          style={{ left: `${BOUNDARY_SECOND}%`, transform: 'translate(-50%, -50%)', backgroundColor: 'rgba(255,255,255,0.4)' }}
         />
 
-        {/* Preset dots - positioned within their strategy zone */}
+        {/* Preset dots */}
         {presets.map((preset, i) => {
-          const pos = getPositionInZone(preset, presets);
+          const pos = dotPositions[i];
+          if (pos == null) return null;
+
           const isActive = i === currentIndex && !dragging;
+          const isDragTarget = i === dragNearestIdx;
+          const isHighlighted = isActive || isDragTarget;
           const dotColor = getColorForStrategy(preset.strategy);
           
           return (
@@ -422,39 +374,58 @@ export default function StrategySlider({
               type="button"
               onClick={(e) => handlePresetClick(e, i)}
               disabled={disabled || applying}
-              className="absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-all duration-150"
+              className="absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2"
               style={{
                 left: `${pos}%`,
-                width: isActive ? '14px' : '8px',
-                height: isActive ? '14px' : '8px',
+                // Larger hit target (invisible padding via min-size), visible dot inside
+                width: isHighlighted ? '16px' : '10px',
+                height: isHighlighted ? '16px' : '10px',
+                minWidth: '28px',
+                minHeight: '28px',
                 borderRadius: '50%',
-                // Active: full brightness, no border, strong glow
-                // Inactive: dimmer, no border, subtle
-                backgroundColor: isActive ? dotColor : `${dotColor}50`,
+                background: 'transparent',
                 border: 'none',
-                boxShadow: isActive ? `0 0 12px ${dotColor}, 0 0 20px ${dotColor}80` : 'none',
                 cursor: (disabled || applying) ? 'not-allowed' : 'pointer',
-                zIndex: isActive ? 5 : 2,
+                zIndex: isHighlighted ? 5 : 2,
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'none',
               }}
               title={`Tier sum: ${preset.tierSum}, Ratio: ${preset.ratio.toFixed(2)}`}
-            />
+            >
+              {/* Visible dot */}
+              <div style={{
+                width: isHighlighted ? '14px' : '8px',
+                height: isHighlighted ? '14px' : '8px',
+                borderRadius: '50%',
+                backgroundColor: isHighlighted ? dotColor : `${dotColor}60`,
+                boxShadow: isHighlighted ? `0 0 10px ${dotColor}, 0 0 18px ${dotColor}80` : 'none',
+                transition: 'width 0.15s, height 0.15s, background-color 0.15s, box-shadow 0.15s',
+                pointerEvents: 'none',
+              }} />
+            </button>
           );
         })}
 
-        {/* Dragging indicator (larger, follows cursor) */}
+        {/* Dragging indicator (follows finger/cursor) */}
         {dragging && dragPosition != null && (
           <div
             className="absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
             style={{
               left: `${dragPosition}%`,
-              width: '22px',
-              height: '22px',
+              width: '20px',
+              height: '20px',
               borderRadius: '50%',
-              backgroundColor: indicatorColor,
-              border: '3px solid white',
+              backgroundColor: dragNearestIdx >= 0 
+                ? getColorForStrategy(presets[dragNearestIdx].strategy) 
+                : indicatorColor,
+              border: '2px solid rgba(255,255,255,0.8)',
               boxShadow: `0 0 16px ${indicatorColor}, 0 2px 8px rgba(0,0,0,0.5)`,
               zIndex: 10,
               transition: 'none',
+              opacity: 0.7,
             }}
           />
         )}
