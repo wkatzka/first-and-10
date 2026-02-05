@@ -97,6 +97,40 @@ export default function StrategySlider({
     };
   }, [side, ratioToPosition]);
 
+  // Nudge dots away from boundaries so they clearly sit in their strategy zone
+  const BOUNDARY_NUDGE = 4; // percentage points to nudge away from boundary
+  const BOUNDARY_THRESHOLD = 3; // if within this % of boundary, nudge
+  
+  const getNudgedPosition = useCallback((rawPos, strategy) => {
+    const bounds = getBoundaryPositions();
+    const leftStrategies = side === 'offense' ? ['run_heavy'] : ['run_stuff'];
+    const rightStrategies = side === 'offense' ? ['pass_heavy'] : ['coverage_shell'];
+    
+    // Check if near first boundary (left/center divide)
+    if (Math.abs(rawPos - bounds.first) < BOUNDARY_THRESHOLD) {
+      if (leftStrategies.includes(strategy)) {
+        // Nudge left (into run zone)
+        return Math.max(0, bounds.first - BOUNDARY_NUDGE);
+      } else {
+        // Nudge right (into balanced zone)
+        return Math.min(100, bounds.first + BOUNDARY_NUDGE);
+      }
+    }
+    
+    // Check if near second boundary (center/right divide)
+    if (Math.abs(rawPos - bounds.second) < BOUNDARY_THRESHOLD) {
+      if (rightStrategies.includes(strategy)) {
+        // Nudge right (into pass zone)
+        return Math.min(100, bounds.second + BOUNDARY_NUDGE);
+      } else {
+        // Nudge left (into balanced zone)
+        return Math.max(0, bounds.second - BOUNDARY_NUDGE);
+      }
+    }
+    
+    return rawPos;
+  }, [getBoundaryPositions, side]);
+
   // Find which preset matches current roster (by comparing ratio)
   const getCurrentPresetIndex = useCallback(() => {
     if (presets.length === 0) return -1;
@@ -379,9 +413,10 @@ export default function StrategySlider({
           />
         )}
 
-        {/* Preset dots - positioned by actual ratio, colored by strategy */}
+        {/* Preset dots - positioned by ratio, nudged away from boundaries for clarity */}
         {presets.map((preset, i) => {
-          const pos = ratioToPosition(preset.ratio);
+          const rawPos = ratioToPosition(preset.ratio);
+          const pos = getNudgedPosition(rawPos, preset.strategy);
           const isActive = i === currentIndex && !dragging;
           const dotColor = getColorForStrategy(preset.strategy);
           
