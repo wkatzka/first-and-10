@@ -63,6 +63,9 @@ export default function StrategySlider({
   // We use a ref to avoid clearing during our own apply
   const isApplyingRef = useRef(false);
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/04bf6a28-d7a2-43df-a19b-014adbbc98f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StrategySlider.js:detectedStrategy-effect',message:'detectedStrategy changed',data:{isApplyingRef:isApplyingRef.current,appliedIndex,willClear:!isApplyingRef.current,offenseRatio:detectedStrategy?.offenseRatio,defenseRatio:detectedStrategy?.defenseRatio},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1_H3'})}).catch(()=>{});
+    // #endregion
     if (!isApplyingRef.current) {
       setAppliedIndex(null);
     }
@@ -118,6 +121,9 @@ export default function StrategySlider({
     
     // If we recently applied a preset via the slider, use that index
     if (appliedIndex != null && appliedIndex >= 0 && appliedIndex < presets.length) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/04bf6a28-d7a2-43df-a19b-014adbbc98f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StrategySlider.js:getCurrentPresetIndex',message:'using appliedIndex',data:{appliedIndex,presetRatio:presets[appliedIndex]?.ratio},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2'})}).catch(()=>{});
+      // #endregion
       return appliedIndex;
     }
     
@@ -137,6 +143,9 @@ export default function StrategySlider({
         closestIdx = i;
       }
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/04bf6a28-d7a2-43df-a19b-014adbbc98f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StrategySlider.js:getCurrentPresetIndex-ratio',message:'ratio fallback',data:{currentRatio,closestIdx,closestRatio:presets[closestIdx]?.ratio,allRatios:presets.map(p=>p.ratio)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1_H3'})}).catch(()=>{});
+    // #endregion
     return closestIdx;
   }, [presets, side, detectedStrategy, appliedIndex]);
 
@@ -166,6 +175,9 @@ export default function StrategySlider({
 
   // Apply a preset by index
   const applyPreset = useCallback(async (index) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/04bf6a28-d7a2-43df-a19b-014adbbc98f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StrategySlider.js:applyPreset',message:'applyPreset called',data:{index,currentIndex,willSkip:index===currentIndex||index<0||index>=presets.length,presetsLen:presets.length,appliedIndex,presetRatio:presets[index]?.ratio,presetStrategy:presets[index]?.strategy},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H2_H4'})}).catch(()=>{});
+    // #endregion
     if (index < 0 || index >= presets.length) return;
     if (index === currentIndex) return;
     
@@ -176,7 +188,12 @@ export default function StrategySlider({
       await applyRosterPreset(side, presets[index].slots);
       onPresetApplied?.();
       // Small delay to let detectedStrategy update without clearing appliedIndex
-      setTimeout(() => { isApplyingRef.current = false; }, 500);
+      setTimeout(() => {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/04bf6a28-d7a2-43df-a19b-014adbbc98f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StrategySlider.js:applyPreset-timeout',message:'500ms guard expired',data:{index},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H1'})}).catch(()=>{});
+        // #endregion
+        isApplyingRef.current = false;
+      }, 500);
     } catch (err) {
       console.error('Failed to apply preset:', err);
       setAppliedIndex(null);
@@ -225,6 +242,9 @@ export default function StrategySlider({
     
     // Whether it's a tap or drag release, find nearest dot by position
     const nearestIdx = findNearestDotByPosition(finalPos);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/04bf6a28-d7a2-43df-a19b-014adbbc98f0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'StrategySlider.js:handlePointerUp',message:'pointer up',data:{finalPos,nearestIdx,dotPositions,isTap},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H4'})}).catch(()=>{});
+    // #endregion
     if (nearestIdx >= 0) {
       await applyPreset(nearestIdx);
     }
