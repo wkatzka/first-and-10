@@ -1407,7 +1407,7 @@ app.post('/api/roster/apply-preset', authMiddleware, async (req, res) => {
     }
     
     console.log(`[apply-preset] Merged slots to save:`, mergedSlots);
-    await db.updateRosterSlots(req.user.id, mergedSlots);
+    await db.updateRoster(req.user.id, mergedSlots);
     console.log(`[apply-preset] Roster updated successfully`);
     
     res.json({ success: true });
