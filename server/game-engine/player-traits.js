@@ -394,14 +394,11 @@ function buildEngineForCard({ player_name, player, season, position, tier, compo
   // No floor - let traits naturally vary based on percentile data
   const playerTier = tier != null ? Math.max(1, Math.min(11, Number(tier))) : 5;
   
-  let maxTraitForTier;
-  if (playerTier >= 7) {
-    // T7=60, T8=70, T9=80, T10=90, T11=100
-    maxTraitForTier = 60 + (playerTier - 7) * 10;
-  } else {
-    // T1=30, T2=35, T3=40, T4=45, T5=50, T6=55
-    maxTraitForTier = 30 + (playerTier - 1) * 5;
-  }
+  const tierCaps = {
+    11: 100, 10: 90, 9: 80, 8: 70, 7: 60,
+    6: 55, 5: 50, 4: 45, 3: 40, 2: 35, 1: 30
+  };
+  const maxTraitForTier = tierCaps[playerTier] || 50;
   
   for (const key of Object.keys(traits)) {
     // Cap trait value at tier-appropriate ceiling (no floor)
