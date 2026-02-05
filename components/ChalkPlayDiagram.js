@@ -18,8 +18,8 @@ const PX_PER_YARD = 18;
 const ENDZONE_YARDS = 10;
 const CHALK_STROKE = 2.5;
 const X_SIZE = 12;
-const CARD_W = 66;
-const CARD_H = 78;
+const CARD_W = 78;
+const CARD_H = 92;
 
 // Offense: WR1, TE, OL, RB, WR2 + QB behind OL. Slot ids for roster.cards.
 const OFFENSE_SLOTS = ['wr1_card_id', 'te_card_id', 'ol_card_id', 'rb_card_id', 'wr2_card_id'];
@@ -211,10 +211,12 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
     if (mode === 'offense') {
       const margin = 0.08;
       const step = (1 - 2 * margin) / 4;
+      // Upside-down U shape: outer cards (WR1, WR2) slightly lower, middle cards higher
+      const yOffsets = [18, 0, -8, 0, 18]; // WR1, TE, OL, RB, WR2 (positive = lower on screen)
       const positions = OFFENSE_SLOTS.map((slotId, i) => ({
         slotId,
         x: w * (margin + i * step),
-        y: line10Y,
+        y: line10Y + yOffsets[i],
         label: { wr1_card_id: 'WR1', te_card_id: 'TE', ol_card_id: 'OL', rb_card_id: 'RB', wr2_card_id: 'WR2' }[slotId],
       }));
       const qbX = w * (margin + 2 * step);
@@ -222,10 +224,12 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
     }
     const marginD = 0.1;
     const stepD = (1 - 2 * marginD) / 3;
+    // Defense: stagger end cards (DB1 and DB2) slightly
+    const yOffsets = [12, 0, 0, 12]; // DB1, DL, LB, DB2 - end cards slightly lower
     const positions = DEFENSE_SLOTS.map((slotId, i) => ({
       slotId,
       x: w * (marginD + i * stepD),
-      y: line10Y,
+      y: line10Y + yOffsets[i],
       label: { db1_card_id: 'DB1', dl_card_id: 'DL', lb_card_id: 'LB', db2_card_id: 'DB2' }[slotId],
     }));
     const kX = w * (marginD + 1.5 * stepD);
@@ -236,10 +240,12 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
     const margin = 0.08;
     const step = (1 - 2 * margin) / 4;
     const centerX = w / 2;
+    // Upside-down U shape: outer cards (WR1, WR2) slightly lower, middle cards higher
+    const yOffsets = [18, 0, -8, 0, 18];
     const positions = OFFENSE_SLOTS.map((slotId, i) => ({
       slotId,
       x: w * (margin + i * step),
-      y: line10Y,
+      y: line10Y + yOffsets[i],
       label: { wr1_card_id: 'WR1', te_card_id: 'TE', ol_card_id: 'OL', rb_card_id: 'RB', wr2_card_id: 'WR2' }[slotId],
     }));
     const qb = { slotId: OFFENSE_QB_SLOT, x: w * (margin + 2 * step), y: line10Y + PX_PER_YARD * 4, label: 'QB' };
@@ -267,10 +273,12 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
   const initDefensePlay = useCallback(() => {
     const margin = 0.1;
     const step = (1 - 2 * margin) / 3;
+    // Defense: stagger end cards (DB1 and DB2) slightly
+    const yOffsets = [12, 0, 0, 12];
     const positions = DEFENSE_SLOTS.map((slotId, i) => ({
       slotId,
       x: w * (margin + i * step),
-      y: line10Y,
+      y: line10Y + yOffsets[i],
       label: { db1_card_id: 'DB1', dl_card_id: 'DL', lb_card_id: 'LB', db2_card_id: 'DB2' }[slotId],
     }));
     const kX = w * (margin + 1.5 * step);

@@ -38,27 +38,31 @@ export default function Cards({ user, onLogout, unreadMessages }) {
         )}
       </div>
 
-      {/* Packs | Collection bar – above bottom nav, same tile aesthetic, active = red glow */}
+      {/* Packs | Collection bar – above bottom nav, same tile aesthetic, active = pink glow matching tile */}
       <div className="md:hidden fixed left-0 right-0 z-40 px-3 safe-area-pb" style={{ bottom: '6rem' }}>
         <div className="mx-auto max-w-7xl flex justify-center">
           <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
             <button
               onClick={() => setViewAndPersist('packs')}
-              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
-                view === 'packs'
-                  ? 'text-white bg-red-500/20 ring-2 ring-red-400 shadow-[0_0_12px_rgba(248,113,113,0.5)]'
-                  : 'text-gray-400 hover:text-white'
-              }`}
+              className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200"
+              style={{ 
+                fontFamily: "'Rajdhani', sans-serif",
+                color: view === 'packs' ? '#fff' : '#9ca3af',
+                backgroundColor: view === 'packs' ? 'rgba(255,0,128,0.2)' : 'transparent',
+                boxShadow: view === 'packs' ? '0 0 12px rgba(255,0,128,0.5), inset 0 0 0 2px #ff0080' : 'none',
+              }}
             >
               Packs
             </button>
             <button
               onClick={() => setViewAndPersist('collection')}
-              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
-                view === 'collection'
-                  ? 'text-white bg-red-500/20 ring-2 ring-red-400 shadow-[0_0_12px_rgba(248,113,113,0.5)]'
-                  : 'text-gray-400 hover:text-white'
-              }`}
+              className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200"
+              style={{ 
+                fontFamily: "'Rajdhani', sans-serif",
+                color: view === 'collection' ? '#fff' : '#9ca3af',
+                backgroundColor: view === 'collection' ? 'rgba(255,0,128,0.2)' : 'transparent',
+                boxShadow: view === 'collection' ? '0 0 12px rgba(255,0,128,0.5), inset 0 0 0 2px #ff0080' : 'none',
+              }}
             >
               Collection
             </button>
