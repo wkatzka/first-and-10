@@ -1239,9 +1239,29 @@ app.get('/api/roster/strategy', authMiddleware, async (req, res) => {
     // Calculate tier sums for display
     const tierSums = calculateRosterTierSums(cards);
     
+    // Calculate continuous ratios for slider positioning
+    // Offense: (pass tiers) / (run tiers) - higher = more pass-heavy
+    const qbT = offenseRatings.qbTier || 5;
+    const wrT = offenseRatings.wrAvgTier || 5;
+    const rbT = offenseRatings.rbTier || 5;
+    const olT = offenseRatings.olTier || 5;
+    const passTierSum = qbT + wrT;
+    const runTierSum = rbT + olT;
+    const offenseRatio = runTierSum > 0 ? passTierSum / runTierSum : 1.0;
+    
+    // Defense: coverage weight - run stuff weight - positive = coverage-leaning
+    const dbT = defenseRatings.dbAvgTier || 5;
+    const dlT = defenseRatings.dlAvgTier || 5;
+    const lbT = defenseRatings.lbAvgTier || 5;
+    const coverageWeight = dbT;
+    const runStuffWeight = (dlT + lbT) / 2;
+    const defenseRatio = coverageWeight - runStuffWeight; // range roughly -5 to +5
+    
     res.json({
       offensiveStrategy,
       defensiveStrategy,
+      offenseRatio,  // ~0.5 to ~1.5, 1.0 = balanced, >1.2 = pass, <0.85 = run
+      defenseRatio,  // ~-5 to +5, 0 = base, >0.8 = coverage, <-0.8 = run_stuff
       offenseTierSum: tierSums.offense,
       defenseTierSum: tierSums.defense,
       offenseTierCap: OFFENSE_TIER_CAP,
