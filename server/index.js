@@ -1365,14 +1365,17 @@ app.get('/api/roster/presets', authMiddleware, async (req, res) => {
 app.post('/api/roster/apply-preset', authMiddleware, async (req, res) => {
   try {
     const { side, slots } = req.body;
+    console.log(`[apply-preset] Received: side=${side}, slots=`, slots);
     
     if (!slots || typeof slots !== 'object') {
+      console.log(`[apply-preset] Invalid slots`);
       return res.status(400).json({ error: 'Invalid preset slots' });
     }
     
     // Get current roster to preserve the other side
     const fullRoster = await db.getFullRoster(req.user.id);
     const currentCards = fullRoster?.cards || {};
+    console.log(`[apply-preset] Current roster card IDs:`, Object.keys(currentCards).map(k => `${k}=${currentCards[k]?.id || currentCards[k]}`));
     
     // Build merged slots - preserve the side we're not changing
     const offenseSlots = ['qb_card_id', 'rb_card_id', 'wr1_card_id', 'wr2_card_id', 'te_card_id', 'ol_card_id'];
@@ -1403,7 +1406,9 @@ app.post('/api/roster/apply-preset', authMiddleware, async (req, res) => {
       mergedSlots.k_card_id = currentCards.k_card_id.id || currentCards.k_card_id;
     }
     
+    console.log(`[apply-preset] Merged slots to save:`, mergedSlots);
     await db.updateRosterSlots(req.user.id, mergedSlots);
+    console.log(`[apply-preset] Roster updated successfully`);
     
     res.json({ success: true });
   } catch (err) {
