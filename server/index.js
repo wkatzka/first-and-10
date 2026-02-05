@@ -1287,21 +1287,30 @@ app.get('/api/roster/strategy', authMiddleware, async (req, res) => {
     
     // Calculate continuous ratios for slider positioning
     // Offense: (pass tiers) / (run tiers) - higher = more pass-heavy
-    const qbT = offenseRatings.qbTier || 5;
-    const wrT = offenseRatings.wrAvgTier || 5;
-    const rbT = offenseRatings.rbTier || 5;
-    const olT = offenseRatings.olTier || 5;
-    const passTierSum = qbT + wrT;
+    // IMPORTANT: Must match preset generation formula in game-bridge.js
+    // passTiers = QB + WR1 + WR2 (sum both WRs, not average)
+    // runTiers = RB + OL
+    const qbT = cards.qb_card_id?.tier || 5;
+    const wr1T = cards.wr1_card_id?.tier || 5;
+    const wr2T = cards.wr2_card_id?.tier || 5;
+    const rbT = cards.rb_card_id?.tier || 5;
+    const olT = cards.ol_card_id?.tier || 5;
+    const passTierSum = qbT + wr1T + wr2T;
     const runTierSum = rbT + olT;
     const offenseRatio = runTierSum > 0 ? passTierSum / runTierSum : 1.0;
     
     // Defense: coverage weight - run stuff weight - positive = coverage-leaning
-    const dbT = defenseRatings.dbAvgTier || 5;
-    const dlT = defenseRatings.dlAvgTier || 5;
-    const lbT = defenseRatings.lbAvgTier || 5;
-    const coverageWeight = dbT;
-    const runStuffWeight = (dlT + lbT) / 2;
-    const defenseRatio = coverageWeight - runStuffWeight; // range roughly -5 to +5
+    // IMPORTANT: Must match preset generation formula in game-bridge.js
+    // coverageTiers = DB1 + DB2 (sum both DBs, not average)
+    // runStuffTiers = DL + LB
+    // ratio = coverageTiers - runStuffTiers
+    const db1T = cards.db1_card_id?.tier || 5;
+    const db2T = cards.db2_card_id?.tier || 5;
+    const dlT = cards.dl_card_id?.tier || 5;
+    const lbT = cards.lb_card_id?.tier || 5;
+    const coverageTiers = db1T + db2T;
+    const runStuffTiers = dlT + lbT;
+    const defenseRatio = coverageTiers - runStuffTiers; // range roughly -10 to +10
     
     res.json({
       offensiveStrategy,
