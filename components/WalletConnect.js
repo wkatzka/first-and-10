@@ -44,24 +44,37 @@ export function WalletConnectButton({ user }) {
     );
   }
 
-  // Single connect button - Web3Auth modal shows all options (MetaMask + Social)
+  // Two options: MetaMask direct (recommended) or Web3Auth (social login)
   return (
     <div className="space-y-3">
+      {/* Direct MetaMask - recommended for switching networks */}
       <button
         type="button"
-        onClick={ctx?.web3authReady ? ctx.connect : ctx?.connectMetaMask}
-        className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg font-medium text-white transition-all hover:scale-[1.02]"
-        style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' }}
+        onClick={ctx?.connectMetaMask}
+        className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg font-medium text-white transition-all hover:scale-[1.02] bg-orange-600 hover:bg-orange-500"
       >
-        <WalletIcon />
-        <span>Connect Wallet</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M21.3 4.4L13.8 9.8l1.4-3.3L21.3 4.4zM2.7 4.4l7.4 5.5-1.3-3.4L2.7 4.4zm15.5 12.2l-2 3 4.3 1.2 1.2-4.2h-3.5zm-14.9 0l1.2 4.2 4.3-1.2-2-3H3.3z"/>
+        </svg>
+        <span>Connect MetaMask</span>
       </button>
 
-      {!ctx?.web3authReady && !ctx?.isInitializing && (
-        <p className="text-gray-500 text-xs text-center">
-          MetaMask only (social login not configured)
-        </p>
+      {/* Web3Auth for social login */}
+      {ctx?.web3authReady && (
+        <button
+          type="button"
+          onClick={ctx.connect}
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg font-medium text-white transition-all hover:scale-[1.02]"
+          style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)' }}
+        >
+          <WalletIcon />
+          <span>Social Login (Google, etc.)</span>
+        </button>
       )}
+
+      <p className="text-gray-500 text-xs text-center">
+        Use MetaMask for full network control
+      </p>
     </div>
   );
 }
