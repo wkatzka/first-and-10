@@ -1,4 +1,9 @@
 {
+  "accountAssociation": {
+    "header": "eyJmaWQiOjE1OTcxODgsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHg5Y2EwNjdCYkJGNzA3QTQ2NzE4RkQyODE3YjE2NjlhOTEyYUNDRmM0In0",
+    "payload": "eyJkb21haW4iOiJmaXJzdC1hbmQtMTAudmVyY2VsLmFwcCJ9",
+    "signature": "3nmaP8dJPUf6nxzNuZIHPF2h9hp0zqpZO6fx+um/rw8RsJt/YSSU4fJih9nACxfgmw6b7x70xUyAGPZHp0d2Lhw="
+  },
   "miniapp": {
     "version": "1",
     "name": "First & 10",
