@@ -38,26 +38,41 @@ export default function Shop({ user, onLogout, unreadMessages }) {
 
   // Load balance when connected
   useEffect(() => {
-    if (!isConnected) {
+    if (!isConnected || !address) {
       setBalance(null);
       return;
     }
 
     const loadBalance = async () => {
       try {
+        // Try using the wallet's provider first
         const signer = await getSigner();
-        if (signer) {
+        if (signer && signer.provider) {
           const bal = await signer.provider.getBalance(address);
           setBalance(ethers.formatEther(bal));
+          return;
         }
+        
+        // Fallback: use a direct RPC call to Base Sepolia
+        const rpcProvider = new ethers.JsonRpcProvider('https://sepolia.base.org');
+        const bal = await rpcProvider.getBalance(address);
+        setBalance(ethers.formatEther(bal));
       } catch (err) {
         console.error('Error loading balance:', err);
+        // Last resort fallback
+        try {
+          const rpcProvider = new ethers.JsonRpcProvider('https://sepolia.base.org');
+          const bal = await rpcProvider.getBalance(address);
+          setBalance(ethers.formatEther(bal));
+        } catch (fallbackErr) {
+          console.error('Fallback balance load failed:', fallbackErr);
+        }
       }
     };
 
     loadBalance();
-    // Refresh balance every 10 seconds
-    const interval = setInterval(loadBalance, 10000);
+    // Refresh balance every 15 seconds
+    const interval = setInterval(loadBalance, 15000);
     return () => clearInterval(interval);
   }, [isConnected, address, getSigner]);
 
