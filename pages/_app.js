@@ -8,6 +8,8 @@ import PlayfieldBackground from '../components/PlayfieldBackground';
 import StaticFieldBackground from '../components/StaticFieldBackground';
 import { isLive, cryptoShopEnabled } from '../lib/env';
 import { WalletProvider } from '../lib/Web3AuthContext';
+import { FarcasterWalletProvider } from '../lib/FarcasterWalletContext';
+import { isFarcasterMiniApp } from '../lib/farcaster';
 
 const graduate = Graduate({
   weight: '400',
@@ -143,6 +145,25 @@ export default function App({ Component, pageProps }) {
     );
   }
   
+  // Detect if we're running as a Farcaster Mini App
+  const [inFarcaster, setInFarcaster] = useState(false);
+  
+  useEffect(() => {
+    // Check on client side only
+    const isFarcaster = isFarcasterMiniApp();
+    setInFarcaster(isFarcaster);
+    
+    // If in Farcaster, immediately call sdk.actions.ready() to hide splash screen
+    if (isFarcaster) {
+      import('@farcaster/miniapp-sdk').then(({ sdk }) => {
+        sdk.actions.ready();
+        console.log('[Farcaster] sdk.actions.ready() called');
+      }).catch(err => {
+        console.error('[Farcaster] Failed to call ready():', err);
+      });
+    }
+  }, []);
+
   const content = (
     <>
       {/* Preload font used by canvas background */}
@@ -164,6 +185,7 @@ export default function App({ Component, pageProps }) {
         onOpenConference={handleOpenConference}
         unreadMessages={unreadMessages}
         onMessageRead={refreshUnreadCount}
+        inFarcaster={inFarcaster}
       />
       {/* Press Conference Badge */}
       {user && activeConferences.length > 0 && !openConferenceGameId && (
@@ -183,5 +205,15 @@ export default function App({ Component, pageProps }) {
     </>
   );
 
-  return cryptoShopEnabled ? <WalletProvider>{content}</WalletProvider> : content;
+  // Choose wallet provider based on environment
+  if (!cryptoShopEnabled) {
+    return content;
+  }
+  
+  // Use Farcaster wallet provider when in Warpcast, otherwise use Web3Auth/MetaMask
+  if (inFarcaster) {
+    return <FarcasterWalletProvider>{content}</FarcasterWalletProvider>;
+  }
+  
+  return <WalletProvider>{content}</WalletProvider>;
 }

@@ -14,10 +14,14 @@ import { BuyPackButton } from '../components/BuyPackButton';
 import { CURRENT_NETWORK, BASE_SEPOLIA_CHAIN_ID } from '../lib/contracts';
 import { cryptoShopEnabled } from '../lib/env';
 
-export default function Shop({ user, onLogout, unreadMessages }) {
+export default function Shop({ user, onLogout, unreadMessages, inFarcaster }) {
   const router = useRouter();
-  const { isConnected, address, chainId, isCorrectNetwork, disconnect, getSigner, switchNetwork } = useWallet();
+  const wallet = useWallet();
+  const { isConnected, address, chainId, isCorrectNetwork, disconnect, getSigner, switchNetwork } = wallet;
   const [balance, setBalance] = useState(null);
+  
+  // In Farcaster, balance comes from wagmi's useBalance hook via context
+  const farcasterBalance = wallet.balance;
 
   // Handle disconnect with confirmation
   const handleDisconnect = () => {
@@ -36,8 +40,14 @@ export default function Shop({ user, onLogout, unreadMessages }) {
     }
   }, [user, router]);
 
-  // Load balance when connected
+  // Load balance when connected (only needed for non-Farcaster mode)
   useEffect(() => {
+    // In Farcaster, balance is provided by wagmi's useBalance hook
+    if (inFarcaster) {
+      setBalance(farcasterBalance);
+      return;
+    }
+    
     if (!isConnected || !address) {
       setBalance(null);
       return;
@@ -74,7 +84,7 @@ export default function Shop({ user, onLogout, unreadMessages }) {
     // Refresh balance every 15 seconds
     const interval = setInterval(loadBalance, 15000);
     return () => clearInterval(interval);
-  }, [isConnected, address, getSigner]);
+  }, [isConnected, address, getSigner, inFarcaster, farcasterBalance]);
 
   if (!cryptoShopEnabled) return null;
   if (!user) return null;
@@ -188,22 +198,45 @@ export default function Shop({ user, onLogout, unreadMessages }) {
         <div className="mt-8 p-6 f10-panel">
           <h3 className="text-lg font-bold text-white mb-4">How It Works</h3>
           <ol className="space-y-3 text-gray-400">
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-sm flex items-center justify-center">1</span>
-              <span>Connect your wallet (Web3Auth or MetaMask)</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-sm flex items-center justify-center">2</span>
-              <span>Add ETH to your wallet (testnet faucet or buy)</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-sm flex items-center justify-center">3</span>
-              <span>Click &quot;Buy Pack&quot; and confirm the transaction</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-sm flex items-center justify-center">4</span>
-              <span>Your NFT cards will be minted to your wallet!</span>
-            </li>
+            {inFarcaster ? (
+              <>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white text-sm flex items-center justify-center">1</span>
+                  <span>Your Warpcast wallet is automatically connected</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white text-sm flex items-center justify-center">2</span>
+                  <span>Make sure you have ETH on Base Sepolia</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white text-sm flex items-center justify-center">3</span>
+                  <span>Click &quot;Buy Pack&quot; and confirm in Warpcast</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white text-sm flex items-center justify-center">4</span>
+                  <span>Your NFT cards will be minted to your wallet!</span>
+                </li>
+              </>
+            ) : (
+              <>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-sm flex items-center justify-center">1</span>
+                  <span>Connect your wallet (Web3Auth or MetaMask)</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-sm flex items-center justify-center">2</span>
+                  <span>Add ETH to your wallet (testnet faucet or buy)</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-sm flex items-center justify-center">3</span>
+                  <span>Click &quot;Buy Pack&quot; and confirm the transaction</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-sm flex items-center justify-center">4</span>
+                  <span>Your NFT cards will be minted to your wallet!</span>
+                </li>
+              </>
+            )}
           </ol>
         </div>
 

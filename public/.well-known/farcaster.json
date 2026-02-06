@@ -1,0 +1,16 @@
+{
+  "miniapp": {
+    "version": "1",
+    "name": "First & 10",
+    "iconUrl": "https://first-and-10.vercel.app/icons/icon-512.svg",
+    "homeUrl": "https://first-and-10.vercel.app?miniApp=true",
+    "splashImageUrl": "https://first-and-10.vercel.app/icons/icon-192.svg",
+    "splashBackgroundColor": "#1a1a2e",
+    "subtitle": "Football Card Game",
+    "description": "Build your team, play games, and collect NFT player cards in this football card game.",
+    "primaryCategory": "games",
+    "tags": ["football", "cards", "nft", "game", "sports"],
+    "requiredChains": ["eip155:84532"],
+    "requiredCapabilities": ["wallet.getEthereumProvider"]
+  }
+}

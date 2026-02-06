@@ -21,6 +21,19 @@ const nextConfig = {
       },
     ];
   },
+  // Optional: Use Farcaster's hosted manifest service instead of static file
+  // Uncomment and set FARCASTER_MANIFEST_ID to use hosted manifest
+  // async redirects() {
+  //   const manifestId = process.env.FARCASTER_MANIFEST_ID;
+  //   if (!manifestId) return [];
+  //   return [
+  //     {
+  //       source: '/.well-known/farcaster.json',
+  //       destination: `https://api.farcaster.xyz/miniapps/hosted-manifest/${manifestId}`,
+  //       permanent: false,
+  //     },
+  //   ];
+  // },
   webpack: (config) => {
     // Fix for Web3Auth / MetaMask SDK missing react-native modules
     config.resolve.fallback = {
