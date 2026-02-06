@@ -118,9 +118,9 @@ export default function Team({ user, onLogout, unreadMessages }) {
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="pb-28 md:pb-0">
-        {/* Game Selection Buttons - thinner, positioned higher */}
+        {/* Game Selection Buttons - thinner, positioned slightly lower */}
         {upcomingGames.length > 0 && (
-          <div className="flex justify-center mb-1" style={{ marginTop: '-8px' }}>
+          <div className="flex justify-center mb-1" style={{ marginTop: '2px' }}>
             <div className="flex p-0.5 bg-black/30 backdrop-blur border border-white/10 rounded-xl shadow-lg">
               {upcomingGames.map((game, idx) => {
                 const oppName = game.homeUserId === user?.id 

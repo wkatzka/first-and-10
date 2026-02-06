@@ -316,32 +316,32 @@ export default function OpponentScout({
 
   return (
     <div className="mb-2">
-      {/* Opponent Info - Tier on left (lower), Slider on right (compact) */}
-      <div className="flex items-end justify-between px-1 mb-1" style={{ marginTop: '40px' }}>
-        {/* Opponent Tier Info - Left side, positioned lower */}
+      {/* Opponent Info - Tier on left, Slider on right (compact) */}
+      <div className="flex items-end justify-between px-1 mb-1" style={{ marginTop: '80px' }}>
+        {/* Opponent Tier Info - Left side, purple styling */}
         <div className="flex flex-col gap-0.5">
           <div 
             className="px-1 py-0.5 rounded text-[9px] font-bold whitespace-nowrap"
             style={{ 
-              backgroundColor: 'rgba(239,68,68,0.15)',
-              border: '1px solid rgba(239,68,68,0.3)',
+              backgroundColor: 'rgba(168,85,247,0.15)',
+              border: '1px solid rgba(168,85,247,0.3)',
               fontFamily: "'Rajdhani', sans-serif",
             }}
           >
-            <span className="text-red-400/70">{sideLabel} Cap = </span>
-            <span className="text-red-400">{tierCap}</span>
+            <span className="text-purple-400/70">{sideLabel} Cap = </span>
+            <span className="text-purple-400">{tierCap}</span>
           </div>
           <div 
             className="px-1 py-0.5 rounded text-[9px] font-bold whitespace-nowrap"
             style={{ 
-              backgroundColor: 'rgba(239,68,68,0.15)',
-              border: '1px solid rgba(239,68,68,0.3)',
+              backgroundColor: 'rgba(168,85,247,0.15)',
+              border: '1px solid rgba(168,85,247,0.3)',
               fontFamily: "'Rajdhani', sans-serif",
             }}
           >
-            <span className="text-red-400/70">{sideLabel} Sum = </span>
-            <span className="text-red-400">{tierSum}</span>
-            <span className="text-red-400/50">/{tierCap}</span>
+            <span className="text-purple-400/70">{sideLabel} Sum = </span>
+            <span className="text-purple-400">{tierSum}</span>
+            <span className="text-purple-400/50">/{tierCap}</span>
           </div>
         </div>
 
@@ -485,12 +485,12 @@ export default function OpponentScout({
         </div>
       </div>
 
-      {/* Opponent Cards - Field Formation - moved down to clear endzone line */}
+      {/* Opponent Cards - Field Formation - pushed down away from endzone */}
       <div 
         className="relative" 
         style={{ 
           height: isOffense ? 'min(95px, 13vh)' : 'min(50px, 7vh)', 
-          marginTop: '8px' 
+          marginTop: '16px' 
         }}
       >
         {isOffense ? (
