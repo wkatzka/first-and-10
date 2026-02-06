@@ -21,6 +21,14 @@ const nextConfig = {
       },
     ];
   },
+  webpack: (config) => {
+    // Fix for Web3Auth / MetaMask SDK missing react-native modules
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      '@react-native-async-storage/async-storage': false,
+    };
+    return config;
+  },
 };
 
 module.exports = nextConfig;

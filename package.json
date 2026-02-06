@@ -12,6 +12,10 @@
     "dev:all": "concurrently \"npm run server\" \"npm run dev\""
   },
   "dependencies": {
+    "@coinbase/cbpay-js": "^2.4.0",
+    "@web3auth/base": "^9.7.0",
+    "@web3auth/ethereum-provider": "^9.7.0",
+    "@web3auth/modal": "^10.14.0",
     "cors": "^2.8.5",
     "ethers": "^6.9.0",
     "express": "^4.18.2",
