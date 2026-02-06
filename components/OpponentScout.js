@@ -57,11 +57,10 @@ export default function OpponentScout({
   showSide = 'defense' 
 }) {
   const [presets, setPresets] = useState([]);
-  const [selectedPresetIndex, setSelectedPresetIndex] = useState(null);
+  const [currentIndex, setCurrentIndex] = useState(0); // Start at first preset
   const [loadingPresets, setLoadingPresets] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState(null);
-  const [error, setError] = useState(null);
   const sliderRef = useRef(null);
   
   const isOffense = showSide === 'offense';
@@ -78,8 +77,7 @@ export default function OpponentScout({
     }
     
     setLoadingPresets(true);
-    setSelectedPresetIndex(null);
-    setError(null);
+    setCurrentIndex(0);
     
     console.log(`[OpponentScout] Fetching presets for opponent ${opponentId}, side: ${showSide}`);
     
@@ -88,36 +86,44 @@ export default function OpponentScout({
         console.log('[OpponentScout] Loaded presets:', data);
         if (data?.presets && data.presets.length > 0) {
           setPresets(data.presets);
+          // Find the preset that matches the opponent's current roster (by ratio)
+          // Default to middle preset (balanced/base)
+          const midIndex = Math.floor(data.presets.length / 2);
+          setCurrentIndex(midIndex);
         } else {
           setPresets([]);
-          console.log('[OpponentScout] No presets returned from API');
         }
       })
       .catch(err => {
         console.error('[OpponentScout] Failed to load opponent presets:', err);
         setPresets([]);
-        setError(err.message || 'Failed to load');
       })
       .finally(() => {
         setLoadingPresets(false);
       });
   }, [opponentId, showSide]);
 
-  // Get current cards to display (either from preset or actual roster)
+  // Get current preset
+  const currentPreset = presets[currentIndex] || null;
+
+  // Get current cards to display
   const displayCards = useMemo(() => {
-    if (selectedPresetIndex !== null && presets[selectedPresetIndex]) {
-      return presets[selectedPresetIndex].slots || {};
+    if (currentPreset) {
+      return currentPreset.slots || {};
     }
     return rosterCards;
-  }, [selectedPresetIndex, presets, rosterCards]);
+  }, [currentPreset, rosterCards]);
 
   // Detect strategy from displayed cards
   const opponentStrategy = useMemo(() => {
+    if (currentPreset) {
+      return currentPreset.strategy;
+    }
     if (!displayCards || Object.keys(displayCards).length === 0) return null;
     return isOffense 
       ? detectOffensiveStrategy(displayCards)
       : detectDefensiveStrategy(displayCards);
-  }, [displayCards, isOffense]);
+  }, [currentPreset, displayCards, isOffense]);
 
   // Strategy zone helpers
   const leftStrategies = isOffense ? ['run_heavy'] : ['run_stuff'];
@@ -189,22 +195,14 @@ export default function OpponentScout({
     return Math.max(0, Math.min(100, (x / rect.width) * 100));
   }, []);
 
-  // Simple click handler for direct dot selection
-  const handleSliderClick = useCallback((e) => {
-    if (loadingPresets || presets.length === 0) return;
-    
-    const pct = getPositionFromClient(e.clientX);
-    if (pct == null) return;
-    
-    const nearestIdx = findNearestDotByPosition(pct);
-    console.log('[OpponentScout] Click at', pct, '%, nearest dot:', nearestIdx);
-    
-    if (nearestIdx >= 0) {
-      setSelectedPresetIndex(nearestIdx === selectedPresetIndex ? null : nearestIdx);
-    }
-  }, [loadingPresets, presets.length, getPositionFromClient, findNearestDotByPosition, selectedPresetIndex]);
+  // Apply preset by index (just updates display, no API call)
+  const selectPreset = useCallback((index) => {
+    if (index < 0 || index >= presets.length) return;
+    console.log('[OpponentScout] Selecting preset:', index, presets[index]);
+    setCurrentIndex(index);
+  }, [presets]);
 
-  // --- Drag interaction ---
+  // --- ALL interaction handled at track level (matching StrategySlider) ---
   const handlePointerDown = useCallback((clientX) => {
     if (loadingPresets || presets.length === 0) return;
     const pct = getPositionFromClient(clientX);
@@ -230,15 +228,16 @@ export default function OpponentScout({
     
     const nearestIdx = findNearestDotByPosition(finalPos);
     if (nearestIdx >= 0) {
-      setSelectedPresetIndex(nearestIdx === selectedPresetIndex ? null : nearestIdx);
+      selectPreset(nearestIdx);
     }
-  }, [dragging, dragPosition, findNearestDotByPosition, selectedPresetIndex]);
+  }, [dragging, dragPosition, findNearestDotByPosition, selectPreset]);
 
-  // Mouse events
-  const handleMouseDown = (e) => {
+  // Mouse events - bind to track
+  const handleMouseDown = useCallback((e) => {
     e.preventDefault();
+    e.stopPropagation();
     handlePointerDown(e.clientX);
-  };
+  }, [handlePointerDown]);
 
   useEffect(() => {
     if (!dragging) return;
@@ -256,18 +255,18 @@ export default function OpponentScout({
   }, [dragging, handlePointerMove, handlePointerUp]);
 
   // Touch events
-  const handleTouchStart = (e) => {
+  const handleTouchStart = useCallback((e) => {
     handlePointerDown(e.touches[0].clientX);
-  };
+  }, [handlePointerDown]);
 
-  const handleTouchMove = (e) => {
+  const handleTouchMove = useCallback((e) => {
     e.preventDefault();
     handlePointerMove(e.touches[0].clientX);
-  };
+  }, [handlePointerMove]);
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = useCallback(() => {
     handlePointerUp();
-  };
+  }, [handlePointerUp]);
 
   // Highlight nearest dot while dragging
   const dragNearestIdx = dragging && dragPosition != null 
@@ -286,8 +285,6 @@ export default function OpponentScout({
     return null;
   }
 
-  const strategyLabel = STRATEGY_LABELS[opponentStrategy] || 'Unknown';
-  const strategyColor = STRATEGY_COLORS[opponentStrategy] || '#a3a3a3';
   const icon = isOffense ? '⚔️' : '🛡️';
   const sideLabel = isOffense ? 'Offense' : 'Defense';
   
@@ -296,7 +293,7 @@ export default function OpponentScout({
   const centerLabel = isOffense ? 'Balanced' : 'Base';
   const rightLabel = isOffense ? 'Pass' : 'Coverage';
   
-  const currentStrategy = opponentStrategy || (isOffense ? 'balanced' : 'base_defense');
+  const currentStrategy = currentPreset?.strategy || opponentStrategy || (isOffense ? 'balanced' : 'base_defense');
   const isLeftActive = leftStrategies.includes(currentStrategy);
   const isCenterActive = !isLeftActive && !rightStrategies.includes(currentStrategy);
   const isRightActive = rightStrategies.includes(currentStrategy);
@@ -321,7 +318,7 @@ export default function OpponentScout({
         </div>
       </div>
 
-      {/* Opponent Slider - exact copy of StrategySlider mechanics */}
+      {/* Opponent Slider - matches StrategySlider exactly */}
       <div className="flex justify-center mb-3">
         <div 
           ref={sliderRef}
@@ -334,7 +331,6 @@ export default function OpponentScout({
             cursor: presets.length > 0 ? 'pointer' : 'default',
             touchAction: 'none',
           }}
-          onClick={handleSliderClick}
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -395,7 +391,7 @@ export default function OpponentScout({
               const pos = dotPositions[i];
               if (pos == null) return null;
 
-              const isActive = i === selectedPresetIndex && !dragging;
+              const isActive = i === currentIndex && !dragging;
               const isDragTarget = i === dragNearestIdx;
               const isHighlighted = isActive || isDragTarget;
               const dotColor = getColorForStrategy(preset.strategy);
@@ -418,7 +414,7 @@ export default function OpponentScout({
               );
             })}
 
-            {/* Dragging indicator */}
+            {/* Dragging indicator - shows while dragging */}
             {dragging && dragPosition != null && (
               <div
                 className="absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
@@ -431,9 +427,8 @@ export default function OpponentScout({
                     ? getColorForStrategy(presets[dragNearestIdx].strategy) 
                     : '#a3a3a3',
                   border: '2px solid rgba(255,255,255,0.8)',
-                  boxShadow: `0 0 12px rgba(255,255,255,0.3)`,
+                  boxShadow: '0 0 12px rgba(255,255,255,0.3)',
                   zIndex: 10,
-                  transition: 'none',
                   opacity: 0.7,
                 }}
               />
@@ -446,12 +441,10 @@ export default function OpponentScout({
               </div>
             )}
             
-            {/* No presets / error message */}
+            {/* No presets message */}
             {!loadingPresets && presets.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-gray-500 text-xs">
-                  {error ? `Error: ${error}` : 'Restart backend for presets'}
-                </span>
+                <span className="text-gray-500 text-xs">No presets available</span>
               </div>
             )}
           </div>
@@ -460,25 +453,13 @@ export default function OpponentScout({
           <div className="text-center pb-1 pointer-events-none">
             <span className="text-[10px] text-gray-400" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
               {presets.length > 0 
-                ? `${presets.length} roster${presets.length !== 1 ? 's' : ''} • Tap or drag to scout`
+                ? `${presets.length} roster${presets.length !== 1 ? 's' : ''} • Drag or tap to scout`
                 : 'Scout opponent builds'
               }
             </span>
           </div>
         </div>
       </div>
-      
-      {selectedPresetIndex !== null && presets[selectedPresetIndex] && (
-        <div className="text-center text-xs text-gray-400 mb-2" style={{ fontFamily: 'var(--f10-display-font)' }}>
-          Viewing: {STRATEGY_LABELS[presets[selectedPresetIndex].strategy] || 'Preset'}
-          <button 
-            onClick={() => setSelectedPresetIndex(null)}
-            className="ml-2 text-red-400 hover:text-red-300"
-          >
-            (reset)
-          </button>
-        </div>
-      )}
 
       {/* Opponent Cards - Field Formation (positions mirrored for facing you, cards right-side up) */}
       <div className="relative" style={{ height: isOffense ? '100px' : '55px', marginTop: '-8px' }}>
