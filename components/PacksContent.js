@@ -163,19 +163,23 @@ export default function PacksContent({ user, onViewCollection }) {
       
       {/* Main field view - pack on left, best card on right */}
       {!showResults && (
-        <div className="flex items-center justify-center gap-8 py-8 px-4">
+        <div className="flex items-center justify-center gap-6 py-12 px-4">
           {/* Pack section */}
           <div className="flex flex-col items-center">
             <button
               onClick={packInfo?.packsRemaining > 0 ? handleOpenPack : () => router.push('/shop')}
               disabled={opening}
               className="relative transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
+              style={{ width: '140px', height: '190px' }}
             >
               <img 
-                src="/foil-pack.png" 
+                src="/f10-pack.png" 
                 alt="Card Pack" 
-                className="w-32 h-40 object-contain drop-shadow-2xl"
-                style={{ filter: 'drop-shadow(0 0 20px rgba(255,200,0,0.4))' }}
+                className="w-full h-full object-contain"
+                style={{ 
+                  mixBlendMode: 'multiply',
+                  filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.5))'
+                }}
               />
               {opening && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
@@ -184,7 +188,7 @@ export default function PacksContent({ user, onViewCollection }) {
               )}
             </button>
             <div 
-              className="mt-3 text-white text-lg tracking-wide"
+              className="mt-2 text-white text-base tracking-wide"
               style={{ fontFamily: 'var(--f10-display-font)', fontWeight: 700 }}
             >
               {getPackLabel()}
@@ -197,26 +201,21 @@ export default function PacksContent({ user, onViewCollection }) {
               <button
                 onClick={goToCollection}
                 className="transition-transform hover:scale-105 active:scale-95"
+                style={{ width: '140px' }}
               >
                 <Card card={bestCard} small={false} />
               </button>
             ) : (
               <div 
                 onClick={goToCollection}
-                className="w-32 h-44 rounded-lg border-2 border-dashed border-white/20 flex items-center justify-center cursor-pointer hover:border-white/40 transition-colors"
+                className="rounded-lg border-2 border-dashed border-white/20 flex items-center justify-center cursor-pointer hover:border-white/40 transition-colors"
+                style={{ width: '140px', height: '190px' }}
               >
                 <span className="text-white/40 text-sm text-center px-2" style={{ fontFamily: 'var(--f10-display-font)' }}>
                   No cards yet
                 </span>
               </div>
             )}
-            <div 
-              className="mt-3 text-white/60 text-sm tracking-wide cursor-pointer hover:text-white/80 transition-colors"
-              style={{ fontFamily: 'var(--f10-display-font)', fontWeight: 700 }}
-              onClick={goToCollection}
-            >
-              View Collection
-            </div>
           </div>
         </div>
       )}
