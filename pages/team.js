@@ -171,7 +171,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
         </div>
 
         {/* Add top margin when opponent scout is shown to create space */}
-        <div style={{ marginTop: opponentRoster ? '16px' : '0' }}>
+        <div style={{ marginTop: opponentRoster ? '21px' : '5px' }}>
           <RosterView user={user} diagramSide={diagramSide} refreshTrigger={refreshTrigger} />
         </div>
       </div>

@@ -481,7 +481,7 @@ export default function OpponentScout({
         className="relative" 
         style={{ 
           height: isOffense ? 'min(95px, 13vh)' : 'min(50px, 7vh)', 
-          marginTop: '4px' 
+          marginTop: '14px' 
         }}
       >
         {isOffense ? (
@@ -555,12 +555,10 @@ export default function OpponentScout({
       </div>
       
       {/* VS Divider - positioned lower */}
-      <div className="flex items-center justify-center gap-2 mb-4" style={{ marginTop: '53px' }}>
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+      <div className="flex items-center justify-center mb-4" style={{ marginTop: '83px' }}>
         <span className="text-xs text-white font-bold" style={{ fontFamily: 'var(--f10-display-font)' }}>
           VS
         </span>
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
       </div>
     </div>
   );
