@@ -30,7 +30,6 @@ const OFFENSE_SLOTS = [
 ];
 
 const QB_SLOT = { id: 'qb_card_id', label: 'QB', position: 'QB' };
-const K_SLOT = { id: 'k_card_id', label: 'K', position: 'K' };
 
 // Slider colors - match StrategySlider exactly
 const OFFENSE_COLORS = {
@@ -62,6 +61,7 @@ export default function OpponentScout({
   const [loadingPresets, setLoadingPresets] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState(null);
+  const [error, setError] = useState(null);
   const sliderRef = useRef(null);
   
   const isOffense = showSide === 'offense';
@@ -72,19 +72,31 @@ export default function OpponentScout({
   
   // Fetch opponent's presets when opponentId or side changes
   useEffect(() => {
-    if (!opponentId) return;
+    if (!opponentId) {
+      console.log('[OpponentScout] No opponentId provided');
+      return;
+    }
     
     setLoadingPresets(true);
     setSelectedPresetIndex(null);
+    setError(null);
+    
+    console.log(`[OpponentScout] Fetching presets for opponent ${opponentId}, side: ${showSide}`);
     
     getUserPresets(opponentId, showSide)
       .then(data => {
         console.log('[OpponentScout] Loaded presets:', data);
-        setPresets(data?.presets || []);
+        if (data?.presets && data.presets.length > 0) {
+          setPresets(data.presets);
+        } else {
+          setPresets([]);
+          console.log('[OpponentScout] No presets returned from API');
+        }
       })
       .catch(err => {
-        console.error('Failed to load opponent presets:', err);
+        console.error('[OpponentScout] Failed to load opponent presets:', err);
         setPresets([]);
+        setError(err.message || 'Failed to load');
       })
       .finally(() => {
         setLoadingPresets(false);
@@ -177,7 +189,22 @@ export default function OpponentScout({
     return Math.max(0, Math.min(100, (x / rect.width) * 100));
   }, []);
 
-  // --- ALL interaction handled at track level (matching StrategySlider) ---
+  // Simple click handler for direct dot selection
+  const handleSliderClick = useCallback((e) => {
+    if (loadingPresets || presets.length === 0) return;
+    
+    const pct = getPositionFromClient(e.clientX);
+    if (pct == null) return;
+    
+    const nearestIdx = findNearestDotByPosition(pct);
+    console.log('[OpponentScout] Click at', pct, '%, nearest dot:', nearestIdx);
+    
+    if (nearestIdx >= 0) {
+      setSelectedPresetIndex(nearestIdx === selectedPresetIndex ? null : nearestIdx);
+    }
+  }, [loadingPresets, presets.length, getPositionFromClient, findNearestDotByPosition, selectedPresetIndex]);
+
+  // --- Drag interaction ---
   const handlePointerDown = useCallback((clientX) => {
     if (loadingPresets || presets.length === 0) return;
     const pct = getPositionFromClient(clientX);
@@ -203,7 +230,6 @@ export default function OpponentScout({
     
     const nearestIdx = findNearestDotByPosition(finalPos);
     if (nearestIdx >= 0) {
-      // Just update the selected preset (no API call - this is opponent's roster)
       setSelectedPresetIndex(nearestIdx === selectedPresetIndex ? null : nearestIdx);
     }
   }, [dragging, dragPosition, findNearestDotByPosition, selectedPresetIndex]);
@@ -280,9 +306,9 @@ export default function OpponentScout({
   const rightColor = isOffense ? OFFENSE_COLORS.pass_heavy : DEFENSE_COLORS.coverage_shell;
 
   return (
-    <div className="mb-8">
+    <div className="mb-6">
       {/* Opponent Header */}
-      <div className="flex items-center justify-center gap-3 mb-3">
+      <div className="flex items-center justify-center gap-3 mb-2">
         <div 
           className="px-3 py-1.5 rounded-lg text-sm font-bold"
           style={{ 
@@ -296,7 +322,7 @@ export default function OpponentScout({
       </div>
 
       {/* Opponent Slider - exact copy of StrategySlider mechanics */}
-      <div className="flex justify-center mb-4">
+      <div className="flex justify-center mb-3">
         <div 
           ref={sliderRef}
           className="relative rounded-lg overflow-hidden select-none"
@@ -308,6 +334,7 @@ export default function OpponentScout({
             cursor: presets.length > 0 ? 'pointer' : 'default',
             touchAction: 'none',
           }}
+          onClick={handleSliderClick}
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
@@ -412,15 +439,19 @@ export default function OpponentScout({
               />
             )}
             
-            {/* Loading or no presets message */}
+            {/* Loading message */}
             {loadingPresets && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-gray-500 text-xs">Loading...</span>
+                <span className="text-gray-500 text-xs">Loading presets...</span>
               </div>
             )}
+            
+            {/* No presets / error message */}
             {!loadingPresets && presets.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-gray-500 text-xs">No presets available</span>
+                <span className="text-gray-500 text-xs">
+                  {error ? `Error: ${error}` : 'Restart backend for presets'}
+                </span>
               </div>
             )}
           </div>
@@ -429,7 +460,7 @@ export default function OpponentScout({
           <div className="text-center pb-1 pointer-events-none">
             <span className="text-[10px] text-gray-400" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
               {presets.length > 0 
-                ? `${presets.length} roster${presets.length !== 1 ? 's' : ''} • Drag or tap to scout`
+                ? `${presets.length} roster${presets.length !== 1 ? 's' : ''} • Tap or drag to scout`
                 : 'Scout opponent builds'
               }
             </span>
@@ -438,7 +469,7 @@ export default function OpponentScout({
       </div>
       
       {selectedPresetIndex !== null && presets[selectedPresetIndex] && (
-        <div className="text-center text-xs text-gray-400 mb-3" style={{ fontFamily: 'var(--f10-display-font)' }}>
+        <div className="text-center text-xs text-gray-400 mb-2" style={{ fontFamily: 'var(--f10-display-font)' }}>
           Viewing: {STRATEGY_LABELS[presets[selectedPresetIndex].strategy] || 'Preset'}
           <button 
             onClick={() => setSelectedPresetIndex(null)}
@@ -449,8 +480,8 @@ export default function OpponentScout({
         </div>
       )}
 
-      {/* Opponent Cards - Field Formation (positions mirrored, cards right-side up) */}
-      <div className="relative" style={{ height: isOffense ? '120px' : '70px', marginBottom: '20px' }}>
+      {/* Opponent Cards - Field Formation (positions mirrored for facing you, cards right-side up) */}
+      <div className="relative" style={{ height: isOffense ? '100px' : '55px', marginTop: '-8px' }}>
         {isOffense ? (
           // Offense formation - QB at top (closest to their endzone), skill players below
           <>
@@ -469,11 +500,10 @@ export default function OpponentScout({
               </div>
             </div>
             
-            {/* Skill positions in arc below QB */}
+            {/* Skill positions in arc below QB - tightened up */}
             {OFFENSE_SLOTS.map((slot, idx) => {
-              // Position calculations for inverted U shape (from opponent's perspective)
-              const xPositions = [0.08, 0.27, 0.5, 0.73, 0.92]; // WR1, TE, OL, RB, WR2
-              const yOffsets = [55, 70, 80, 70, 55]; // Arc shape
+              const xPositions = [0.08, 0.27, 0.5, 0.73, 0.92];
+              const yOffsets = [45, 58, 68, 58, 45]; // Moved up
               
               return (
                 <div 
@@ -498,36 +528,34 @@ export default function OpponentScout({
             })}
           </>
         ) : (
-          // Defense formation - 4-man front with K behind
-          <>
-            {/* 4-man defensive line */}
-            <div className="flex justify-center gap-6">
-              {DEFENSE_SLOTS.map((slot, idx) => {
-                const yOffsets = [15, 0, 0, 15]; // DB1, DL, LB, DB2 stagger
-                return (
-                  <div 
-                    key={slot.id}
-                    className="flex flex-col items-center"
-                    style={{ marginTop: `${yOffsets[idx]}px` }}
-                  >
-                    <div className="opacity-80" style={{ filter: 'saturate(0.7)' }}>
-                      <MiniCard
-                        card={displayCards[slot.id]}
-                        position={slot.label}
-                        empty={!displayCards[slot.id]}
-                        fieldSize
-                      />
-                    </div>
+          // Defense formation - 4-man front, end cards (DB1, DB2) moved up
+          <div className="flex justify-center gap-6">
+            {DEFENSE_SLOTS.map((slot, idx) => {
+              // DB1 and DB2 (indices 0 and 3) are higher (closer to opponent's side)
+              const yOffsets = [0, 10, 10, 0]; // DB1, DL, LB, DB2 - ends are higher
+              return (
+                <div 
+                  key={slot.id}
+                  className="flex flex-col items-center"
+                  style={{ marginTop: `${yOffsets[idx]}px` }}
+                >
+                  <div className="opacity-80" style={{ filter: 'saturate(0.7)' }}>
+                    <MiniCard
+                      card={displayCards[slot.id]}
+                      position={slot.label}
+                      empty={!displayCards[slot.id]}
+                      fieldSize
+                    />
                   </div>
-                );
-              })}
-            </div>
-          </>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
       
-      {/* Divider */}
-      <div className="flex items-center justify-center gap-2 mb-6">
+      {/* Divider - more margin below for spacing */}
+      <div className="flex items-center justify-center gap-2 mt-2 mb-8">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         <span className="text-xs text-gray-500 font-medium" style={{ fontFamily: 'var(--f10-display-font)' }}>
           VS
