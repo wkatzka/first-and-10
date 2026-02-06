@@ -3,6 +3,8 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import { getAllUsers, simulatePractice } from '../lib/api';
 
+const NAV_PURPLE = '#a855f7';
+
 export default function Schedule({ user, onLogout, unreadMessages }) {
   const router = useRouter();
   const [todayGames, setTodayGames] = useState([]);
@@ -165,9 +167,37 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
   
   if (!user) return null;
   
+  const activeSegmentStyle = { 
+    backgroundColor: `${NAV_PURPLE}20`, 
+    border: `2px solid ${NAV_PURPLE}`, 
+    boxShadow: `0 0 12px ${NAV_PURPLE}80` 
+  };
+  const buttonFont = { fontFamily: 'var(--f10-display-font)' };
+  
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="space-y-6">
+        {/* Toggle Buttons */}
+        <div className="flex justify-center">
+          <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
+            <button 
+              type="button" 
+              className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-white"
+              style={{ ...activeSegmentStyle, ...buttonFont }}
+            >
+              Schedule
+            </button>
+            <button 
+              type="button" 
+              onClick={() => router.push('/leaderboard')}
+              className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-gray-400 hover:text-white"
+              style={buttonFont}
+            >
+              Standings
+            </button>
+          </div>
+        </div>
+        
         {/* Header */}
         <div className="text-center">
           <h1 className="text-3xl f10-title text-white mb-2">Game Schedule</h1>

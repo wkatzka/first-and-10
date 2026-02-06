@@ -3,8 +3,11 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import { getLeaderboard } from '../lib/api';
 
+const NAV_PURPLE = '#a855f7';
+
 export default function Leaderboard({ user, onLogout, unreadMessages }) {
   const router = useRouter();
+  const [view, setView] = useState('standings');
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -27,6 +30,13 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
     }
   };
   
+  const activeSegmentStyle = { 
+    backgroundColor: `${NAV_PURPLE}20`, 
+    border: `2px solid ${NAV_PURPLE}`, 
+    boxShadow: `0 0 12px ${NAV_PURPLE}80` 
+  };
+  const buttonFont = { fontFamily: 'var(--f10-display-font)' };
+  
   const getRankStyle = (rank) => {
     if (rank === 1) return 'border-yellow-500/40';
     if (rank === 2) return 'border-gray-300/30';
@@ -46,6 +56,28 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="space-y-6">
+        {/* Toggle Buttons */}
+        <div className="flex justify-center">
+          <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
+            <button 
+              type="button" 
+              onClick={() => router.push('/schedule')}
+              className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-gray-400 hover:text-white"
+              style={buttonFont}
+            >
+              Schedule
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setView('standings')}
+              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${view === 'standings' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+              style={view === 'standings' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}
+            >
+              Standings
+            </button>
+          </div>
+        </div>
+        
         {/* Header */}
         <div className="text-center">
           <h1 className="text-3xl f10-title text-white mb-2">Leaderboard</h1>
