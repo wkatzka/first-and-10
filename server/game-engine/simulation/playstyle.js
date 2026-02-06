@@ -101,7 +101,9 @@ function getDefenseMatchupResult(myDefense, theirOffense) {
  */
 function getBoostMultiplier(result) {
   if (result === 'advantage') return 1 + STRATEGY_BOOST_AMOUNT;
+  if (result === 'slight_advantage') return 1 + STRATEGY_BOOST_AMOUNT * 0.20;
   if (result === 'captured') return 1 - STRATEGY_BOOST_AMOUNT;
+  if (result === 'slight_captured') return 1 - STRATEGY_BOOST_AMOUNT * 0.20;
   return 1.0;
 }
 

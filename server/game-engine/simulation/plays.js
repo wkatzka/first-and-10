@@ -130,8 +130,8 @@ function simulatePassPlay(offense, defense, situation) {
   const dls = defense.roster.DL ? [defense.roster.DL] : (defense.roster.DLs || []);
   const lbs = defense.roster.LB ? [defense.roster.LB] : (defense.roster.LBs || []);
   
-  // Step 1: Pass protection
-  const protection = calculateProtection(olTier, dlTier);
+  // Step 1: Pass protection (QB pocket presence helps avoid sacks/pressure)
+  const protection = calculateProtection(olTier, dlTier, qb?.tier || 5);
   
   if (protection.sacked) {
     return {

@@ -1,8 +1,7 @@
 /**
  * OpponentScout - Shows opponent's roster for scouting
  * Shows defense when you're viewing offense, offense when viewing defense
- * Cards displayed in field formation (mirrored positions, cards right-side up)
- * Slider matches StrategySlider exactly with drag/tap mechanics
+ * Slider matches StrategySlider exactly - full width on right side
  */
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { MiniCard } from './Card';
@@ -31,6 +30,10 @@ const OFFENSE_SLOTS = [
 
 const QB_SLOT = { id: 'qb_card_id', label: 'QB', position: 'QB' };
 
+// Tier caps (same as user's)
+const OFFENSE_TIER_CAP = 42;
+const DEFENSE_TIER_CAP = 28;
+
 // Slider colors - match StrategySlider exactly
 const OFFENSE_COLORS = {
   run_heavy: '#4ade80',
@@ -49,6 +52,17 @@ const BOUNDARY_FIRST = 33.33;
 const BOUNDARY_SECOND = 66.66;
 const ZONE_PAD = 3;
 
+// Calculate tier sum from cards
+function calculateTierSum(cards, slots) {
+  if (!cards) return 0;
+  let sum = 0;
+  for (const slot of slots) {
+    const card = cards[slot.id];
+    if (card?.tier) sum += card.tier;
+  }
+  return sum;
+}
+
 export default function OpponentScout({ 
   opponentRoster, 
   opponentName, 
@@ -57,7 +71,7 @@ export default function OpponentScout({
   showSide = 'defense' 
 }) {
   const [presets, setPresets] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0); // Start at first preset
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [loadingPresets, setLoadingPresets] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState(null);
@@ -65,6 +79,8 @@ export default function OpponentScout({
   
   const isOffense = showSide === 'offense';
   const colors = isOffense ? OFFENSE_COLORS : DEFENSE_COLORS;
+  const tierCap = isOffense ? OFFENSE_TIER_CAP : DEFENSE_TIER_CAP;
+  const sideLabel = isOffense ? 'Offense' : 'Defense';
   
   // Fix: Access cards from the correct path in the data structure
   const rosterCards = opponentRoster?.roster?.cards || opponentRoster?.cards || {};
@@ -72,23 +88,16 @@ export default function OpponentScout({
   // Fetch opponent's presets when opponentId or side changes
   useEffect(() => {
     if (!opponentId) {
-      console.log('[OpponentScout] No opponentId provided');
       return;
     }
     
     setLoadingPresets(true);
     setCurrentIndex(0);
     
-    console.log(`[OpponentScout] Fetching presets for opponent ${opponentId}, side: ${showSide}`);
-    
     getUserPresets(opponentId, showSide)
       .then(data => {
-        console.log('[OpponentScout] Loaded presets:', data);
         if (data?.presets && data.presets.length > 0) {
-          // Log first preset to verify data structure
-          console.log('[OpponentScout] First preset slots:', data.presets[0]?.slots);
           setPresets(data.presets);
-          // Default to middle preset (balanced/base)
           const midIndex = Math.floor(data.presets.length / 2);
           setCurrentIndex(midIndex);
         } else {
@@ -115,6 +124,12 @@ export default function OpponentScout({
     return rosterCards;
   }, [currentPreset, rosterCards]);
 
+  // Calculate tier sum for displayed cards
+  const tierSum = useMemo(() => {
+    const slots = isOffense ? [...OFFENSE_SLOTS, QB_SLOT] : DEFENSE_SLOTS;
+    return calculateTierSum(displayCards, slots);
+  }, [displayCards, isOffense]);
+
   // Detect strategy from displayed cards
   const opponentStrategy = useMemo(() => {
     if (currentPreset) {
@@ -140,7 +155,7 @@ export default function OpponentScout({
     return { start: BOUNDARY_FIRST + ZONE_PAD, end: BOUNDARY_SECOND - ZONE_PAD };
   }, [leftStrategies, rightStrategies]);
 
-  // Pre-compute visual positions for all dots (memoized)
+  // Pre-compute visual positions for all dots
   const dotPositions = useMemo(() => {
     if (presets.length === 0) return [];
 
@@ -196,19 +211,16 @@ export default function OpponentScout({
     return Math.max(0, Math.min(100, (x / rect.width) * 100));
   }, []);
 
-  // Apply preset by index (just updates display, no API call)
+  // Apply preset by index
   const selectPreset = useCallback((index) => {
     if (index < 0 || index >= presets.length) return;
-    console.log('[OpponentScout] Selecting preset:', index, presets[index]);
     setCurrentIndex(index);
   }, [presets]);
 
-  // --- ALL interaction handled at track level (matching StrategySlider) ---
+  // Pointer handlers
   const handlePointerDown = useCallback((clientX) => {
-    console.log('[OpponentScout] Pointer down at', clientX, 'presets:', presets.length, 'loading:', loadingPresets);
     if (loadingPresets || presets.length === 0) return;
     const pct = getPositionFromClient(clientX);
-    console.log('[OpponentScout] Position %:', pct);
     if (pct == null) return;
     setDragging(true);
     setDragPosition(pct);
@@ -235,7 +247,7 @@ export default function OpponentScout({
     }
   }, [dragging, dragPosition, findNearestDotByPosition, selectPreset]);
 
-  // Mouse events - bind to track
+  // Mouse events
   const handleMouseDown = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -287,9 +299,6 @@ export default function OpponentScout({
   if (!opponentRoster) {
     return null;
   }
-
-  const icon = isOffense ? '⚔️' : '🛡️';
-  const sideLabel = isOffense ? 'Offense' : 'Defense';
   
   // Labels for slider
   const leftLabel = isOffense ? 'Run' : 'Run Stop';
@@ -306,29 +315,41 @@ export default function OpponentScout({
   const rightColor = isOffense ? OFFENSE_COLORS.pass_heavy : DEFENSE_COLORS.coverage_shell;
 
   return (
-    <div className="mb-6">
-      {/* Opponent Header */}
-      <div className="flex items-center justify-center gap-3 mb-2">
-        <div 
-          className="px-3 py-1.5 rounded-lg text-sm font-bold"
-          style={{ 
-            backgroundColor: 'rgba(239,68,68,0.15)',
-            border: '1px solid rgba(239,68,68,0.3)',
-            fontFamily: 'var(--f10-display-font)'
-          }}
-        >
-          <span className="text-red-400">{icon} {opponentName || 'Opponent'}'s {sideLabel}</span>
+    <div className="mb-4">
+      {/* Opponent Info Bar - Tier Cap/Sum on left, Slider on right */}
+      <div className="flex gap-2 items-center mb-3 px-2">
+        {/* Opponent Tier Info - Left side */}
+        <div className="flex flex-col gap-1">
+          <div 
+            className="px-2 py-1 rounded-lg text-xs font-bold"
+            style={{ 
+              backgroundColor: 'rgba(239,68,68,0.15)',
+              border: '1px solid rgba(239,68,68,0.3)',
+              fontFamily: "'Rajdhani', sans-serif",
+            }}
+          >
+            <span className="text-red-400/70">{sideLabel} Cap = </span>
+            <span className="text-red-400">{tierCap}</span>
+          </div>
+          <div 
+            className="px-2 py-1 rounded-lg text-xs font-bold"
+            style={{ 
+              backgroundColor: 'rgba(239,68,68,0.15)',
+              border: '1px solid rgba(239,68,68,0.3)',
+              fontFamily: "'Rajdhani', sans-serif",
+            }}
+          >
+            <span className="text-red-400/70">{sideLabel} Sum = </span>
+            <span className="text-red-400">{tierSum}</span>
+            <span className="text-red-400/50">/{tierCap}</span>
+          </div>
         </div>
-      </div>
 
-      {/* Opponent Slider - matches StrategySlider exactly */}
-      <div className="flex justify-center mb-3 relative" style={{ zIndex: 20 }}>
+        {/* Opponent Slider - Right side, flex-1 to fill space */}
         <div 
           ref={sliderRef}
-          className="relative rounded-lg overflow-hidden select-none"
+          className="relative rounded-lg overflow-hidden select-none flex-1"
           style={{
-            width: '100%',
-            maxWidth: '320px',
             backgroundColor: 'rgba(0,0,0,0.5)',
             border: '1px solid rgba(255,255,255,0.1)',
             cursor: presets.length > 0 ? 'pointer' : 'default',
@@ -389,7 +410,7 @@ export default function OpponentScout({
               style={{ left: `${BOUNDARY_SECOND}%`, transform: 'translate(-50%, -50%)', backgroundColor: 'rgba(255,255,255,0.4)' }}
             />
 
-            {/* Dots — purely visual, no pointer events */}
+            {/* Dots */}
             {presets.map((preset, i) => {
               const pos = dotPositions[i];
               if (pos == null) return null;
@@ -417,7 +438,7 @@ export default function OpponentScout({
               );
             })}
 
-            {/* Dragging indicator - shows while dragging */}
+            {/* Dragging indicator */}
             {dragging && dragPosition != null && (
               <div
                 className="absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
@@ -437,17 +458,15 @@ export default function OpponentScout({
               />
             )}
             
-            {/* Loading message */}
+            {/* Loading/empty state */}
             {loadingPresets && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-gray-500 text-xs">Loading presets...</span>
+                <span className="text-gray-500 text-xs">Loading...</span>
               </div>
             )}
-            
-            {/* No presets message */}
             {!loadingPresets && presets.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-gray-500 text-xs">No presets available</span>
+                <span className="text-gray-500 text-xs">No presets</span>
               </div>
             )}
           </div>
@@ -464,10 +483,9 @@ export default function OpponentScout({
         </div>
       </div>
 
-      {/* Opponent Cards - Field Formation (positions mirrored for facing you, cards right-side up) */}
+      {/* Opponent Cards - Field Formation */}
       <div className="relative" style={{ height: isOffense ? '100px' : '55px', marginTop: '-8px' }}>
         {isOffense ? (
-          // Offense formation - QB at top (closest to their endzone), skill players below
           <>
             {/* QB at top center */}
             <div 
@@ -484,10 +502,10 @@ export default function OpponentScout({
               </div>
             </div>
             
-            {/* Skill positions in arc below QB - tightened up */}
+            {/* Skill positions in arc below QB */}
             {OFFENSE_SLOTS.map((slot, idx) => {
               const xPositions = [0.08, 0.27, 0.5, 0.73, 0.92];
-              const yOffsets = [45, 58, 68, 58, 45]; // Moved up
+              const yOffsets = [45, 58, 68, 58, 45];
               
               return (
                 <div 
@@ -512,11 +530,9 @@ export default function OpponentScout({
             })}
           </>
         ) : (
-          // Defense formation - 4-man front, end cards (DB1, DB2) moved up
           <div className="flex justify-center gap-6">
             {DEFENSE_SLOTS.map((slot, idx) => {
-              // DB1 and DB2 (indices 0 and 3) are higher (closer to opponent's side)
-              const yOffsets = [0, 10, 10, 0]; // DB1, DL, LB, DB2 - ends are higher
+              const yOffsets = [0, 10, 10, 0];
               return (
                 <div 
                   key={slot.id}
@@ -538,8 +554,8 @@ export default function OpponentScout({
         )}
       </div>
       
-      {/* Divider - more margin below for spacing */}
-      <div className="flex items-center justify-center gap-2 mt-2 mb-8">
+      {/* VS Divider */}
+      <div className="flex items-center justify-center gap-2 mt-2 mb-4">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         <span className="text-xs text-gray-500 font-medium" style={{ fontFamily: 'var(--f10-display-font)' }}>
           VS

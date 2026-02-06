@@ -159,11 +159,11 @@ const PLAY_OUTCOMES = {
     INT_PRESSURE_BONUS: 0.015,    // Reduced from 2%
     INT_COVERAGE_BONUS: 0.012,    // Per tier DB > WR
     
-    // Yards
+    // Yards - REBALANCED for pass/run parity
     SHORT_YARDS: { min: 3, max: 9 },   // Slightly better (was 2-8)
-    MEDIUM_YARDS: { min: 9, max: 20 }, // Slightly better (was 8-18)
+    MEDIUM_YARDS: { min: 10, max: 21 }, // Buffed from 9-20 for parity
     DEEP_YARDS: { min: 20, max: 50 },  // Slightly better (was 18-45)
-    YAC_BASE: 4,                       // Increased from 3
+    YAC_BASE: 4.2,                     // Buffed from 4 for parity
     YAC_PER_TIER: 1.8,                 // Increased from 1.5
   },
   
@@ -173,13 +173,13 @@ const PLAY_OUTCOMES = {
     TFL_BASE: 0.10,               // Increased from 0.08
     TFL_PER_DIFF: 0.05,           // Increased from 0.04
     
-    // Base yards - REDUCED to balance with passing
-    YARDS_BASE: 3.0,              // Reduced from 3.5 (NFL avg ~4.3 but with more failure)
-    YARDS_PER_TIER: 0.6,          // Reduced from 0.8
+    // Base yards - REBALANCED for pass/run parity
+    YARDS_BASE: 2.7,              // Reduced from 3.0 for parity with passing
+    YARDS_PER_TIER: 0.55,         // Reduced from 0.8
     YARDS_OL_FACTOR: 0.5,         // Reduced from 0.6
     
-    // Breakaway (big run) - REDUCED
-    BREAKAWAY_CHANCE: 0.03,       // Reduced from 0.05
+    // Breakaway (big run) - REBALANCED
+    BREAKAWAY_CHANCE: 0.025,      // Reduced from 0.03 for parity
     BREAKAWAY_YARDS: { min: 12, max: 40 }, // Reduced from 15-50
     
     // Fumble
@@ -293,23 +293,27 @@ const DEFENSIVE_STRATEGIES = {
   base_defense:   { name: 'Base Defense (4-3/3-4)',       beats: 'balanced',     losesTo: 'pass_heavy' },
 };
 
-// Strategy matchup modifier for play outcomes (legacy, kept for reference)
-// Now using player-level rating boosts instead (see STRATEGY_RATING_BOOSTS below)
+// Strategy matchup modifier for play outcomes (yardage multipliers)
+// Reflects each defense's inherent strengths/weaknesses:
+//   Coverage shell: good at stopping passes (0.92), weak vs runs (1.08)
+//   Run stuff: good at stopping runs (0.92), weak vs passes (1.08)
+// These are CONSTANT for a given defense type, regardless of offensive strategy.
+// The RPS advantage/captured tier boosts handle who "wins" the matchup.
 const STRATEGY_MATCHUP_MODIFIERS = {
-  coverage_shell: {
-    pass_heavy:   { pass: 1.00, run: 1.00 }, // handled by rating boosts now
+  coverage_shell: {                           // Pass Defense profile
+    pass_heavy:   { pass: 0.90, run: 1.12 }, // Good at stopping passes, weak vs runs
     balanced:     { pass: 1.00, run: 1.00 },
-    run_heavy: { pass: 1.00, run: 1.00 },
+    run_heavy:    { pass: 0.90, run: 1.12 }, // Same profile: good vs pass, weak vs run
   },
-  run_stuff: {
-    pass_heavy:   { pass: 1.00, run: 1.00 },
+  run_stuff: {                                // Run Defense profile
+    pass_heavy:   { pass: 1.12, run: 0.90 }, // Weak vs passes, good at stopping runs
     balanced:     { pass: 1.00, run: 1.00 },
-    run_heavy: { pass: 1.00, run: 1.00 },
+    run_heavy:    { pass: 1.12, run: 0.90 }, // Same profile: weak vs pass, good vs run
   },
-  base_defense: {
-    pass_heavy:   { pass: 1.00, run: 1.00 },
-    balanced:     { pass: 1.00, run: 1.00 },
-    run_heavy: { pass: 1.00, run: 1.00 },
+  base_defense: {                              // Balanced Defense (versatile)
+    pass_heavy:   { pass: 1.00, run: 1.00 }, // No yardage mod (tier boosts handle it)
+    balanced:     { pass: 1.00, run: 1.00 }, // No edge in neutral matchup
+    run_heavy:    { pass: 1.00, run: 1.00 }, // No yardage mod (tier boosts handle it)
   },
 };
 
@@ -324,7 +328,7 @@ const STRATEGY_MATCHUP_MODIFIERS = {
 // - captured: their defense beats your offense type (or their offense beats your defense)
 // - neutral: no rock-paper-scissors edge either way
 
-const STRATEGY_BOOST_AMOUNT = 0.010; // 1.0% tier multiplier (increased for more meaningful strategy impact)
+const STRATEGY_BOOST_AMOUNT = 0.06; // 6% tier multiplier for meaningful rock-paper-scissors swings
 
 // =============================================================================
 // INTUITIVE FOOTBALL STRATEGY MATCHUPS
@@ -343,9 +347,9 @@ const OFFENSE_STRATEGY_BOOSTS = {
     base_defense:    'neutral',     // Balanced D = neutral
   },
   balanced: {
-    coverage_shell:  'neutral',     // Balanced is always neutral
-    run_stuff:       'neutral',
-    base_defense:    'neutral',
+    coverage_shell:  'slight_advantage', // Balanced O is versatile vs specialized D
+    run_stuff:       'slight_advantage', // Balanced O is versatile vs specialized D
+    base_defense:    'neutral',          // No edge in neutral matchup
   },
   run_heavy: {
     coverage_shell:  'advantage',   // RUN beats PASS D (can't stop the run)
@@ -358,17 +362,17 @@ const OFFENSE_STRATEGY_BOOSTS = {
 const DEFENSE_STRATEGY_BOOSTS = {
   coverage_shell: {                 // Pass Defense
     pass_heavy:   'advantage',      // Beats pass offense
-    run_heavy: 'captured',       // Loses to run offense
-    balanced:     'neutral',
+    run_heavy:    'captured',       // Loses to run offense
+    balanced:     'slight_captured', // Balanced O versatility slightly exploits specialized D
   },
   run_stuff: {                      // Run Defense
-    run_heavy: 'advantage',      // Beats run offense
+    run_heavy:    'advantage',      // Beats run offense
     pass_heavy:   'captured',       // Loses to pass offense
-    balanced:     'neutral',
+    balanced:     'slight_captured', // Balanced O versatility slightly exploits specialized D
   },
   base_defense: {                   // Balanced Defense
-    pass_heavy:   'neutral',        // Neutral vs everything
-    run_heavy: 'neutral',
+    pass_heavy:   'slight_advantage', // Balanced D versatility slightly resists specialized O
+    run_heavy:    'slight_advantage', // Balanced D versatility slightly resists specialized O
     balanced:     'neutral',
   },
 };
@@ -383,7 +387,7 @@ const STRATEGY_AFFECTED_POSITIONS = {
   },
   // Defensive strategies affect these defensive positions
   defense: {
-    coverage_shell: ['DB'],                 // secondary
+    coverage_shell: ['DB', 'LB'],           // secondary + LBs in zone coverage
     run_stuff:      ['DL', 'LB'],           // front seven
     base_defense:   ['DL', 'LB', 'DB'],     // all defensive positions
   },

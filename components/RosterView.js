@@ -198,36 +198,8 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
             mode={diagramSide}
             roster={roster}
             onSlotClick={handleSlotClick}
+            tierInfo={{ cap: currentCap, sum: currentSum, isOverCap, sideLabel }}
           />
-          
-          {/* Tier Cap Display - shows current side's cap */}
-          <div 
-            className="fixed left-4 z-10 px-3 py-1.5 rounded-lg text-sm font-bold"
-            style={{ 
-              top: 'calc(env(safe-area-inset-top, 0px) - 16px)',
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              fontFamily: "'Rajdhani', sans-serif",
-            }}
-          >
-            <span className="text-gray-400">{sideLabel} Cap = </span>
-            <span className="text-white">{currentCap}</span>
-          </div>
-          
-          <div 
-            className="fixed right-4 z-10 px-3 py-1.5 rounded-lg text-sm font-bold"
-            style={{ 
-              top: 'calc(env(safe-area-inset-top, 0px) - 16px)',
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              border: `1px solid ${isOverCap ? 'rgba(239,68,68,0.5)' : 'rgba(34,197,94,0.5)'}`,
-              fontFamily: "'Rajdhani', sans-serif",
-            }}
-          >
-            <span className="text-gray-400">{sideLabel} Sum = </span>
-            <span style={{ color: isOverCap ? '#ef4444' : '#22c55e' }}>{currentSum}</span>
-            <span className="text-gray-500">/{currentCap}</span>
-          </div>
-          
         </>
       )}
 

@@ -182,7 +182,7 @@ function shuffle(arr) {
 const ARROW_TRAVEL_MS = 3200;
 const CYCLE_PAUSE_MS = 800;
 
-export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
+export default function ChalkPlayDiagram({ mode, roster, onSlotClick, tierInfo }) {
   const canvasRef = useRef(null);
   const [size, setSize] = useState({ w: 400, h: 320 });
   const cycleStartRef = useRef(performance.now());
@@ -446,6 +446,42 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
             </div>
           );
         })}
+        
+        {/* Tier Info Display - Bottom left of field */}
+        {tierInfo && (
+          <div 
+            className="absolute flex flex-col gap-1"
+            style={{ 
+              left: '8px', 
+              bottom: '180px',
+              zIndex: 10,
+            }}
+          >
+            <div 
+              className="px-2 py-1 rounded-lg text-xs font-bold"
+              style={{ 
+                backgroundColor: 'rgba(0,229,255,0.15)',
+                border: '1px solid rgba(0,229,255,0.3)',
+                fontFamily: "'Rajdhani', sans-serif",
+              }}
+            >
+              <span className="text-cyan-400/70">{tierInfo.sideLabel} Cap = </span>
+              <span className="text-cyan-400">{tierInfo.cap}</span>
+            </div>
+            <div 
+              className="px-2 py-1 rounded-lg text-xs font-bold"
+              style={{ 
+                backgroundColor: 'rgba(0,229,255,0.15)',
+                border: `1px solid ${tierInfo.isOverCap ? 'rgba(239,68,68,0.5)' : 'rgba(0,229,255,0.3)'}`,
+                fontFamily: "'Rajdhani', sans-serif",
+              }}
+            >
+              <span className="text-cyan-400/70">{tierInfo.sideLabel} Sum = </span>
+              <span style={{ color: tierInfo.isOverCap ? '#ef4444' : '#00e5ff' }}>{tierInfo.sum}</span>
+              <span className="text-cyan-400/50">/{tierInfo.cap}</span>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -60,14 +60,19 @@ function diffToWinProb(diff, baseWinRate = 0.50) {
  * Calculate pass protection outcome (OL vs DL)
  * @param {number} olTier - Average OL tier
  * @param {number} dlTier - Average DL pass rush tier
+ * @param {number} qbTier - QB tier (pocket presence reduces sack/pressure)
  * @returns {object} - { sacked, pressured, timeInPocket }
  */
-function calculateProtection(olTier, dlTier) {
+function calculateProtection(olTier, dlTier, qbTier = 5) {
   const diff = matchupDiff(olTier, dlTier);
   const outcomes = PLAY_OUTCOMES.PASS;
   
-  // Sack chance
-  const sackChance = outcomes.SACK_BASE - (diff * outcomes.SACK_PER_DIFF);
+  // QB pocket presence: elite QBs avoid sacks/pressure via quick release & awareness
+  // ~0.9% sack avoidance per tier above average (T9 QB = -3.6% sack chance)
+  const qbAvoidance = (qbTier - 5) * 0.009;
+  
+  // Sack chance (reduced by both OL advantage and QB pocket presence)
+  const sackChance = outcomes.SACK_BASE - (diff * outcomes.SACK_PER_DIFF) - qbAvoidance;
   const sacked = roll() < Math.max(0.02, Math.min(0.25, sackChance));
   
   if (sacked) {
@@ -75,8 +80,8 @@ function calculateProtection(olTier, dlTier) {
     return { sacked: true, pressured: true, sackYards, timeInPocket: 1.5 };
   }
   
-  // Pressure chance (affects accuracy)
-  const pressureChance = outcomes.PRESSURE_BASE - (diff * outcomes.PRESSURE_PER_DIFF);
+  // Pressure chance (also reduced by QB pocket presence, at 80% effectiveness)
+  const pressureChance = outcomes.PRESSURE_BASE - (diff * outcomes.PRESSURE_PER_DIFF) - (qbAvoidance * 0.8);
   const pressured = roll() < Math.max(0.10, Math.min(0.50, pressureChance));
   
   // Time in pocket (2-4 seconds)
