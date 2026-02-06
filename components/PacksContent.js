@@ -219,7 +219,7 @@ export default function PacksContent({ user, onViewCollection }) {
             </div>
           </div>
         </div>
-      )
+      )}
 
       {/* Results view after opening packs */}
       {showResults && openedCards.length > 0 && (
