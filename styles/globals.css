@@ -45,6 +45,7 @@
   --nav-purple: #a855f7;
   --nav-yellow: #ffe600;
   --nav-green: #00ff7f;
+  --nav-orange: #f59e0b;
   --nav-bg-primary: #080a0e;
   --nav-bg-card: #0d1015;
 
@@ -196,6 +197,17 @@ h1, h2, h3, .f10-display {
   -webkit-text-stroke: 1px var(--nav-green);
   -webkit-text-fill-color: transparent;
   text-shadow: 0 0 18px rgba(0, 255, 127, 0.4);
+}
+
+.f10-nav-btn.shop.active {
+  border-color: var(--nav-orange);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.18);
+}
+.f10-nav-btn.shop.active .f10-nav-text {
+  color: var(--nav-orange);
+  -webkit-text-stroke: 1px var(--nav-orange);
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 0 18px rgba(245, 158, 11, 0.45);
 }
 
 /* ========================================
