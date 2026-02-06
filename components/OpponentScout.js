@@ -1,8 +1,8 @@
 /**
  * OpponentScout - Shows opponent's roster for scouting
  * Shows defense when you're viewing offense, offense when viewing defense
- * Cards displayed in field formation, mirrored (facing downfield)
- * Includes a slider matching the StrategySlider format
+ * Cards displayed in field formation (mirrored positions, cards right-side up)
+ * Slider matches StrategySlider exactly with drag/tap mechanics
  */
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { MiniCard } from './Card';
@@ -30,8 +30,9 @@ const OFFENSE_SLOTS = [
 ];
 
 const QB_SLOT = { id: 'qb_card_id', label: 'QB', position: 'QB' };
+const K_SLOT = { id: 'k_card_id', label: 'K', position: 'K' };
 
-// Slider colors
+// Slider colors - match StrategySlider exactly
 const OFFENSE_COLORS = {
   run_heavy: '#4ade80',
   balanced: '#a3a3a3',
@@ -59,6 +60,8 @@ export default function OpponentScout({
   const [presets, setPresets] = useState([]);
   const [selectedPresetIndex, setSelectedPresetIndex] = useState(null);
   const [loadingPresets, setLoadingPresets] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [dragPosition, setDragPosition] = useState(null);
   const sliderRef = useRef(null);
   
   const isOffense = showSide === 'offense';
@@ -67,7 +70,7 @@ export default function OpponentScout({
   // Fix: Access cards from the correct path in the data structure
   const rosterCards = opponentRoster?.roster?.cards || opponentRoster?.cards || {};
   
-  // Fetch opponent's presets
+  // Fetch opponent's presets when opponentId or side changes
   useEffect(() => {
     if (!opponentId) return;
     
@@ -76,6 +79,7 @@ export default function OpponentScout({
     
     getUserPresets(opponentId, showSide)
       .then(data => {
+        console.log('[OpponentScout] Loaded presets:', data);
         setPresets(data?.presets || []);
       })
       .catch(err => {
@@ -90,14 +94,12 @@ export default function OpponentScout({
   // Get current cards to display (either from preset or actual roster)
   const displayCards = useMemo(() => {
     if (selectedPresetIndex !== null && presets[selectedPresetIndex]) {
-      // Show the preset's cards
       return presets[selectedPresetIndex].slots || {};
     }
-    // Show actual roster
     return rosterCards;
   }, [selectedPresetIndex, presets, rosterCards]);
 
-  // Detect strategy
+  // Detect strategy from displayed cards
   const opponentStrategy = useMemo(() => {
     if (!displayCards || Object.keys(displayCards).length === 0) return null;
     return isOffense 
@@ -119,7 +121,7 @@ export default function OpponentScout({
     return { start: BOUNDARY_FIRST + ZONE_PAD, end: BOUNDARY_SECOND - ZONE_PAD };
   }, [leftStrategies, rightStrategies]);
 
-  // Pre-compute visual positions for all dots
+  // Pre-compute visual positions for all dots (memoized)
   const dotPositions = useMemo(() => {
     if (presets.length === 0) return [];
 
@@ -137,19 +139,114 @@ export default function OpponentScout({
       if (count === 1) {
         positions[indices[0]] = (start + end) / 2;
       } else {
-        const step = (end - start) / (count - 1);
-        indices.forEach((idx, i) => {
-          positions[idx] = start + i * step;
+        const width = end - start;
+        const spacing = width / (count - 1);
+        indices.forEach((presetIdx, zoneIdx) => {
+          positions[presetIdx] = start + zoneIdx * spacing;
         });
       }
     }
     return positions;
   }, [presets, getZoneBounds]);
 
-  // Handle dot click
-  const handleDotClick = (idx) => {
-    setSelectedPresetIndex(idx === selectedPresetIndex ? null : idx);
+  // Find nearest dot by visual position
+  const findNearestDotByPosition = useCallback((pct) => {
+    if (dotPositions.length === 0) return -1;
+    
+    let closestIdx = 0;
+    let closestDist = Infinity;
+    for (let i = 0; i < dotPositions.length; i++) {
+      const dist = Math.abs(dotPositions[i] - pct);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestIdx = i;
+      }
+    }
+    return closestIdx;
+  }, [dotPositions]);
+
+  const getColorForStrategy = (strategy) => {
+    return colors[strategy] || '#a3a3a3';
   };
+
+  // Get position % from clientX
+  const getPositionFromClient = useCallback((clientX) => {
+    if (!sliderRef.current) return null;
+    const rect = sliderRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    return Math.max(0, Math.min(100, (x / rect.width) * 100));
+  }, []);
+
+  // --- ALL interaction handled at track level (matching StrategySlider) ---
+  const handlePointerDown = useCallback((clientX) => {
+    if (loadingPresets || presets.length === 0) return;
+    const pct = getPositionFromClient(clientX);
+    if (pct == null) return;
+    setDragging(true);
+    setDragPosition(pct);
+  }, [loadingPresets, presets.length, getPositionFromClient]);
+
+  const handlePointerMove = useCallback((clientX) => {
+    if (!dragging) return;
+    const pct = getPositionFromClient(clientX);
+    if (pct != null) setDragPosition(pct);
+  }, [dragging, getPositionFromClient]);
+
+  const handlePointerUp = useCallback(() => {
+    if (!dragging) return;
+    
+    const finalPos = dragPosition;
+    setDragging(false);
+    setDragPosition(null);
+    
+    if (finalPos == null) return;
+    
+    const nearestIdx = findNearestDotByPosition(finalPos);
+    if (nearestIdx >= 0) {
+      // Just update the selected preset (no API call - this is opponent's roster)
+      setSelectedPresetIndex(nearestIdx === selectedPresetIndex ? null : nearestIdx);
+    }
+  }, [dragging, dragPosition, findNearestDotByPosition, selectedPresetIndex]);
+
+  // Mouse events
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    handlePointerDown(e.clientX);
+  };
+
+  useEffect(() => {
+    if (!dragging) return;
+    
+    const onMove = (e) => handlePointerMove(e.clientX);
+    const onUp = () => handlePointerUp();
+    
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [dragging, handlePointerMove, handlePointerUp]);
+
+  // Touch events
+  const handleTouchStart = (e) => {
+    handlePointerDown(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    e.preventDefault();
+    handlePointerMove(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    handlePointerUp();
+  };
+
+  // Highlight nearest dot while dragging
+  const dragNearestIdx = dragging && dragPosition != null 
+    ? findNearestDotByPosition(dragPosition)
+    : -1;
 
   if (loading) {
     return (
@@ -183,7 +280,7 @@ export default function OpponentScout({
   const rightColor = isOffense ? OFFENSE_COLORS.pass_heavy : DEFENSE_COLORS.coverage_shell;
 
   return (
-    <div className="mb-4">
+    <div className="mb-8">
       {/* Opponent Header */}
       <div className="flex items-center justify-center gap-3 mb-3">
         <div 
@@ -198,15 +295,23 @@ export default function OpponentScout({
         </div>
       </div>
 
-      {/* Opponent Slider - exact format as StrategySlider */}
-      <div className="flex justify-center mb-3">
+      {/* Opponent Slider - exact copy of StrategySlider mechanics */}
+      <div className="flex justify-center mb-4">
         <div 
           ref={sliderRef}
-          className="relative rounded-lg overflow-hidden select-none w-64"
+          className="relative rounded-lg overflow-hidden select-none"
           style={{
+            width: '100%',
+            maxWidth: '320px',
             backgroundColor: 'rgba(0,0,0,0.5)',
             border: '1px solid rgba(255,255,255,0.1)',
+            cursor: presets.length > 0 ? 'pointer' : 'default',
+            touchAction: 'none',
           }}
+          onMouseDown={handleMouseDown}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           {/* Labels row */}
           <div className="flex justify-between px-2 pt-1.5 pb-0.5 relative z-10 pointer-events-none">
@@ -249,61 +354,91 @@ export default function OpponentScout({
                   ${rightColor}40 100%)`,
               }}
             />
-            
-            {/* Zone boundary lines */}
-            <div 
-              className="absolute top-1/2 -translate-y-1/2 w-px h-4 bg-white/30"
-              style={{ left: `${BOUNDARY_FIRST}%` }}
+
+            {/* Boundary markers */}
+            <div className="absolute top-1/2 w-0.5 h-4 rounded-full pointer-events-none"
+              style={{ left: `${BOUNDARY_FIRST}%`, transform: 'translate(-50%, -50%)', backgroundColor: 'rgba(255,255,255,0.4)' }}
             />
-            <div 
-              className="absolute top-1/2 -translate-y-1/2 w-px h-4 bg-white/30"
-              style={{ left: `${BOUNDARY_SECOND}%` }}
+            <div className="absolute top-1/2 w-0.5 h-4 rounded-full pointer-events-none"
+              style={{ left: `${BOUNDARY_SECOND}%`, transform: 'translate(-50%, -50%)', backgroundColor: 'rgba(255,255,255,0.4)' }}
             />
-            
-            {/* Preset dots */}
-            {presets.map((preset, idx) => {
-              const pos = dotPositions[idx];
+
+            {/* Dots — purely visual, no pointer events */}
+            {presets.map((preset, i) => {
+              const pos = dotPositions[i];
               if (pos == null) return null;
-              
-              const color = colors[preset.strategy] || '#a3a3a3';
-              const isSelected = selectedPresetIndex === idx;
+
+              const isActive = i === selectedPresetIndex && !dragging;
+              const isDragTarget = i === dragNearestIdx;
+              const isHighlighted = isActive || isDragTarget;
+              const dotColor = getColorForStrategy(preset.strategy);
               
               return (
-                <button
-                  key={idx}
-                  onClick={() => handleDotClick(idx)}
-                  className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full transition-all duration-200 cursor-pointer hover:scale-110"
+                <div
+                  key={i}
+                  className="absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
                   style={{
                     left: `${pos}%`,
-                    width: isSelected ? 18 : 12,
-                    height: isSelected ? 18 : 12,
-                    backgroundColor: color,
-                    boxShadow: isSelected ? `0 0 12px ${color}` : `0 0 6px ${color}80`,
-                    border: isSelected ? '2px solid white' : '1px solid rgba(255,255,255,0.3)',
+                    width: isHighlighted ? '14px' : '8px',
+                    height: isHighlighted ? '14px' : '8px',
+                    borderRadius: '50%',
+                    backgroundColor: isHighlighted ? dotColor : `${dotColor}60`,
+                    boxShadow: isHighlighted ? `0 0 10px ${dotColor}, 0 0 18px ${dotColor}80` : 'none',
+                    transition: 'width 0.15s, height 0.15s, background-color 0.15s, box-shadow 0.15s',
+                    zIndex: isHighlighted ? 5 : 2,
                   }}
-                  title={STRATEGY_LABELS[preset.strategy] || preset.strategy}
                 />
               );
             })}
-            
-            {/* "No presets" message */}
-            {presets.length === 0 && !loadingPresets && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-gray-500 text-xs">No presets available</span>
-              </div>
+
+            {/* Dragging indicator */}
+            {dragging && dragPosition != null && (
+              <div
+                className="absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                style={{
+                  left: `${dragPosition}%`,
+                  width: '20px',
+                  height: '20px',
+                  borderRadius: '50%',
+                  backgroundColor: dragNearestIdx >= 0 
+                    ? getColorForStrategy(presets[dragNearestIdx].strategy) 
+                    : '#a3a3a3',
+                  border: '2px solid rgba(255,255,255,0.8)',
+                  boxShadow: `0 0 12px rgba(255,255,255,0.3)`,
+                  zIndex: 10,
+                  transition: 'none',
+                  opacity: 0.7,
+                }}
+              />
             )}
             
+            {/* Loading or no presets message */}
             {loadingPresets && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="text-gray-500 text-xs">Loading...</span>
               </div>
             )}
+            {!loadingPresets && presets.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-gray-500 text-xs">No presets available</span>
+              </div>
+            )}
+          </div>
+
+          {/* Info row */}
+          <div className="text-center pb-1 pointer-events-none">
+            <span className="text-[10px] text-gray-400" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+              {presets.length > 0 
+                ? `${presets.length} roster${presets.length !== 1 ? 's' : ''} • Drag or tap to scout`
+                : 'Scout opponent builds'
+              }
+            </span>
           </div>
         </div>
       </div>
       
       {selectedPresetIndex !== null && presets[selectedPresetIndex] && (
-        <div className="text-center text-xs text-gray-400 mb-2" style={{ fontFamily: 'var(--f10-display-font)' }}>
+        <div className="text-center text-xs text-gray-400 mb-3" style={{ fontFamily: 'var(--f10-display-font)' }}>
           Viewing: {STRATEGY_LABELS[presets[selectedPresetIndex].strategy] || 'Preset'}
           <button 
             onClick={() => setSelectedPresetIndex(null)}
@@ -314,15 +449,15 @@ export default function OpponentScout({
         </div>
       )}
 
-      {/* Opponent Cards - Field Formation, Mirrored (facing downfield) */}
-      <div className="relative" style={{ height: isOffense ? '140px' : '80px' }}>
+      {/* Opponent Cards - Field Formation (positions mirrored, cards right-side up) */}
+      <div className="relative" style={{ height: isOffense ? '120px' : '70px', marginBottom: '20px' }}>
         {isOffense ? (
-          // Offense formation - mirrored (QB at top, line below)
+          // Offense formation - QB at top (closest to their endzone), skill players below
           <>
             {/* QB at top center */}
             <div 
-              className="absolute left-1/2 -translate-x-1/2"
-              style={{ top: '0px', transform: 'translateX(-50%) rotate(180deg)' }}
+              className="absolute left-1/2"
+              style={{ top: '0px', transform: 'translateX(-50%)' }}
             >
               <div className="opacity-80" style={{ filter: 'saturate(0.7)' }}>
                 <MiniCard
@@ -334,11 +469,11 @@ export default function OpponentScout({
               </div>
             </div>
             
-            {/* Skill positions in arc below QB - mirrored */}
+            {/* Skill positions in arc below QB */}
             {OFFENSE_SLOTS.map((slot, idx) => {
-              // Position calculations for upside-down U shape
-              const xPositions = [0.1, 0.28, 0.5, 0.72, 0.9]; // WR1, TE, OL, RB, WR2
-              const yOffsets = [75, 90, 100, 90, 75]; // Arc shape (inverted for mirror)
+              // Position calculations for inverted U shape (from opponent's perspective)
+              const xPositions = [0.08, 0.27, 0.5, 0.73, 0.92]; // WR1, TE, OL, RB, WR2
+              const yOffsets = [55, 70, 80, 70, 55]; // Arc shape
               
               return (
                 <div 
@@ -347,7 +482,7 @@ export default function OpponentScout({
                   style={{ 
                     left: `${xPositions[idx] * 100}%`,
                     top: `${yOffsets[idx]}px`,
-                    transform: 'translateX(-50%) rotate(180deg)'
+                    transform: 'translateX(-50%)'
                   }}
                 >
                   <div className="opacity-80" style={{ filter: 'saturate(0.7)' }}>
@@ -363,36 +498,36 @@ export default function OpponentScout({
             })}
           </>
         ) : (
-          // Defense formation - mirrored (facing downfield)
-          <div className="flex justify-center gap-4">
-            {DEFENSE_SLOTS.map((slot, idx) => {
-              const yOffsets = [20, 0, 0, 20]; // DB1, DL, LB, DB2 stagger
-              return (
-                <div 
-                  key={slot.id}
-                  className="flex flex-col items-center"
-                  style={{ 
-                    marginTop: `${yOffsets[idx]}px`,
-                    transform: 'rotate(180deg)'
-                  }}
-                >
-                  <div className="opacity-80" style={{ filter: 'saturate(0.7)' }}>
-                    <MiniCard
-                      card={displayCards[slot.id]}
-                      position={slot.label}
-                      empty={!displayCards[slot.id]}
-                      fieldSize
-                    />
+          // Defense formation - 4-man front with K behind
+          <>
+            {/* 4-man defensive line */}
+            <div className="flex justify-center gap-6">
+              {DEFENSE_SLOTS.map((slot, idx) => {
+                const yOffsets = [15, 0, 0, 15]; // DB1, DL, LB, DB2 stagger
+                return (
+                  <div 
+                    key={slot.id}
+                    className="flex flex-col items-center"
+                    style={{ marginTop: `${yOffsets[idx]}px` }}
+                  >
+                    <div className="opacity-80" style={{ filter: 'saturate(0.7)' }}>
+                      <MiniCard
+                        card={displayCards[slot.id]}
+                        position={slot.label}
+                        empty={!displayCards[slot.id]}
+                        fieldSize
+                      />
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
       
       {/* Divider */}
-      <div className="flex items-center justify-center gap-2 my-3">
+      <div className="flex items-center justify-center gap-2 mb-6">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         <span className="text-xs text-gray-500 font-medium" style={{ fontFamily: 'var(--f10-display-font)' }}>
           VS

@@ -170,7 +170,10 @@ export default function Team({ user, onLogout, unreadMessages }) {
           </div>
         </div>
 
-        <RosterView user={user} diagramSide={diagramSide} refreshTrigger={refreshTrigger} />
+        {/* Add top margin when opponent scout is shown to create space */}
+        <div className={opponentRoster ? 'mt-4' : ''}>
+          <RosterView user={user} diagramSide={diagramSide} refreshTrigger={refreshTrigger} />
+        </div>
       </div>
 
       {/* Mobile: bar fixed above bottom nav with clearance so buttons aren't cut off by tiles */}
