@@ -128,6 +128,21 @@ export default function Shop({ user, onLogout, unreadMessages }) {
                   <span className="font-mono text-sm text-green-400">
                     {address?.slice(0, 6)}…{address?.slice(-4)}
                   </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(address);
+                      const btn = document.getElementById('copy-btn');
+                      if (btn) {
+                        btn.textContent = '✓';
+                        setTimeout(() => btn.textContent = '📋', 1500);
+                      }
+                    }}
+                    id="copy-btn"
+                    className="text-gray-400 hover:text-white text-sm transition-colors ml-1"
+                    title="Copy address"
+                  >
+                    📋
+                  </button>
                 </div>
               </div>
               
