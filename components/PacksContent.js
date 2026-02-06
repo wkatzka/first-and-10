@@ -163,14 +163,14 @@ export default function PacksContent({ user, onViewCollection }) {
       
       {/* Main field view - pack on left, best card on right */}
       {!showResults && (
-        <div className="flex items-start justify-center gap-6 px-4">
+        <div className="flex items-center justify-center gap-8 px-4" style={{ marginTop: '200px' }}>
           {/* Pack section */}
-          <div className="flex flex-col items-center" style={{ marginTop: '220px' }}>
+          <div className="flex flex-col items-center">
             <button
               onClick={packInfo?.packsRemaining > 0 ? handleOpenPack : () => router.push('/shop')}
               disabled={opening}
               className="relative transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
-              style={{ width: '120px', height: '160px' }}
+              style={{ width: '107px', height: '160px' }}
             >
               <img 
                 src="/f10-pack.png" 
@@ -193,14 +193,14 @@ export default function PacksContent({ user, onViewCollection }) {
           </div>
 
           {/* Best card section */}
-          <div className="flex flex-col items-center" style={{ marginTop: '200px' }}>
+          <div className="flex flex-col items-center">
             {bestCard ? (
               <button
                 onClick={goToCollection}
                 className="transition-transform hover:scale-105 active:scale-95 overflow-hidden rounded-lg"
-                style={{ width: '120px', height: '160px' }}
+                style={{ width: '107px', height: '160px' }}
               >
-                <div style={{ transform: 'scale(0.625)', transformOrigin: 'top left', width: '192px', height: '256px' }}>
+                <div style={{ transform: 'scale(0.557)', transformOrigin: 'top left', width: '192px', height: '287px' }}>
                   <Card card={bestCard} small={false} />
                 </div>
               </button>
@@ -208,7 +208,7 @@ export default function PacksContent({ user, onViewCollection }) {
               <div 
                 onClick={goToCollection}
                 className="rounded-lg border-2 border-dashed border-white/20 flex items-center justify-center cursor-pointer hover:border-white/40 transition-colors"
-                style={{ width: '120px', height: '160px' }}
+                style={{ width: '107px', height: '160px' }}
               >
                 <span className="text-white/40 text-sm text-center px-2" style={{ fontFamily: 'var(--f10-display-font)' }}>
                   No cards yet
