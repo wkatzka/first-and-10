@@ -317,9 +317,9 @@ export default function OpponentScout({
   return (
     <div className="mb-2">
       {/* Opponent Info - Tier on left, Slider on right (compact) */}
-      <div className="flex items-end justify-between px-1 mb-1" style={{ marginTop: '80px' }}>
-        {/* Opponent Tier Info - Left side, purple styling */}
-        <div className="flex flex-col gap-0.5">
+      <div className="flex items-end justify-between px-1 mb-1" style={{ marginTop: '76px' }}>
+        {/* Opponent Tier Info - Left side, purple styling, positioned higher */}
+        <div className="flex flex-col gap-0.5" style={{ marginTop: '-11px' }}>
           <div 
             className="px-1 py-0.5 rounded text-[9px] font-bold whitespace-nowrap"
             style={{ 
@@ -485,12 +485,12 @@ export default function OpponentScout({
         </div>
       </div>
 
-      {/* Opponent Cards - Field Formation - pushed down away from endzone */}
+      {/* Opponent Cards - Field Formation */}
       <div 
         className="relative" 
         style={{ 
           height: isOffense ? 'min(95px, 13vh)' : 'min(50px, 7vh)', 
-          marginTop: '16px' 
+          marginTop: '6px' 
         }}
       >
         {isOffense ? (
@@ -563,8 +563,8 @@ export default function OpponentScout({
         )}
       </div>
       
-      {/* VS Divider */}
-      <div className="flex items-center justify-center gap-2 mt-2 mb-4">
+      {/* VS Divider - positioned lower */}
+      <div className="flex items-center justify-center gap-2 mb-4" style={{ marginTop: '23px' }}>
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
         <span className="text-xs text-gray-500 font-medium" style={{ fontFamily: 'var(--f10-display-font)' }}>
           VS

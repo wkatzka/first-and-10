@@ -118,9 +118,9 @@ export default function Team({ user, onLogout, unreadMessages }) {
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="pb-28 md:pb-0">
-        {/* Game Selection Buttons - thinner, positioned slightly lower */}
+        {/* Game Selection Buttons - thinner */}
         {upcomingGames.length > 0 && (
-          <div className="flex justify-center mb-1" style={{ marginTop: '2px' }}>
+          <div className="flex justify-center mb-1" style={{ marginTop: '-3px' }}>
             <div className="flex p-0.5 bg-black/30 backdrop-blur border border-white/10 rounded-xl shadow-lg">
               {upcomingGames.map((game, idx) => {
                 const oppName = game.homeUserId === user?.id 
@@ -177,7 +177,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
       </div>
 
       {/* Mobile: bar fixed above bottom nav with clearance so buttons aren't cut off by tiles */}
-      <div className="md:hidden fixed left-0 right-0 z-40 px-3 safe-area-pb" style={{ bottom: '7.25rem' }}>
+      <div className="md:hidden fixed left-0 right-0 z-40 px-3 safe-area-pb" style={{ bottom: 'calc(7.25rem - 14px)' }}>
         <div className="mx-auto max-w-7xl">
           <div className="flex gap-2 items-center">
             <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
