@@ -3,16 +3,17 @@ import { useRouter } from 'next/router';
 import Card from './Card';
 import CardModal from './CardModal';
 import FoilPackOpening from './FoilPackOpening';
-import { getPackInfo, openPack, openSinglePack, openAllPacks, TIER_NAMES } from '../lib/api';
+import { getPackInfo, getCards, openPack, openSinglePack, openAllPacks, TIER_NAMES } from '../lib/api';
 
 /**
- * Packs UI: open packs, view results, modals.
+ * Packs UI: Simplified field view with pack and best card.
  * Used by pages/packs.js (standalone) and pages/cards.js (under "Packs" tab).
  * When on Cards page, pass onViewCollection to switch to Collection tab instead of navigating.
  */
 export default function PacksContent({ user, onViewCollection }) {
   const router = useRouter();
   const [packInfo, setPackInfo] = useState(null);
+  const [bestCard, setBestCard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [opening, setOpening] = useState(false);
   const [openedCards, setOpenedCards] = useState([]);
@@ -28,6 +29,7 @@ export default function PacksContent({ user, onViewCollection }) {
   useEffect(() => {
     if (!user) return;
     loadPackInfo();
+    loadBestCard();
   }, [user]);
 
   const loadPackInfo = async () => {
@@ -38,6 +40,20 @@ export default function PacksContent({ user, onViewCollection }) {
       console.error('Failed to load pack info:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadBestCard = async () => {
+    try {
+      const data = await getCards();
+      if (data.cards && data.cards.length > 0) {
+        // Find the highest tier card (most valuable)
+        const best = data.cards.reduce((best, card) => 
+          card.tier > best.tier ? card : best, data.cards[0]);
+        setBestCard(best);
+      }
+    } catch (err) {
+      console.error('Failed to load cards:', err);
     }
   };
 
@@ -123,10 +139,18 @@ export default function PacksContent({ user, onViewCollection }) {
     else router.push('/cards');
   };
 
-  const bestCard = openedCards.length > 0
+  const openedBestCard = openedCards.length > 0
     ? openedCards.reduce((best, card) => card.tier > best.tier ? card : best, openedCards[0])
     : null;
   const canOpenSinglePack = user?.username === 'Will!' || user?.username === 'TestUser';
+
+  // Pack label text
+  const getPackLabel = () => {
+    if (!packInfo) return '';
+    if (packInfo.packsRemaining === 0) return 'Buy Packs';
+    if (packInfo.packsRemaining === 1) return '1 Pack';
+    return `${packInfo.packsRemaining} Packs`;
+  };
 
   return (
     <>
@@ -136,168 +160,147 @@ export default function PacksContent({ user, onViewCollection }) {
         packType={currentPackType}
         cards={openedCards}
       />
-      <div className="space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl f10-title text-white mb-2">Open Packs</h1>
-          <p className="f10-subtitle">
-            {packInfo && packInfo.packsRemaining > 0
-              ? `You have ${packInfo.packsRemaining} packs remaining`
-              : 'No packs remaining'}
-          </p>
-        </div>
-
-        {!loading && packInfo && (
-          <div className="max-w-md mx-auto f10-panel p-6">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-gray-400">Packs Opened</span>
-              <span className="text-white font-bold">{packInfo.packsOpened} / {packInfo.maxPacks}</span>
-            </div>
-            <div className="h-3 bg-gray-700 rounded-full overflow-hidden mb-6">
-              <div
-                className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500"
-                style={{ width: `${(packInfo.packsOpened / packInfo.maxPacks) * 100}%` }}
+      
+      {/* Main field view - pack on left, best card on right */}
+      {!showResults && (
+        <div className="flex items-center justify-center gap-8 py-8 px-4">
+          {/* Pack section */}
+          <div className="flex flex-col items-center">
+            <button
+              onClick={packInfo?.packsRemaining > 0 ? handleOpenPack : () => router.push('/shop')}
+              disabled={opening}
+              className="relative transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
+            >
+              <img 
+                src="/foil-pack.png" 
+                alt="Card Pack" 
+                className="w-32 h-40 object-contain drop-shadow-2xl"
+                style={{ filter: 'drop-shadow(0 0 20px rgba(255,200,0,0.4))' }}
               />
-            </div>
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="p-3 rounded-xl" style={packInfo.packsOpened < 3 ? { background: 'rgba(0,255,127,0.10)', border: '1px solid rgba(0,255,127,0.18)' } : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
-                <div className="text-sm text-gray-400">Starter Packs</div>
-                <div className="text-xl font-bold text-white">{Math.min(packInfo.packsOpened, 3)} / 3</div>
-                <div className="text-xs text-gray-500">Guaranteed positions</div>
-              </div>
-              <div className="p-3 rounded-xl" style={packInfo.packsOpened >= 3 && packInfo.packsOpened < 13 ? { background: 'rgba(168,85,247,0.10)', border: '1px solid rgba(168,85,247,0.18)' } : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}>
-                <div className="text-sm text-gray-400">Bonus Packs</div>
-                <div className="text-xl font-bold text-white">{Math.max(0, packInfo.packsOpened - 3)} / 10</div>
-                <div className="text-xs text-gray-500">Random players</div>
-              </div>
-            </div>
-
-            {packInfo.packsRemaining > 0 ? (
-              <div className="space-y-3">
-                <button
-                  onClick={handleOpenPack}
-                  disabled={opening}
-                  className="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all disabled:opacity-50 text-lg"
-                >
-                  {opening ? 'Opening...' : 'Open 1 Pack'}
-                </button>
-                {canOpenSinglePack && (
-                  <button
-                    onClick={handleOpenSinglePack}
-                    disabled={opening}
-                    className="w-full py-3 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
-                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
-                  >
-                    Open 1-Card Test Pack
-                  </button>
-                )}
-                {packInfo.packsRemaining > 1 && (
-                  <button
-                    onClick={handleOpenAll}
-                    disabled={opening}
-                    className="w-full py-3 text-white font-semibold rounded-xl transition-colors disabled:opacity-50"
-                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
-                  >
-                    Open All ({packInfo.packsRemaining} packs)
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="text-center">
-                <p className="text-gray-400 mb-4">You've opened all your packs!</p>
-                <button
-                  onClick={goToCollection}
-                  className="px-6 py-2 text-white rounded-xl transition-colors"
-                  style={{ background: 'rgba(0,229,255,0.16)', border: '1px solid rgba(0,229,255,0.22)' }}
-                >
-                  View Your Cards
-                </button>
-              </div>
-            )}
-
-            <div className="mt-6 pt-4 border-t border-white/10">
-              <div className="text-xs text-gray-500 mb-2">Drop Rates</div>
-              <div className="grid grid-cols-5 gap-1 text-xs">
-                {[10, 9, 8, 7, 6].map(tier => (
-                  <div key={tier} className="text-center">
-                    <div style={{ color: `var(--tier-${tier})` }}>T{tier}</div>
-                    <div className="text-gray-500">{packInfo.tierRates?.[tier] || '?'}</div>
-                  </div>
-                ))}
-              </div>
+              {opening && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+                  <div className="text-white text-sm f10-title">Opening...</div>
+                </div>
+              )}
+            </button>
+            <div 
+              className="mt-3 text-white text-lg tracking-wide"
+              style={{ fontFamily: 'var(--f10-display-font)', fontWeight: 700 }}
+            >
+              {getPackLabel()}
             </div>
           </div>
-        )}
 
-        {showResults && openedCards.length > 0 && (
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-white mb-2">
-                {openedCards.length <= 5 ? 'Pack Opened!' : `${Math.ceil(openedCards.length / 5)} Packs Opened!`}
-              </h2>
-              {bestCard && bestCard.tier >= 7 && (
-                <p className="text-lg" style={{ color: `var(--tier-${bestCard.tier})` }}>
-                  You got a {TIER_NAMES[bestCard.tier]}!
-                </p>
-              )}
-              <p className="text-sm text-gray-400 mt-2">Tap any card to view details</p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-4">
-              {openedCards.map((card, index) => (
-                <div
-                  key={card.id}
-                  className={`transition-all duration-500 cursor-pointer ${
-                    index <= revealIndex ? 'opacity-100 transform scale-100' : 'opacity-0 transform scale-75'
-                  }`}
-                  onClick={() => index <= revealIndex && setSelectedCard(card)}
-                >
-                  <Card card={card} small={openedCards.length > 10} />
-                </div>
-              ))}
-            </div>
-            <div className="text-center mt-6 space-x-4">
+          {/* Best card section */}
+          <div className="flex flex-col items-center">
+            {bestCard ? (
               <button
                 onClick={goToCollection}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="transition-transform hover:scale-105 active:scale-95"
               >
-                View Collection
+                <Card card={bestCard} small={false} />
               </button>
-              <button
-                onClick={() => {
-                  setShowResults(false);
-                  setOpenedCards([]);
-                }}
-                className="px-6 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            ) : (
+              <div 
+                onClick={goToCollection}
+                className="w-32 h-44 rounded-lg border-2 border-dashed border-white/20 flex items-center justify-center cursor-pointer hover:border-white/40 transition-colors"
               >
-                {packInfo?.packsRemaining > 0 ? 'Open Another Pack' : 'Done'}
-              </button>
+                <span className="text-white/40 text-sm text-center px-2" style={{ fontFamily: 'var(--f10-display-font)' }}>
+                  No cards yet
+                </span>
+              </div>
+            )}
+            <div 
+              className="mt-3 text-white/60 text-sm tracking-wide cursor-pointer hover:text-white/80 transition-colors"
+              style={{ fontFamily: 'var(--f10-display-font)', fontWeight: 700 }}
+              onClick={goToCollection}
+            >
+              View Collection
             </div>
           </div>
-        )}
+        </div>
+      )
 
-        {selectedCard && (
-          <CardModal card={selectedCard} onClose={() => setSelectedCard(null)} />
-        )}
-
-        {showAiPopup && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="f10-panel p-6 max-w-md w-full text-center shadow-2xl" style={{ borderColor: 'rgba(0,229,255,0.22)' }}>
-              <div className="text-5xl mb-4 animate-pulse">🎨</div>
-              <h2 className="text-2xl f10-title text-white mb-3">AI is generating unique card artwork!</h2>
-              <p className="text-gray-300 mb-2">Your cards appear below with placeholder images.</p>
-              <p className="text-gray-400 text-sm mb-6">
-                The AI will generate unique artwork for each card. Check Collection in a few minutes to see the finished artwork.
+      {/* Results view after opening packs */}
+      {showResults && openedCards.length > 0 && (
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="text-center mb-6">
+            <h2 
+              className="text-2xl text-white mb-2"
+              style={{ fontFamily: 'var(--f10-display-font)', fontWeight: 700 }}
+            >
+              {openedCards.length <= 5 ? 'Pack Opened!' : `${Math.ceil(openedCards.length / 5)} Packs Opened!`}
+            </h2>
+            {openedBestCard && openedBestCard.tier >= 7 && (
+              <p className="text-lg" style={{ color: `var(--tier-${openedBestCard.tier})`, fontFamily: 'var(--f10-display-font)' }}>
+                You got a {TIER_NAMES[openedBestCard.tier]}!
               </p>
-              <button
-                onClick={() => setShowAiPopup(false)}
-                className="px-8 py-3 text-white font-semibold rounded-xl transition-colors text-lg"
-                style={{ background: 'rgba(0,229,255,0.16)', border: '1px solid rgba(0,229,255,0.22)' }}
-              >
-                OK
-              </button>
-            </div>
+            )}
+            <p className="text-sm text-gray-400 mt-2" style={{ fontFamily: 'var(--f10-display-font)' }}>
+              Tap any card to view details
+            </p>
           </div>
-        )}
-      </div>
+          <div className="flex flex-wrap justify-center gap-4">
+            {openedCards.map((card, index) => (
+              <div
+                key={card.id}
+                className={`transition-all duration-500 cursor-pointer ${
+                  index <= revealIndex ? 'opacity-100 transform scale-100' : 'opacity-0 transform scale-75'
+                }`}
+                onClick={() => index <= revealIndex && setSelectedCard(card)}
+              >
+                <Card card={card} small={openedCards.length > 10} />
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-6 space-x-4">
+            <button
+              onClick={goToCollection}
+              className="px-6 py-2 text-white rounded-lg transition-colors"
+              style={{ background: 'rgba(0,229,255,0.16)', border: '1px solid rgba(0,229,255,0.22)', fontFamily: 'var(--f10-display-font)' }}
+            >
+              View Collection
+            </button>
+            <button
+              onClick={() => {
+                setShowResults(false);
+                setOpenedCards([]);
+                loadBestCard(); // Refresh best card after opening
+              }}
+              className="px-6 py-2 text-white rounded-lg transition-colors"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)', fontFamily: 'var(--f10-display-font)' }}
+            >
+              {packInfo?.packsRemaining > 0 ? 'Open Another' : 'Done'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {selectedCard && (
+        <CardModal card={selectedCard} onClose={() => setSelectedCard(null)} />
+      )}
+
+      {showAiPopup && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="f10-panel p-6 max-w-md w-full text-center shadow-2xl" style={{ borderColor: 'rgba(0,229,255,0.22)' }}>
+            <div className="text-5xl mb-4 animate-pulse">🎨</div>
+            <h2 className="text-2xl text-white mb-3" style={{ fontFamily: 'var(--f10-display-font)', fontWeight: 700 }}>
+              AI is generating unique card artwork!
+            </h2>
+            <p className="text-gray-300 mb-2">Your cards appear below with placeholder images.</p>
+            <p className="text-gray-400 text-sm mb-6">
+              The AI will generate unique artwork for each card. Check Collection in a few minutes to see the finished artwork.
+            </p>
+            <button
+              onClick={() => setShowAiPopup(false)}
+              className="px-8 py-3 text-white font-semibold rounded-xl transition-colors text-lg"
+              style={{ background: 'rgba(0,229,255,0.16)', border: '1px solid rgba(0,229,255,0.22)', fontFamily: 'var(--f10-display-font)' }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
