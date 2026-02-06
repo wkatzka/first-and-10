@@ -1098,6 +1098,36 @@ app.get('/api/users/:userId/roster', authMiddleware, async (req, res) => {
   });
 });
 
+// Get another user's achievable roster presets (for opponent scouting)
+app.get('/api/users/:userId/presets', authMiddleware, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    const { side } = req.query; // 'offense' or 'defense'
+    
+    const user = await db.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const cards = await db.getUserCards(userId);
+    const tierCap = { offense: 42, defense: 28 }; // Same caps as OFFENSE_TIER_CAP/DEFENSE_TIER_CAP
+    
+    if (side === 'defense') {
+      const presets = gameEngine.generateDefensePresets(cards, tierCap);
+      console.log(`[Presets] Defense for user ${userId} (scouting by ${req.user.id}): ${presets.length} presets`);
+      return res.json({ presets, side: 'defense' });
+    }
+    
+    // Default to offense
+    const presets = gameEngine.generateOffensePresets(cards, tierCap);
+    console.log(`[Presets] Offense for user ${userId} (scouting by ${req.user.id}): ${presets.length} presets`);
+    res.json({ presets, side: 'offense' });
+  } catch (err) {
+    console.error('Failed to generate opponent presets:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // =============================================================================
 // ROSTER ROUTES
 // =============================================================================
