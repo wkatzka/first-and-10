@@ -163,9 +163,9 @@ export default function PacksContent({ user, onViewCollection }) {
       
       {/* Main field view - pack on left, best card on right */}
       {!showResults && (
-        <div className="flex items-center justify-center gap-6 px-4" style={{ paddingTop: '200px' }}>
+        <div className="flex items-start justify-center gap-6 px-4">
           {/* Pack section */}
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center" style={{ marginTop: '220px' }}>
             <button
               onClick={packInfo?.packsRemaining > 0 ? handleOpenPack : () => router.push('/shop')}
               disabled={opening}
@@ -193,7 +193,7 @@ export default function PacksContent({ user, onViewCollection }) {
           </div>
 
           {/* Best card section */}
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center" style={{ marginTop: '200px' }}>
             {bestCard ? (
               <button
                 onClick={goToCollection}
@@ -215,6 +215,12 @@ export default function PacksContent({ user, onViewCollection }) {
                 </span>
               </div>
             )}
+            <div 
+              className="mt-2 text-white text-base tracking-wide"
+              style={{ fontFamily: 'var(--f10-display-font)', fontWeight: 700 }}
+            >
+              My Collection
+            </div>
           </div>
         </div>
       )}
