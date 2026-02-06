@@ -10,7 +10,7 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
     team: { color: '#00e5ff' },
     cards: { color: '#ff0080' },
     shop: { color: '#f59e0b' },
-    league: { color: '#ffe600' },
+    league: { color: '#a855f7' },
     rules: { color: '#00ff7f' },
   };
 
@@ -46,8 +46,8 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
     { href: '/cards', label: 'Cards', variant: 'cards' },
     { href: '/leaderboard', label: 'League', variant: 'league', badge: unreadMessages },
     { href: '/team', label: 'My Team', variant: 'team' },
-    { href: '/how-to-play', label: 'Rules', variant: 'rules' },
     ...(cryptoShopEnabled ? [{ href: '/shop', label: 'Shop', variant: 'shop' }] : []),
+    { href: '/how-to-play', label: 'Rules', variant: 'rules' },
   ];
 
   const navItems = baseNavItems;

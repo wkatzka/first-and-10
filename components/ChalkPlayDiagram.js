@@ -20,6 +20,7 @@ const CHALK_STROKE = 2.5;
 const X_SIZE = 12;
 const CARD_W = 78;
 const CARD_H = 92;
+const NAME_HEIGHT = 14; // Height of player name text shown below each card
 
 // Offense: WR1, TE, OL, RB, WR2 + QB behind OL. Slot ids for roster.cards.
 const OFFENSE_SLOTS = ['wr1_card_id', 'te_card_id', 'ol_card_id', 'rb_card_id', 'wr2_card_id'];
@@ -220,7 +221,8 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
         label: { wr1_card_id: 'WR1', te_card_id: 'TE', ol_card_id: 'OL', rb_card_id: 'RB', wr2_card_id: 'WR2' }[slotId],
       }));
       const qbX = w * (margin + 2 * step);
-      return [...positions, { slotId: OFFENSE_QB_SLOT, x: qbX, y: line10Y + PX_PER_YARD * 4, label: 'QB' }];
+      // QB moved down by NAME_HEIGHT to account for name text below card
+      return [...positions, { slotId: OFFENSE_QB_SLOT, x: qbX, y: line10Y + PX_PER_YARD * 4 + NAME_HEIGHT, label: 'QB' }];
     }
     const marginD = 0.1;
     const stepD = (1 - 2 * marginD) / 3;
@@ -233,7 +235,8 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
       label: { db1_card_id: 'DB1', dl_card_id: 'DL', lb_card_id: 'LB', db2_card_id: 'DB2' }[slotId],
     }));
     const kX = w * (marginD + 1.5 * stepD);
-    return [...positions, { slotId: DEFENSE_K_SLOT, x: kX, y: line10Y + PX_PER_YARD * 4, label: 'K' }];
+    // K moved down by NAME_HEIGHT to account for name text below card
+    return [...positions, { slotId: DEFENSE_K_SLOT, x: kX, y: line10Y + PX_PER_YARD * 4 + NAME_HEIGHT, label: 'K' }];
   }, [w, mode, line10Y]);
 
   const initOffensePlay = useCallback(() => {
@@ -248,7 +251,7 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
       y: line10Y + yOffsets[i],
       label: { wr1_card_id: 'WR1', te_card_id: 'TE', ol_card_id: 'OL', rb_card_id: 'RB', wr2_card_id: 'WR2' }[slotId],
     }));
-    const qb = { slotId: OFFENSE_QB_SLOT, x: w * (margin + 2 * step), y: line10Y + PX_PER_YARD * 4, label: 'QB' };
+    const qb = { slotId: OFFENSE_QB_SLOT, x: w * (margin + 2 * step), y: line10Y + PX_PER_YARD * 4 + NAME_HEIGHT, label: 'QB' };
     const cardPositions = [...positions, qb];
     const arrowIndices = [0, 1, 3, 4];
     const routeOrder = shuffle([0, 1, 2, 3]);
@@ -282,7 +285,7 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick }) {
       label: { db1_card_id: 'DB1', dl_card_id: 'DL', lb_card_id: 'LB', db2_card_id: 'DB2' }[slotId],
     }));
     const kX = w * (margin + 1.5 * step);
-    const k = { slotId: DEFENSE_K_SLOT, x: kX, y: line10Y + PX_PER_YARD * 4, label: 'K' };
+    const k = { slotId: DEFENSE_K_SLOT, x: kX, y: line10Y + PX_PER_YARD * 4 + NAME_HEIGHT, label: 'K' };
     const cardPositions = [...positions, k];
     const xCoords = [
       { x: w * 0.15 + Math.random() * w * 0.12, y: goalLineY + PX_PER_YARD * 2.5 + Math.random() * 35 },

@@ -251,9 +251,9 @@ export default function Card({ card, onClick, selected, small, showImage = true 
 
 // Mini card for roster slots; fieldSize = smaller for play diagram (5 in a row)
 export function MiniCard({ card, position, onClick, empty, fieldSize }) {
+  const [imageError, setImageError] = useState(false);
   const sizeClass = fieldSize ? 'w-14 h-[4.2rem]' : 'w-20 h-24';
   const textSize = fieldSize ? 'text-[8px]' : 'text-[10px]';
-  const subTextSize = fieldSize ? 'text-[6px]' : 'text-[8px]';
 
   if (empty || !card) {
     return (
@@ -268,16 +268,31 @@ export function MiniCard({ card, position, onClick, empty, fieldSize }) {
   }
 
   const tierColor = TIER_COLORS[card.tier] || TIER_COLORS[1];
+  const hasImage = card.image_url && !imageError && !card.image_url.includes('placeholder');
 
+  // Card with image - shows art with tier/position badges on top, name below
   return (
-    <button
-      onClick={onClick}
-      className={`${sizeClass} rounded-lg overflow-hidden active:scale-95 active:opacity-80 transition-all pointer-events-none`}
-      style={{ border: `2px solid ${tierColor}` }}
-      tabIndex={-1}
-    >
-      <div className="h-full flex flex-col p-0.5 bg-gray-800">
-        <div className="flex justify-between items-start">
+    <div className="flex flex-col items-center pointer-events-none">
+      <button
+        onClick={onClick}
+        className={`${sizeClass} rounded-lg overflow-hidden active:scale-95 active:opacity-80 transition-all relative`}
+        style={{ border: `2px solid ${tierColor}` }}
+        tabIndex={-1}
+      >
+        {/* Card art or fallback */}
+        {hasImage ? (
+          <img 
+            src={card.image_url} 
+            alt={card.player_name || card.player}
+            className="w-full h-full object-cover"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="h-full w-full bg-gray-800" />
+        )}
+        
+        {/* Tier and Position badges overlay */}
+        <div className="absolute top-0 left-0 right-0 flex justify-between items-start p-0.5">
           <span
             className={`${textSize} px-0.5 rounded font-bold`}
             style={{ backgroundColor: POSITION_COLORS[card.position], color: '#fff' }}
@@ -291,15 +306,20 @@ export function MiniCard({ card, position, onClick, empty, fieldSize }) {
             {card.tier}
           </span>
         </div>
-        <div className="flex-1 flex items-center justify-center min-h-0">
-          <span className={`${textSize} text-center text-white font-medium leading-tight truncate w-full px-0.5`}>
-            {(card.player_name || card.player || '').split(' ').slice(-1)[0]}
-          </span>
-        </div>
-        <div className={`${subTextSize} text-gray-400 text-center`}>
-          {card.season}
-        </div>
-      </div>
-    </button>
+      </button>
+      
+      {/* Player name below card */}
+      <span 
+        className="text-white text-center leading-tight truncate w-full mt-0.5"
+        style={{ 
+          fontSize: fieldSize ? '9px' : '11px',
+          fontFamily: 'var(--f10-display-font)',
+          fontWeight: 700,
+          textShadow: '0 1px 3px rgba(0,0,0,0.8)'
+        }}
+      >
+        {(card.player_name || card.player || '').split(' ').slice(-1)[0]}
+      </span>
+    </div>
   );
 }
