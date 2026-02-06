@@ -319,7 +319,7 @@ export default function OpponentScout({
       {/* Opponent Info - Tier on left, Slider on right (compact) */}
       <div className="flex items-end justify-between px-1 mb-1" style={{ marginTop: '76px' }}>
         {/* Opponent Tier Info - Left side, purple styling, positioned higher */}
-        <div className="flex flex-col gap-0.5" style={{ marginTop: '-21px' }}>
+        <div className="flex flex-col gap-0.5" style={{ marginTop: '-23px' }}>
           <div 
             className="px-1 py-0.5 rounded text-[9px] font-bold whitespace-nowrap"
             style={{ 
@@ -481,7 +481,7 @@ export default function OpponentScout({
         className="relative" 
         style={{ 
           height: isOffense ? 'min(95px, 13vh)' : 'min(50px, 7vh)', 
-          marginTop: '-2px' 
+          marginTop: '4px' 
         }}
       >
         {isOffense ? (
@@ -555,12 +555,12 @@ export default function OpponentScout({
       </div>
       
       {/* VS Divider - positioned lower */}
-      <div className="flex items-center justify-center gap-2 mb-4" style={{ marginTop: '43px' }}>
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-        <span className="text-xs text-gray-500 font-medium" style={{ fontFamily: 'var(--f10-display-font)' }}>
+      <div className="flex items-center justify-center gap-2 mb-4" style={{ marginTop: '53px' }}>
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+        <span className="text-xs text-white font-bold" style={{ fontFamily: 'var(--f10-display-font)' }}>
           VS
         </span>
-        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
       </div>
     </div>
   );

@@ -447,13 +447,13 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick, tierInfo }
           );
         })}
         
-        {/* Tier Info Display - Bottom left of field, well above the offense/defense bar */}
+        {/* Tier Info Display - Left side of field, aligned with opponent's tier info */}
         {tierInfo && (
           <div 
             className="absolute flex flex-col gap-0.5"
             style={{ 
               left: '8px', 
-              bottom: 'max(240px, 34vh)',
+              top: '53px',
               zIndex: 10,
             }}
           >

@@ -281,18 +281,18 @@ export default function StrategySlider({
 
   if (loading) {
     return (
-      <div className="relative rounded-lg overflow-hidden h-12 flex items-center justify-center"
+      <div className="relative rounded-lg overflow-hidden h-10 flex items-center justify-center"
         style={{ backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
-        <span className="text-gray-400 text-xs">Loading...</span>
+        <span className="text-gray-400 text-[9px]">Loading...</span>
       </div>
     );
   }
 
   if (presets.length === 0) {
     return (
-      <div className="relative rounded-lg overflow-hidden h-12 flex items-center justify-center"
+      <div className="relative rounded-lg overflow-hidden h-10 flex items-center justify-center"
         style={{ backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
-        <span className="text-gray-400 text-xs">Need more cards</span>
+        <span className="text-gray-400 text-[9px]">Need more cards</span>
       </div>
     );
   }
@@ -313,23 +313,23 @@ export default function StrategySlider({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Labels row */}
-      <div className="flex justify-between px-2 pt-1.5 pb-0.5 relative z-10 pointer-events-none">
-        <span className="text-xs font-semibold" style={{ 
+      {/* Labels row - compact to match opponent slider */}
+      <div className="flex justify-between px-1.5 pt-1 pb-0 relative z-10 pointer-events-none">
+        <span className="text-[9px] font-semibold" style={{ 
           fontFamily: "'Rajdhani', sans-serif",
           color: isLeftActive ? '#fff' : '#6b7280',
           textShadow: isLeftActive ? `0 0 8px ${leftColor}` : 'none',
         }}>
           {leftLabel}
         </span>
-        <span className="text-xs font-semibold" style={{ 
+        <span className="text-[9px] font-semibold" style={{ 
           fontFamily: "'Rajdhani', sans-serif",
           color: isCenterActive ? '#fff' : '#6b7280',
           textShadow: isCenterActive ? `0 0 8px ${centerColor}` : 'none',
         }}>
           {centerLabel}
         </span>
-        <span className="text-xs font-semibold" style={{ 
+        <span className="text-[9px] font-semibold" style={{ 
           fontFamily: "'Rajdhani', sans-serif",
           color: isRightActive ? '#fff' : '#6b7280',
           textShadow: isRightActive ? `0 0 8px ${rightColor}` : 'none',
@@ -338,8 +338,8 @@ export default function StrategySlider({
         </span>
       </div>
 
-      {/* Track with preset dots */}
-      <div className="relative h-8 mx-2 mb-1">
+      {/* Track with preset dots - compact to match opponent slider */}
+      <div className="relative h-6 mx-1.5 mb-0.5">
         {/* Three-zone gradient track */}
         <div 
           className="absolute top-1/2 left-0 right-0 h-1.5 rounded-full pointer-events-none"

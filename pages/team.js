@@ -177,7 +177,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
       </div>
 
       {/* Mobile: bar fixed above bottom nav with clearance so buttons aren't cut off by tiles */}
-      <div className="md:hidden fixed left-0 right-0 z-40 px-3 safe-area-pb" style={{ bottom: 'calc(7.25rem - 24px)' }}>
+      <div className="md:hidden fixed left-0 right-0 z-40 px-3 safe-area-pb" style={{ bottom: 'calc(7.25rem - 22px)' }}>
         <div className="mx-auto max-w-7xl">
           <div className="flex gap-2 items-center">
             <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
