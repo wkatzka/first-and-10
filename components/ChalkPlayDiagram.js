@@ -447,18 +447,18 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick, tierInfo }
           );
         })}
         
-        {/* Tier Info Display - Bottom left of field */}
+        {/* Tier Info Display - Bottom left of field, responsive positioning */}
         {tierInfo && (
           <div 
             className="absolute flex flex-col gap-1"
             style={{ 
               left: '8px', 
-              bottom: '180px',
+              bottom: 'max(160px, 22vh)',
               zIndex: 10,
             }}
           >
             <div 
-              className="px-2 py-1 rounded-lg text-xs font-bold"
+              className="px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold whitespace-nowrap"
               style={{ 
                 backgroundColor: 'rgba(0,229,255,0.15)',
                 border: '1px solid rgba(0,229,255,0.3)',
@@ -469,7 +469,7 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick, tierInfo }
               <span className="text-cyan-400">{tierInfo.cap}</span>
             </div>
             <div 
-              className="px-2 py-1 rounded-lg text-xs font-bold"
+              className="px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold whitespace-nowrap"
               style={{ 
                 backgroundColor: 'rgba(0,229,255,0.15)',
                 border: `1px solid ${tierInfo.isOverCap ? 'rgba(239,68,68,0.5)' : 'rgba(0,229,255,0.3)'}`,

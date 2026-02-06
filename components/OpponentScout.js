@@ -317,11 +317,11 @@ export default function OpponentScout({
   return (
     <div className="mb-4">
       {/* Opponent Info Bar - Tier Cap/Sum on left, Slider on right */}
-      <div className="flex gap-2 items-center mb-3 px-2">
+      <div className="flex gap-1.5 sm:gap-2 items-center mb-2 sm:mb-3 px-1 sm:px-2">
         {/* Opponent Tier Info - Left side */}
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-0.5 sm:gap-1 shrink-0">
           <div 
-            className="px-2 py-1 rounded-lg text-xs font-bold"
+            className="px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold whitespace-nowrap"
             style={{ 
               backgroundColor: 'rgba(239,68,68,0.15)',
               border: '1px solid rgba(239,68,68,0.3)',
@@ -332,7 +332,7 @@ export default function OpponentScout({
             <span className="text-red-400">{tierCap}</span>
           </div>
           <div 
-            className="px-2 py-1 rounded-lg text-xs font-bold"
+            className="px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold whitespace-nowrap"
             style={{ 
               backgroundColor: 'rgba(239,68,68,0.15)',
               border: '1px solid rgba(239,68,68,0.3)',
@@ -483,14 +483,20 @@ export default function OpponentScout({
         </div>
       </div>
 
-      {/* Opponent Cards - Field Formation */}
-      <div className="relative" style={{ height: isOffense ? '100px' : '55px', marginTop: '-8px' }}>
+      {/* Opponent Cards - Field Formation - responsive heights */}
+      <div 
+        className="relative" 
+        style={{ 
+          height: isOffense ? 'min(100px, 14vh)' : 'min(55px, 8vh)', 
+          marginTop: '-4px' 
+        }}
+      >
         {isOffense ? (
           <>
             {/* QB at top center */}
             <div 
               className="absolute left-1/2"
-              style={{ top: '0px', transform: 'translateX(-50%)' }}
+              style={{ top: '0', transform: 'translateX(-50%) scale(var(--card-scale, 1))' }}
             >
               <div className="opacity-80" style={{ filter: 'saturate(0.7)' }}>
                 <MiniCard
@@ -505,7 +511,8 @@ export default function OpponentScout({
             {/* Skill positions in arc below QB */}
             {OFFENSE_SLOTS.map((slot, idx) => {
               const xPositions = [0.08, 0.27, 0.5, 0.73, 0.92];
-              const yOffsets = [45, 58, 68, 58, 45];
+              // Use percentage-based offsets relative to container
+              const yPercents = [45, 58, 68, 58, 45];
               
               return (
                 <div 
@@ -513,8 +520,8 @@ export default function OpponentScout({
                   className="absolute"
                   style={{ 
                     left: `${xPositions[idx] * 100}%`,
-                    top: `${yOffsets[idx]}px`,
-                    transform: 'translateX(-50%)'
+                    top: `${yPercents[idx]}%`,
+                    transform: 'translateX(-50%) scale(var(--card-scale, 1))'
                   }}
                 >
                   <div className="opacity-80" style={{ filter: 'saturate(0.7)' }}>
@@ -530,9 +537,9 @@ export default function OpponentScout({
             })}
           </>
         ) : (
-          <div className="flex justify-center gap-6">
+          <div className="flex justify-center gap-4 sm:gap-6">
             {DEFENSE_SLOTS.map((slot, idx) => {
-              const yOffsets = [0, 10, 10, 0];
+              const yOffsets = [0, 8, 8, 0];
               return (
                 <div 
                   key={slot.id}
