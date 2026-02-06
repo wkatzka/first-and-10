@@ -3,19 +3,21 @@
  * ======================
  * Purchase NFT packs with ETH. Only available when running locally (cryptoShopEnabled).
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { ethers } from 'ethers';
 import Layout from '../components/Layout';
 import { WalletConnectButton, WalletStatus } from '../components/WalletConnect';
 import { useWallet } from '../lib/wallet';
 import { OnrampCard } from '../components/CoinbaseOnramp';
 import { BuyPackButton } from '../components/BuyPackButton';
-import { CURRENT_NETWORK } from '../lib/contracts';
+import { CURRENT_NETWORK, BASE_SEPOLIA_CHAIN_ID } from '../lib/contracts';
 import { cryptoShopEnabled } from '../lib/env';
 
 export default function Shop({ user, onLogout, unreadMessages }) {
   const router = useRouter();
-  const { isConnected, address } = useWallet();
+  const { isConnected, address, chainId, disconnect, getSigner } = useWallet();
+  const [balance, setBalance] = useState(null);
 
   useEffect(() => {
     if (!cryptoShopEnabled) {
@@ -26,6 +28,31 @@ export default function Shop({ user, onLogout, unreadMessages }) {
       router.push('/');
     }
   }, [user, router]);
+
+  // Load balance when connected
+  useEffect(() => {
+    if (!isConnected) {
+      setBalance(null);
+      return;
+    }
+
+    const loadBalance = async () => {
+      try {
+        const signer = await getSigner();
+        if (signer) {
+          const bal = await signer.provider.getBalance(address);
+          setBalance(ethers.formatEther(bal));
+        }
+      } catch (err) {
+        console.error('Error loading balance:', err);
+      }
+    };
+
+    loadBalance();
+    // Refresh balance every 10 seconds
+    const interval = setInterval(loadBalance, 10000);
+    return () => clearInterval(interval);
+  }, [isConnected, address, getSigner]);
 
   if (!cryptoShopEnabled) return null;
   if (!user) return null;
@@ -52,7 +79,14 @@ export default function Shop({ user, onLogout, unreadMessages }) {
         <div className="f10-panel p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-white">Your Wallet</h2>
-            <WalletStatus />
+            {isConnected && (
+              <button
+                onClick={disconnect}
+                className="text-gray-400 hover:text-red-400 text-sm transition-colors"
+              >
+                Disconnect
+              </button>
+            )}
           </div>
 
           {!isConnected ? (
@@ -63,10 +97,32 @@ export default function Shop({ user, onLogout, unreadMessages }) {
               <WalletConnectButton />
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-green-400">
-                <div className="w-2 h-2 rounded-full bg-green-500" />
-                <span className="font-mono text-sm">{address}</span>
+            <div className="space-y-3">
+              {/* Address */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-black/30">
+                <span className="text-gray-400 text-sm">Address</span>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                  <span className="font-mono text-sm text-green-400">
+                    {address?.slice(0, 6)}…{address?.slice(-4)}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Balance */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-black/30">
+                <span className="text-gray-400 text-sm">Balance</span>
+                <span className="font-mono text-sm text-white">
+                  {balance ? `${parseFloat(balance).toFixed(6)} ETH` : 'Loading...'}
+                </span>
+              </div>
+
+              {/* Network */}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-black/30">
+                <span className="text-gray-400 text-sm">Network</span>
+                <span className={`text-sm ${chainId === BASE_SEPOLIA_CHAIN_ID ? 'text-green-400' : 'text-amber-400'}`}>
+                  {chainId === BASE_SEPOLIA_CHAIN_ID ? 'Base Sepolia ✓' : 'Wrong network!'}
+                </span>
               </div>
             </div>
           )}

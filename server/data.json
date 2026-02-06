@@ -1,13 +1,18 @@
 {
-  "users": [],
+  "users": [
+    {
+      "id": 1,
+      "username": "Will!",
+      "password_hash": "668ffce73684de7ae3019346000a273bcd15dbb2fe45321572bd57ac317f0a60",
+      "team_name": "Will!'s Team",
+      "created_at": "2026-02-05T23:25:29.311Z",
+      "packs_opened": 0,
+      "max_packs": 13
+    }
+  ],
   "preregistered": [
     {
       "username": "Ash!",
-      "max_packs": 13,
-      "created_at": "2026-01-30T00:00:00.000Z"
-    },
-    {
-      "username": "Will!",
       "max_packs": 13,
       "created_at": "2026-01-30T00:00:00.000Z"
     },
@@ -38,9 +43,29 @@
     }
   ],
   "cards": [],
-  "rosters": [],
+  "rosters": [
+    {
+      "user_id": 1,
+      "qb_card_id": null,
+      "rb_card_id": null,
+      "wr1_card_id": null,
+      "wr2_card_id": null,
+      "te_card_id": null,
+      "ol_card_id": null,
+      "dl_card_id": null,
+      "lb_card_id": null,
+      "db1_card_id": null,
+      "db2_card_id": null,
+      "k_card_id": null
+    }
+  ],
   "games": [],
-  "nextUserId": 1,
+  "nextUserId": 2,
   "nextCardId": 1,
-  "nextGameId": 1
+  "nextGameId": 1,
+  "migrations": {
+    "card_traits_v1": true,
+    "card_traits_v2": true,
+    "card_stats_v1": true
+  }
 }

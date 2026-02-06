@@ -29,6 +29,9 @@ export function BuyPackButton({ onSuccess, className = '' }) {
   const [packPrice, setPackPrice] = useState(null);
   const [balance, setBalance] = useState(null);
 
+  // Fixed pack price (0.0001 ETH for testing)
+  const FIXED_PACK_PRICE = '0.0001';
+
   useEffect(() => {
     if (!isConnected) return;
 
@@ -38,26 +41,16 @@ export function BuyPackButton({ onSuccess, className = '' }) {
         if (!signer) return;
 
         const provider = signer.provider;
-        const contractAddress = getContractAddress('playerSeasonCard');
-
-        if (!contractAddress) {
-          console.log('No contract address configured');
-          return;
-        }
-
-        const contract = new ethers.Contract(
-          contractAddress,
-          PLAYER_SEASON_CARD_ABI,
-          provider
-        );
-
-        const price = await contract.packPrice();
-        setPackPrice(ethers.formatEther(price));
+        
+        // Use fixed price instead of reading from contract
+        setPackPrice(FIXED_PACK_PRICE);
 
         const bal = await provider.getBalance(address);
         setBalance(ethers.formatEther(bal));
       } catch (err) {
         console.error('Error loading pack data:', err);
+        // Still set the fixed price even if balance fails
+        setPackPrice(FIXED_PACK_PRICE);
       }
     };
 
@@ -92,11 +85,12 @@ export function BuyPackButton({ onSuccess, className = '' }) {
         signer
       );
 
-      const price = await contract.packPrice();
+      // Use fixed price
+      const price = ethers.parseEther(FIXED_PACK_PRICE);
 
       const balanceWei = await signer.provider.getBalance(address);
       if (balanceWei < price) {
-        throw new Error(`Insufficient balance. Need ${ethers.formatEther(price)} ETH`);
+        throw new Error(`Insufficient balance. Need ${FIXED_PACK_PRICE} ETH`);
       }
 
       setTxState(TX_STATE.CONFIRMING);
