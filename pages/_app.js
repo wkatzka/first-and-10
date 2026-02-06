@@ -149,19 +149,19 @@ export default function App({ Component, pageProps }) {
   const [inFarcaster, setInFarcaster] = useState(false);
   
   useEffect(() => {
+    // Always try to call sdk.actions.ready() - it's safe to call even outside Farcaster
+    // This must happen ASAP to hide the splash screen
+    import('@farcaster/miniapp-sdk').then(({ sdk }) => {
+      sdk.actions.ready();
+      console.log('[Farcaster] sdk.actions.ready() called');
+    }).catch(err => {
+      // Expected to fail outside Farcaster context, that's fine
+      console.log('[Farcaster] SDK not available (expected outside Warpcast)');
+    });
+    
     // Check on client side only
     const isFarcaster = isFarcasterMiniApp();
     setInFarcaster(isFarcaster);
-    
-    // If in Farcaster, immediately call sdk.actions.ready() to hide splash screen
-    if (isFarcaster) {
-      import('@farcaster/miniapp-sdk').then(({ sdk }) => {
-        sdk.actions.ready();
-        console.log('[Farcaster] sdk.actions.ready() called');
-      }).catch(err => {
-        console.error('[Farcaster] Failed to call ready():', err);
-      });
-    }
   }, []);
 
   const content = (
