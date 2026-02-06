@@ -413,12 +413,6 @@ export default function StrategySlider({
         )}
       </div>
 
-      {/* Info row */}
-      <div className="text-center pb-1 pointer-events-none">
-        <span className="text-[10px] text-gray-400" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
-          {applying ? 'Applying...' : `${presets.length} roster${presets.length !== 1 ? 's' : ''} • Drag or tap to change`}
-        </span>
-      </div>
     </div>
   );
 }
