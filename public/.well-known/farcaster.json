@@ -16,6 +16,7 @@
     "primaryCategory": "games",
     "tags": ["football", "cards", "nft", "game", "sports"],
     "requiredChains": ["eip155:84532"],
-    "requiredCapabilities": ["wallet.getEthereumProvider"]
+    "requiredCapabilities": ["wallet.getEthereumProvider"],
+    "noindex": true
   }
 }
