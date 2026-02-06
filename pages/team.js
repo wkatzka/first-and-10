@@ -7,7 +7,7 @@ import OpponentScout from '../components/OpponentScout';
 import { getRosterStrategy, getUserRoster } from '../lib/api';
 
 const NAV_CYAN = '#00e5ff';
-const NAV_ORANGE = '#f59e0b';
+const NAV_PURPLE = '#a855f7';
 
 export default function Team({ user, onLogout, unreadMessages }) {
   const router = useRouter();
@@ -102,7 +102,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
   if (!user) return null;
 
   const activeSegmentStyle = { backgroundColor: `${NAV_CYAN}20`, border: `2px solid ${NAV_CYAN}`, boxShadow: `0 0 12px ${NAV_CYAN}80` };
-  const activeGameStyle = { backgroundColor: `${NAV_ORANGE}20`, border: `2px solid ${NAV_ORANGE}`, boxShadow: `0 0 12px ${NAV_ORANGE}80` };
+  const activeGameStyle = { backgroundColor: `${NAV_PURPLE}20`, border: `2px solid ${NAV_PURPLE}`, boxShadow: `0 0 12px ${NAV_PURPLE}80` };
   const buttonFont = { fontFamily: "'Rajdhani', sans-serif" };
   
   // Get current opponent info
@@ -142,12 +142,14 @@ export default function Team({ user, onLogout, unreadMessages }) {
           </div>
         )}
         
-        {/* Opponent Scout Section */}
-        {opponentRoster && diagramSide === 'offense' && (
+        {/* Opponent Scout Section - shows opposite side of what you're viewing */}
+        {opponentRoster && (
           <OpponentScout 
             opponentRoster={opponentRoster}
             opponentName={opponentName}
+            opponentId={currentGame ? (currentGame.homeUserId === user?.id ? currentGame.awayUserId : currentGame.homeUserId) : null}
             loading={loadingOpponent}
+            showSide={diagramSide === 'offense' ? 'defense' : 'offense'}
           />
         )}
 
