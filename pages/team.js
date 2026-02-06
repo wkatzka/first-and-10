@@ -118,10 +118,10 @@ export default function Team({ user, onLogout, unreadMessages }) {
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="pb-28 md:pb-0">
-        {/* Game Selection Buttons - shows upcoming opponents */}
+        {/* Game Selection Buttons - thinner, positioned higher */}
         {upcomingGames.length > 0 && (
-          <div className="flex justify-center mb-4">
-            <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
+          <div className="flex justify-center mb-1" style={{ marginTop: '-8px' }}>
+            <div className="flex p-0.5 bg-black/30 backdrop-blur border border-white/10 rounded-xl shadow-lg">
               {upcomingGames.map((game, idx) => {
                 const oppName = game.homeUserId === user?.id 
                   ? game.awayUser?.username 
@@ -131,7 +131,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
                     key={game.id || idx}
                     type="button" 
                     onClick={() => setSelectedGameIndex(idx)}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 ${selectedGameIndex === idx ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all duration-200 ${selectedGameIndex === idx ? 'text-white' : 'text-gray-400 hover:text-white'}`}
                     style={selectedGameIndex === idx ? { ...activeGameStyle, ...buttonFont } : buttonFont}
                   >
                     Game {idx + 1}: vs {oppName || 'TBD'}

@@ -315,13 +315,13 @@ export default function OpponentScout({
   const rightColor = isOffense ? OFFENSE_COLORS.pass_heavy : DEFENSE_COLORS.coverage_shell;
 
   return (
-    <div className="mb-4">
-      {/* Opponent Info Bar - Tier Cap/Sum on left, Slider on right */}
-      <div className="flex gap-1.5 sm:gap-2 items-center mb-2 sm:mb-3 px-1 sm:px-2">
-        {/* Opponent Tier Info - Left side */}
-        <div className="flex flex-col gap-0.5 sm:gap-1 shrink-0">
+    <div className="mb-2">
+      {/* Opponent Info - Tier on left (lower), Slider on right (compact) */}
+      <div className="flex items-end justify-between px-1 mb-1" style={{ marginTop: '40px' }}>
+        {/* Opponent Tier Info - Left side, positioned lower */}
+        <div className="flex flex-col gap-0.5">
           <div 
-            className="px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold whitespace-nowrap"
+            className="px-1 py-0.5 rounded text-[9px] font-bold whitespace-nowrap"
             style={{ 
               backgroundColor: 'rgba(239,68,68,0.15)',
               border: '1px solid rgba(239,68,68,0.3)',
@@ -332,7 +332,7 @@ export default function OpponentScout({
             <span className="text-red-400">{tierCap}</span>
           </div>
           <div 
-            className="px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-lg text-[10px] sm:text-xs font-bold whitespace-nowrap"
+            className="px-1 py-0.5 rounded text-[9px] font-bold whitespace-nowrap"
             style={{ 
               backgroundColor: 'rgba(239,68,68,0.15)',
               border: '1px solid rgba(239,68,68,0.3)',
@@ -345,11 +345,13 @@ export default function OpponentScout({
           </div>
         </div>
 
-        {/* Opponent Slider - Right side, flex-1 to fill space */}
+        {/* Opponent Slider - Right side, compact */}
         <div 
           ref={sliderRef}
-          className="relative rounded-lg overflow-hidden select-none flex-1"
+          className="relative rounded-lg overflow-hidden select-none"
           style={{
+            width: '55%',
+            maxWidth: '220px',
             backgroundColor: 'rgba(0,0,0,0.5)',
             border: '1px solid rgba(255,255,255,0.1)',
             cursor: presets.length > 0 ? 'pointer' : 'default',
@@ -360,23 +362,23 @@ export default function OpponentScout({
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          {/* Labels row */}
-          <div className="flex justify-between px-2 pt-1.5 pb-0.5 relative z-10 pointer-events-none">
-            <span className="text-xs font-semibold" style={{ 
+          {/* Labels row - smaller */}
+          <div className="flex justify-between px-1.5 pt-1 pb-0 relative z-10 pointer-events-none">
+            <span className="text-[9px] font-semibold" style={{ 
               fontFamily: "'Rajdhani', sans-serif",
               color: isLeftActive ? '#fff' : '#6b7280',
               textShadow: isLeftActive ? `0 0 8px ${leftColor}` : 'none',
             }}>
               {leftLabel}
             </span>
-            <span className="text-xs font-semibold" style={{ 
+            <span className="text-[9px] font-semibold" style={{ 
               fontFamily: "'Rajdhani', sans-serif",
               color: isCenterActive ? '#fff' : '#6b7280',
               textShadow: isCenterActive ? `0 0 8px ${centerColor}` : 'none',
             }}>
               {centerLabel}
             </span>
-            <span className="text-xs font-semibold" style={{ 
+            <span className="text-[9px] font-semibold" style={{ 
               fontFamily: "'Rajdhani', sans-serif",
               color: isRightActive ? '#fff' : '#6b7280',
               textShadow: isRightActive ? `0 0 8px ${rightColor}` : 'none',
@@ -385,8 +387,8 @@ export default function OpponentScout({
             </span>
           </div>
 
-          {/* Track with preset dots */}
-          <div className="relative h-8 mx-2 mb-1">
+          {/* Track with preset dots - shorter height */}
+          <div className="relative h-6 mx-1.5 mb-0.5">
             {/* Three-zone gradient track */}
             <div 
               className="absolute top-1/2 left-0 right-0 h-1.5 rounded-full pointer-events-none"
@@ -471,24 +473,24 @@ export default function OpponentScout({
             )}
           </div>
 
-          {/* Info row */}
-          <div className="text-center pb-1 pointer-events-none">
-            <span className="text-[10px] text-gray-400" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+          {/* Info row - smaller */}
+          <div className="text-center pb-0.5 pointer-events-none">
+            <span className="text-[8px] text-gray-400" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
               {presets.length > 0 
-                ? `${presets.length} roster${presets.length !== 1 ? 's' : ''} • Drag or tap to scout`
-                : 'Scout opponent builds'
+                ? `${presets.length} rosters • Tap to scout`
+                : 'Scout builds'
               }
             </span>
           </div>
         </div>
       </div>
 
-      {/* Opponent Cards - Field Formation - responsive heights */}
+      {/* Opponent Cards - Field Formation - moved down to clear endzone line */}
       <div 
         className="relative" 
         style={{ 
-          height: isOffense ? 'min(100px, 14vh)' : 'min(55px, 8vh)', 
-          marginTop: '-4px' 
+          height: isOffense ? 'min(95px, 13vh)' : 'min(50px, 7vh)', 
+          marginTop: '8px' 
         }}
       >
         {isOffense ? (
