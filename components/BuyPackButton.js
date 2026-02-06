@@ -21,45 +21,48 @@ const TX_STATE = {
   ERROR: 'error',
 };
 
+// Fixed pack price (0.0001 ETH for testing)
+const FIXED_PACK_PRICE = '0.0001';
+
 export function BuyPackButton({ onSuccess, className = '' }) {
-  const { address, isConnected, getSigner } = useWallet();
+  const { address, isConnected, isCorrectNetwork, getSigner } = useWallet();
   const [txState, setTxState] = useState(TX_STATE.IDLE);
   const [txHash, setTxHash] = useState(null);
   const [error, setError] = useState(null);
-  const [packPrice, setPackPrice] = useState(null);
   const [balance, setBalance] = useState(null);
 
-  // Fixed pack price (0.0001 ETH for testing)
-  const FIXED_PACK_PRICE = '0.0001';
+  // Price is always the fixed price
+  const packPrice = FIXED_PACK_PRICE;
 
   useEffect(() => {
-    if (!isConnected) return;
+    if (!isConnected) {
+      setBalance(null);
+      return;
+    }
 
-    const loadData = async () => {
+    const loadBalance = async () => {
       try {
         const signer = await getSigner();
         if (!signer) return;
 
-        const provider = signer.provider;
-        
-        // Use fixed price instead of reading from contract
-        setPackPrice(FIXED_PACK_PRICE);
-
-        const bal = await provider.getBalance(address);
+        const bal = await signer.provider.getBalance(address);
         setBalance(ethers.formatEther(bal));
       } catch (err) {
-        console.error('Error loading pack data:', err);
-        // Still set the fixed price even if balance fails
-        setPackPrice(FIXED_PACK_PRICE);
+        console.error('Error loading balance:', err);
       }
     };
 
-    loadData();
+    loadBalance();
   }, [isConnected, address, getSigner]);
 
   const handleBuyPack = useCallback(async () => {
     if (!isConnected) {
       setError('Please connect your wallet first');
+      return;
+    }
+
+    if (!isCorrectNetwork) {
+      setError('Please switch to Base Sepolia network');
       return;
     }
 
@@ -124,7 +127,7 @@ export function BuyPackButton({ onSuccess, className = '' }) {
         setError(err.message || 'Transaction failed');
       }
     }
-  }, [isConnected, address, getSigner, onSuccess]);
+  }, [isConnected, isCorrectNetwork, address, getSigner, onSuccess]);
 
   const handleReset = () => {
     setTxState(TX_STATE.IDLE);
@@ -184,6 +187,7 @@ export function BuyPackButton({ onSuccess, className = '' }) {
 
   const isProcessing = txState === TX_STATE.CONFIRMING || txState === TX_STATE.PENDING;
   const hasEnoughBalance = balance && packPrice && parseFloat(balance) >= parseFloat(packPrice);
+  const canBuy = isCorrectNetwork && hasEnoughBalance && !isProcessing;
 
   return (
     <div className={className}>
@@ -218,18 +222,19 @@ export function BuyPackButton({ onSuccess, className = '' }) {
 
         <button
           onClick={handleBuyPack}
-          disabled={isProcessing || !hasEnoughBalance}
+          disabled={!canBuy}
           className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
             isProcessing
               ? 'bg-gray-700 text-gray-400 cursor-wait'
-              : hasEnoughBalance
+              : canBuy
               ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-black hover:from-yellow-400 hover:to-orange-400'
               : 'bg-gray-700 text-gray-500 cursor-not-allowed'
           }`}
         >
           {txState === TX_STATE.CONFIRMING && '⏳ Confirm in wallet...'}
           {txState === TX_STATE.PENDING && '⏳ Transaction pending...'}
-          {txState === TX_STATE.IDLE && (hasEnoughBalance ? '🛒 Buy Pack' : 'Insufficient ETH')}
+          {txState === TX_STATE.IDLE && !isCorrectNetwork && '⚠️ Switch to Base Sepolia'}
+          {txState === TX_STATE.IDLE && isCorrectNetwork && (hasEnoughBalance ? '🛒 Buy Pack' : 'Insufficient ETH')}
         </button>
 
         {txHash && txState === TX_STATE.PENDING && (

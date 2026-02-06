@@ -16,8 +16,15 @@ import { cryptoShopEnabled } from '../lib/env';
 
 export default function Shop({ user, onLogout, unreadMessages }) {
   const router = useRouter();
-  const { isConnected, address, chainId, disconnect, getSigner } = useWallet();
+  const { isConnected, address, chainId, isCorrectNetwork, disconnect, getSigner, switchNetwork } = useWallet();
   const [balance, setBalance] = useState(null);
+
+  // Handle disconnect with confirmation
+  const handleDisconnect = () => {
+    if (window.confirm('Are you sure you want to disconnect your wallet?')) {
+      disconnect();
+    }
+  };
 
   useEffect(() => {
     if (!cryptoShopEnabled) {
@@ -81,7 +88,7 @@ export default function Shop({ user, onLogout, unreadMessages }) {
             <h2 className="text-lg font-bold text-white">Your Wallet</h2>
             {isConnected && (
               <button
-                onClick={disconnect}
+                onClick={handleDisconnect}
                 className="text-gray-400 hover:text-red-400 text-sm transition-colors"
               >
                 Disconnect
@@ -120,9 +127,19 @@ export default function Shop({ user, onLogout, unreadMessages }) {
               {/* Network */}
               <div className="flex items-center justify-between p-3 rounded-lg bg-black/30">
                 <span className="text-gray-400 text-sm">Network</span>
-                <span className={`text-sm ${chainId === BASE_SEPOLIA_CHAIN_ID ? 'text-green-400' : 'text-amber-400'}`}>
-                  {chainId === BASE_SEPOLIA_CHAIN_ID ? 'Base Sepolia ✓' : 'Wrong network!'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm ${isCorrectNetwork ? 'text-green-400' : 'text-amber-400'}`}>
+                    {isCorrectNetwork ? 'Base Sepolia ✓' : 'Wrong network'}
+                  </span>
+                  {!isCorrectNetwork && (
+                    <button
+                      onClick={switchNetwork}
+                      className="text-xs px-2 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded transition-colors"
+                    >
+                      Switch
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
