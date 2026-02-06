@@ -3,9 +3,11 @@ import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import RosterView from '../components/RosterView';
 import StrategySlider from '../components/StrategySlider';
-import { getRosterStrategy } from '../lib/api';
+import OpponentScout from '../components/OpponentScout';
+import { getRosterStrategy, getUserRoster } from '../lib/api';
 
 const NAV_CYAN = '#00e5ff';
+const NAV_ORANGE = '#f59e0b';
 
 export default function Team({ user, onLogout, unreadMessages }) {
   const router = useRouter();
@@ -13,6 +15,12 @@ export default function Team({ user, onLogout, unreadMessages }) {
   const [detectedStrategy, setDetectedStrategy] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [sliderKey, setSliderKey] = useState(0);
+  
+  // Scouting state
+  const [upcomingGames, setUpcomingGames] = useState([]);
+  const [selectedGameIndex, setSelectedGameIndex] = useState(0);
+  const [opponentRoster, setOpponentRoster] = useState(null);
+  const [loadingOpponent, setLoadingOpponent] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -20,6 +28,52 @@ export default function Team({ user, onLogout, unreadMessages }) {
       return;
     }
   }, [user, router]);
+
+  // Fetch upcoming games
+  useEffect(() => {
+    if (!user) return;
+    const fetchGames = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/schedule/my-games', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        // Filter to only upcoming (scheduled) games
+        const upcoming = (data.games || [])
+          .filter(g => g.status === 'scheduled')
+          .slice(0, 2); // Get next 2 games
+        setUpcomingGames(upcoming);
+      } catch (err) {
+        console.error('Failed to fetch upcoming games:', err);
+      }
+    };
+    fetchGames();
+  }, [user]);
+
+  // Fetch opponent roster when game is selected
+  useEffect(() => {
+    if (upcomingGames.length === 0) return;
+    const game = upcomingGames[selectedGameIndex];
+    if (!game) return;
+    
+    const opponentId = game.homeUserId === user?.id ? game.awayUserId : game.homeUserId;
+    if (!opponentId) return;
+    
+    const fetchOpponentRoster = async () => {
+      setLoadingOpponent(true);
+      try {
+        const data = await getUserRoster(opponentId);
+        setOpponentRoster(data);
+      } catch (err) {
+        console.error('Failed to fetch opponent roster:', err);
+        setOpponentRoster(null);
+      } finally {
+        setLoadingOpponent(false);
+      }
+    };
+    fetchOpponentRoster();
+  }, [upcomingGames, selectedGameIndex, user?.id]);
 
   // Fetch detected strategy on mount and when roster changes
   const fetchStrategy = useCallback(async () => {
@@ -48,7 +102,14 @@ export default function Team({ user, onLogout, unreadMessages }) {
   if (!user) return null;
 
   const activeSegmentStyle = { backgroundColor: `${NAV_CYAN}20`, border: `2px solid ${NAV_CYAN}`, boxShadow: `0 0 12px ${NAV_CYAN}80` };
+  const activeGameStyle = { backgroundColor: `${NAV_ORANGE}20`, border: `2px solid ${NAV_ORANGE}`, boxShadow: `0 0 12px ${NAV_ORANGE}80` };
   const buttonFont = { fontFamily: "'Rajdhani', sans-serif" };
+  
+  // Get current opponent info
+  const currentGame = upcomingGames[selectedGameIndex];
+  const opponentName = currentGame 
+    ? (currentGame.homeUserId === user?.id ? currentGame.awayUser?.username : currentGame.homeUser?.username) 
+    : null;
 
   // Inline the bar content directly instead of creating local component functions.
   // Local components (const Bar = ...) create a NEW function identity each render,
@@ -57,6 +118,39 @@ export default function Team({ user, onLogout, unreadMessages }) {
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="pb-28 md:pb-0">
+        {/* Game Selection Buttons - shows upcoming opponents */}
+        {upcomingGames.length > 0 && (
+          <div className="flex justify-center mb-4">
+            <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
+              {upcomingGames.map((game, idx) => {
+                const oppName = game.homeUserId === user?.id 
+                  ? game.awayUser?.username 
+                  : game.homeUser?.username;
+                return (
+                  <button 
+                    key={game.id || idx}
+                    type="button" 
+                    onClick={() => setSelectedGameIndex(idx)}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 ${selectedGameIndex === idx ? 'text-white' : 'text-gray-400 hover:text-white'}`}
+                    style={selectedGameIndex === idx ? { ...activeGameStyle, ...buttonFont } : buttonFont}
+                  >
+                    Game {idx + 1}: vs {oppName || 'TBD'}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        
+        {/* Opponent Scout Section */}
+        {opponentRoster && diagramSide === 'offense' && (
+          <OpponentScout 
+            opponentRoster={opponentRoster}
+            opponentName={opponentName}
+            loading={loadingOpponent}
+          />
+        )}
+
         {/* Desktop: bar at top, same row */}
         <div className="hidden md:block max-w-md mb-4 relative z-50">
           <div className="flex gap-2 items-center">
