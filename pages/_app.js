@@ -33,6 +33,7 @@ export default function App({ Component, pageProps }) {
   const [openConferenceGameId, setOpenConferenceGameId] = useState(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [useAnimatedBg, setUseAnimatedBg] = useState(false); // Default to static until we check
+  const [inFarcaster, setInFarcaster] = useState(false); // Detect Farcaster Mini App
   const router = useRouter();
   
   // Check screen size for animation toggle
@@ -112,6 +113,12 @@ export default function App({ Component, pageProps }) {
     return () => clearInterval(interval);
   }, [user]);
   
+  // Detect if we're running as a Farcaster Mini App
+  useEffect(() => {
+    const isFarcaster = isFarcasterMiniApp();
+    setInFarcaster(isFarcaster);
+  }, []);
+  
   const refreshUnreadCount = async () => {
     if (user) {
       try {
@@ -150,15 +157,6 @@ export default function App({ Component, pageProps }) {
       </div>
     );
   }
-  
-  // Detect if we're running as a Farcaster Mini App
-  const [inFarcaster, setInFarcaster] = useState(false);
-  
-  useEffect(() => {
-    // Check on client side only
-    const isFarcaster = isFarcasterMiniApp();
-    setInFarcaster(isFarcaster);
-  }, []);
 
   const content = (
     <>
