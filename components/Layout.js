@@ -8,10 +8,9 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
   
   const NAV = {
     team: { color: '#00e5ff' },
-    packs: { color: '#ff0080' },
+    cards: { color: '#ff0080' },
     shop: { color: '#f59e0b' },
-    league: { color: '#a855f7' },
-    schedule: { color: '#ffe600' },
+    league: { color: '#ffe600' },
     rules: { color: '#00ff7f' },
   };
 
@@ -21,21 +20,14 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
         <circle cx="16" cy="16" r="12" stroke={stroke} strokeWidth="2.5" fill="none" />
       </svg>
     ),
-    packs: (stroke) => (
+    cards: (stroke) => (
       <svg viewBox="0 0 32 32" aria-hidden="true">
-        <path d="M8 8 L24 24 M24 8 L8 24" stroke={stroke} strokeWidth="2.5" strokeLinecap="round" />
+        <rect x="8" y="6" width="16" height="20" rx="2" stroke={stroke} strokeWidth="2.5" fill="none" />
       </svg>
     ),
     league: (stroke) => (
       <svg viewBox="0 0 32 32" aria-hidden="true">
-        <path d="M6 16 L22 16" stroke={stroke} strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M17 10 L24 16 L17 22" stroke={stroke} strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    schedule: (stroke) => (
-      <svg viewBox="0 0 32 32" aria-hidden="true">
-        <circle cx="16" cy="5" r="4" stroke={stroke} strokeWidth="2" fill="none" />
-        <path d="M16 10 L16 22 L10 28" stroke={stroke} strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8 8 L24 24 M24 8 L8 24" stroke={stroke} strokeWidth="2.5" strokeLinecap="round" />
       </svg>
     ),
     rules: (stroke) => (
@@ -51,10 +43,9 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
   };
 
   const baseNavItems = [
-    { href: '/cards', label: 'Cards', variant: 'packs' },
-    { href: '/league', label: 'League', variant: 'league', badge: unreadMessages },
+    { href: '/cards', label: 'Cards', variant: 'cards' },
+    { href: '/leaderboard', label: 'League', variant: 'league', badge: unreadMessages },
     { href: '/team', label: 'My Team', variant: 'team' },
-    { href: '/schedule', label: 'Schedule', variant: 'schedule' },
     { href: '/how-to-play', label: 'Rules', variant: 'rules' },
     ...(cryptoShopEnabled ? [{ href: '/shop', label: 'Shop', variant: 'shop' }] : []),
   ];

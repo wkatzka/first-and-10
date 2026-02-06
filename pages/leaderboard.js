@@ -80,40 +80,71 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
               return (
                 <div
                   key={entry.id}
-                  className={`grid grid-cols-12 gap-2 px-4 py-3 rounded-2xl border f10-panel-soft ${getRankStyle(rank)} ${
+                  className={`rounded-2xl border f10-panel-soft ${getRankStyle(rank)} ${
                     isCurrentUser ? 'ring-2 ring-white/20' : ''
                   }`}
                 >
-                  <div className="col-span-1 flex items-center">
-                    <span className={`${rank <= 3 ? 'text-xl' : 'text-gray-400'}`}>
-                      {getRankIcon(rank)}
-                    </span>
+                  <div className="grid grid-cols-12 gap-2 px-4 py-3">
+                    <div className="col-span-1 flex items-center">
+                      <span className={`${rank <= 3 ? 'text-xl' : 'text-gray-400'}`}>
+                        {getRankIcon(rank)}
+                      </span>
+                    </div>
+                    <div className="col-span-5 flex items-center">
+                      <span className={`font-medium ${isCurrentUser ? 'text-blue-400' : 'text-white'}`}>
+                        {entry.username}
+                        {isCurrentUser && <span className="ml-2 text-xs text-gray-400">(You)</span>}
+                      </span>
+                    </div>
+                    <div className="col-span-2 text-center text-gray-300">
+                      {entry.total_games}
+                    </div>
+                    <div className="col-span-2 text-center">
+                      <span className="text-green-400">{entry.wins}</span>
+                      <span className="text-gray-500">-</span>
+                      <span className="text-red-400">{entry.losses}</span>
+                      <span className="text-gray-500">-</span>
+                      <span className="text-yellow-400">{entry.ties}</span>
+                    </div>
+                    <div className="col-span-2 text-right">
+                      <span className={`font-bold ${
+                        parseFloat(winPct) >= 60 ? 'text-green-400' :
+                        parseFloat(winPct) >= 40 ? 'text-yellow-400' :
+                        'text-red-400'
+                      }`}>
+                        {winPct}%
+                      </span>
+                    </div>
                   </div>
-                  <div className="col-span-5 flex items-center">
-                    <span className={`font-medium ${isCurrentUser ? 'text-blue-400' : 'text-white'}`}>
-                      {entry.username}
-                      {isCurrentUser && <span className="ml-2 text-xs text-gray-400">(You)</span>}
-                    </span>
-                  </div>
-                  <div className="col-span-2 text-center text-gray-300">
-                    {entry.total_games}
-                  </div>
-                  <div className="col-span-2 text-center">
-                    <span className="text-green-400">{entry.wins}</span>
-                    <span className="text-gray-500">-</span>
-                    <span className="text-red-400">{entry.losses}</span>
-                    <span className="text-gray-500">-</span>
-                    <span className="text-yellow-400">{entry.ties}</span>
-                  </div>
-                  <div className="col-span-2 text-right">
-                    <span className={`font-bold ${
-                      parseFloat(winPct) >= 60 ? 'text-green-400' :
-                      parseFloat(winPct) >= 40 ? 'text-yellow-400' :
-                      'text-red-400'
-                    }`}>
-                      {winPct}%
-                    </span>
-                  </div>
+                  {/* Action buttons for other users */}
+                  {!isCurrentUser && (
+                    <div className="flex gap-2 px-4 pb-3">
+                      <button
+                        onClick={() => router.push(`/players?user=${entry.id}`)}
+                        className="flex-1 py-2 text-xs font-medium rounded-lg transition-colors"
+                        style={{ 
+                          background: 'rgba(255,0,128,0.15)', 
+                          border: '1px solid rgba(255,0,128,0.3)',
+                          color: '#ff0080',
+                          fontFamily: 'var(--f10-display-font)'
+                        }}
+                      >
+                        View Cards
+                      </button>
+                      <button
+                        onClick={() => router.push(`/league?chat=${entry.id}`)}
+                        className="flex-1 py-2 text-xs font-medium rounded-lg transition-colors"
+                        style={{ 
+                          background: 'rgba(0,229,255,0.15)', 
+                          border: '1px solid rgba(0,229,255,0.3)',
+                          color: '#00e5ff',
+                          fontFamily: 'var(--f10-display-font)'
+                        }}
+                      >
+                        Message
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
