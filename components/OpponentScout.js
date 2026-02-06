@@ -85,8 +85,9 @@ export default function OpponentScout({
       .then(data => {
         console.log('[OpponentScout] Loaded presets:', data);
         if (data?.presets && data.presets.length > 0) {
+          // Log first preset to verify data structure
+          console.log('[OpponentScout] First preset slots:', data.presets[0]?.slots);
           setPresets(data.presets);
-          // Find the preset that matches the opponent's current roster (by ratio)
           // Default to middle preset (balanced/base)
           const midIndex = Math.floor(data.presets.length / 2);
           setCurrentIndex(midIndex);
@@ -204,8 +205,10 @@ export default function OpponentScout({
 
   // --- ALL interaction handled at track level (matching StrategySlider) ---
   const handlePointerDown = useCallback((clientX) => {
+    console.log('[OpponentScout] Pointer down at', clientX, 'presets:', presets.length, 'loading:', loadingPresets);
     if (loadingPresets || presets.length === 0) return;
     const pct = getPositionFromClient(clientX);
+    console.log('[OpponentScout] Position %:', pct);
     if (pct == null) return;
     setDragging(true);
     setDragPosition(pct);
@@ -319,7 +322,7 @@ export default function OpponentScout({
       </div>
 
       {/* Opponent Slider - matches StrategySlider exactly */}
-      <div className="flex justify-center mb-3">
+      <div className="flex justify-center mb-3 relative" style={{ zIndex: 20 }}>
         <div 
           ref={sliderRef}
           className="relative rounded-lg overflow-hidden select-none"

@@ -1112,16 +1112,37 @@ app.get('/api/users/:userId/presets', authMiddleware, async (req, res) => {
     const cards = await db.getUserCards(userId);
     const tierCap = { offense: 42, defense: 28 }; // Same caps as OFFENSE_TIER_CAP/DEFENSE_TIER_CAP
     
+    // Create card lookup map by ID
+    const cardById = {};
+    for (const card of cards) {
+      cardById[card.id] = card;
+    }
+    
+    // Helper to convert preset slots from IDs to full card objects
+    const enrichPresets = (presets) => {
+      return presets.map(preset => ({
+        ...preset,
+        slots: Object.fromEntries(
+          Object.entries(preset.slots).map(([slotKey, cardId]) => [
+            slotKey,
+            cardById[cardId] || null
+          ])
+        )
+      }));
+    };
+    
     if (side === 'defense') {
       const presets = gameEngine.generateDefensePresets(cards, tierCap);
-      console.log(`[Presets] Defense for user ${userId} (scouting by ${req.user.id}): ${presets.length} presets`);
-      return res.json({ presets, side: 'defense' });
+      const enrichedPresets = enrichPresets(presets);
+      console.log(`[Presets] Defense for user ${userId} (scouting by ${req.user.id}): ${enrichedPresets.length} presets`);
+      return res.json({ presets: enrichedPresets, side: 'defense' });
     }
     
     // Default to offense
     const presets = gameEngine.generateOffensePresets(cards, tierCap);
-    console.log(`[Presets] Offense for user ${userId} (scouting by ${req.user.id}): ${presets.length} presets`);
-    res.json({ presets, side: 'offense' });
+    const enrichedPresets = enrichPresets(presets);
+    console.log(`[Presets] Offense for user ${userId} (scouting by ${req.user.id}): ${enrichedPresets.length} presets`);
+    res.json({ presets: enrichedPresets, side: 'offense' });
   } catch (err) {
     console.error('Failed to generate opponent presets:', err);
     res.status(500).json({ error: err.message });
