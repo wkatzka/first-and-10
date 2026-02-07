@@ -117,31 +117,33 @@ function LoginAnimation() {
   const playRef = useRef(null);
 
   const initPlay = useCallback((w, h) => {
-    // Boundary padding
+    // Boundary padding and shift
     const pad = 30;
-    const usableW = w - pad * 2;
+    const shiftLeft = 30;
+    const usableW = w - pad * 2 - shiftLeft;
     
-    // Create O's with horizontal variation, constrained within boundaries
+    // Create O's with horizontal variation, pinched together (20px each = narrower spread)
+    // Using 0.15 to 0.85 range instead of 0.1 to 0.9 to pinch in
     const oPositions = [
-      { x: pad + usableW * 0.1 + (Math.random() - 0.5) * 30, y: h - 30 },
-      { x: pad + usableW * 0.3 + (Math.random() - 0.5) * 30, y: h - 40 },
+      { x: pad + usableW * 0.15 + (Math.random() - 0.5) * 30, y: h - 30 },
+      { x: pad + usableW * 0.32 + (Math.random() - 0.5) * 30, y: h - 40 },
       { x: pad + usableW * 0.5 + (Math.random() - 0.5) * 30, y: h - 25 },
-      { x: pad + usableW * 0.7 + (Math.random() - 0.5) * 30, y: h - 40 },
-      { x: pad + usableW * 0.9 + (Math.random() - 0.5) * 30, y: h - 30 },
+      { x: pad + usableW * 0.68 + (Math.random() - 0.5) * 30, y: h - 40 },
+      { x: pad + usableW * 0.85 + (Math.random() - 0.5) * 30, y: h - 30 },
     ];
     
     // Clamp O positions to boundaries
     oPositions.forEach(o => {
-      o.x = Math.max(pad, Math.min(w - pad, o.x));
+      o.x = Math.max(pad, Math.min(w - pad - shiftLeft, o.x));
     });
     
-    // Create X's (defense) higher up, also within boundaries
+    // Create X's (defense) higher up, also within boundaries and shifted
     const xPositions = [
-      { x: pad + usableW * 0.15 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
-      { x: pad + usableW * 0.35 + Math.random() * 20, y: h * 0.35 + Math.random() * 30 },
+      { x: pad + usableW * 0.18 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
+      { x: pad + usableW * 0.36 + Math.random() * 20, y: h * 0.35 + Math.random() * 30 },
       { x: pad + usableW * 0.5 + Math.random() * 20, y: h * 0.45 + Math.random() * 30 },
-      { x: pad + usableW * 0.65 + Math.random() * 20, y: h * 0.35 + Math.random() * 30 },
-      { x: pad + usableW * 0.85 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
+      { x: pad + usableW * 0.64 + Math.random() * 20, y: h * 0.35 + Math.random() * 30 },
+      { x: pad + usableW * 0.82 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
     ];
     
     // Route length (80% of original)
