@@ -7,7 +7,7 @@ const ICY_BLUE = '#8FD9FF';
 
 // Animation constants
 const CYCLE_PAUSE_MS = 400;
-const ARROW_TRAVEL_MS = 1200;
+const ARROW_TRAVEL_MS = 1500;
 
 function frayNoise(seed, i) {
   const x = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
@@ -117,32 +117,33 @@ function LoginAnimation() {
   const playRef = useRef(null);
 
   const initPlay = useCallback((w, h) => {
-    // Create O's (offense) at top of animation area
+    // Create O's (offense) at bottom - just above where 30 yard line would be
+    // Animation area is 45vh at bottom, so O's start near the bottom
     const oPositions = [
-      { x: w * 0.15, y: 40 },
-      { x: w * 0.35, y: 30 },
-      { x: w * 0.5, y: 50 },
-      { x: w * 0.65, y: 30 },
-      { x: w * 0.85, y: 40 },
+      { x: w * 0.15, y: h - 30 },
+      { x: w * 0.35, y: h - 40 },
+      { x: w * 0.5, y: h - 25 },
+      { x: w * 0.65, y: h - 40 },
+      { x: w * 0.85, y: h - 30 },
     ];
     
-    // Create X's (defense) lower
+    // Create X's (defense) higher up
     const xPositions = [
-      { x: w * 0.2 + Math.random() * 20, y: h * 0.5 + Math.random() * 30 },
-      { x: w * 0.4 + Math.random() * 20, y: h * 0.45 + Math.random() * 30 },
-      { x: w * 0.5 + Math.random() * 20, y: h * 0.55 + Math.random() * 30 },
-      { x: w * 0.6 + Math.random() * 20, y: h * 0.45 + Math.random() * 30 },
-      { x: w * 0.8 + Math.random() * 20, y: h * 0.5 + Math.random() * 30 },
+      { x: w * 0.2 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
+      { x: w * 0.4 + Math.random() * 20, y: h * 0.35 + Math.random() * 30 },
+      { x: w * 0.5 + Math.random() * 20, y: h * 0.45 + Math.random() * 30 },
+      { x: w * 0.6 + Math.random() * 20, y: h * 0.35 + Math.random() * 30 },
+      { x: w * 0.8 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
     ];
     
-    // Routes from O's curving around
+    // Routes from O's curving upward
     const routes = oPositions.map((o, i) => {
-      const targetX = w * (0.2 + Math.random() * 0.6);
-      const targetY = h * 0.85 + Math.random() * 30;
+      const targetX = w * (0.15 + Math.random() * 0.7);
+      const targetY = 20 + Math.random() * 40;
       return {
         p0: o,
-        p1: { x: o.x + (Math.random() - 0.5) * 80, y: o.y + 60 },
-        p2: { x: targetX + (Math.random() - 0.5) * 60, y: targetY - 80 },
+        p1: { x: o.x + (Math.random() - 0.5) * 80, y: o.y - 80 },
+        p2: { x: targetX + (Math.random() - 0.5) * 60, y: targetY + 80 },
         p3: { x: targetX, y: targetY },
       };
     });
@@ -323,15 +324,9 @@ export default function Home({ user, onLogin }) {
   };
   
   return (
-    <div className="min-h-screen min-h-screen-mobile flex flex-col items-center justify-start pt-[15vh] px-4 relative z-10">
+    <div className="min-h-screen min-h-screen-mobile flex flex-col items-center justify-start pt-[18vh] px-4 relative z-10">
       {/* Login Animation at bottom */}
       <LoginAnimation />
-      
-      {/* Logo */}
-      <div className="text-center mb-8">
-        <h1 className="text-4xl sm:text-5xl text-white mb-2" style={DISPLAY_FONT}>First & 10</h1>
-        <p className="text-gray-400 text-sm" style={DISPLAY_FONT}>Build your dream team. Compete head-to-head.</p>
-      </div>
       
       {/* Auth Card */}
       <div className="w-full max-w-sm">
