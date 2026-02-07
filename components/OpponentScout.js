@@ -4,6 +4,7 @@
  * Slider matches StrategySlider exactly - full width on right side
  */
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import Link from 'next/link';
 import { MiniCard } from './Card';
 import { getUserPresets } from '../lib/api';
 import { 
@@ -404,23 +405,37 @@ export default function OpponentScout({
         </div>
 
         {/* Opponent Slider - Right side, compact */}
-        <div 
-          ref={sliderRef}
-          className="relative rounded-lg overflow-hidden select-none"
-          style={{
-            width: '55%',
-            maxWidth: '220px',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            cursor: presets.length > 0 ? 'pointer' : 'default',
-            touchAction: 'none',
-            zIndex: 30,
-          }}
-          onMouseDown={handleMouseDown}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
+        <div className="relative" style={{ width: '55%', maxWidth: '220px' }}>
+          {/* Info icon linking to rules */}
+          <Link
+            href="/how-to-play#strategy"
+            className="absolute -top-4 right-0 w-4 h-4 flex items-center justify-center rounded-full text-[10px] font-bold transition-all hover:scale-110"
+            style={{
+              backgroundColor: 'rgba(168,85,247,0.2)',
+              border: '1px solid rgba(168,85,247,0.4)',
+              color: '#a855f7',
+              fontFamily: 'var(--f10-display-font)',
+              zIndex: 35,
+            }}
+            title="Learn about scouting"
+          >
+            i
+          </Link>
+          <div 
+            ref={sliderRef}
+            className="relative rounded-lg overflow-hidden select-none"
+            style={{
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              cursor: presets.length > 0 ? 'pointer' : 'default',
+              touchAction: 'none',
+              zIndex: 30,
+            }}
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
           {/* Labels row - smaller */}
           <div className="flex justify-between px-1.5 pt-1 pb-0 relative z-10 pointer-events-none">
             <span className="text-[9px] font-semibold" style={{ 
@@ -530,7 +545,7 @@ export default function OpponentScout({
               </div>
             )}
           </div>
-
+          </div>
         </div>
       </div>
 

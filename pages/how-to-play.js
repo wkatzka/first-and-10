@@ -342,6 +342,11 @@ function GameplayTab() {
         <p className="text-xs text-gray-400 mt-3">
           Games at <strong className="text-white">7 PM</strong> & <strong className="text-white">9 PM EST</strong> daily
         </p>
+        <div className="mt-3 p-2 rounded-lg bg-red-500/10 border border-red-500/20">
+          <p className="text-xs text-red-400">
+            Rosters lock <strong className="text-white">10 minutes</strong> before game time
+          </p>
+        </div>
       </section>
 
       {/* Super Bowl Prize */}
