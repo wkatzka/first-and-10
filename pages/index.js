@@ -147,8 +147,8 @@ function LoginAnimation() {
     const centerX = w / 2;
     const lineY = h * 0.75; // O's start position
     
-    // O positions (offense line)
-    const margin = 0.12;
+    // O positions (offense line) - same margin as ChalkPlayDiagram (0.08)
+    const margin = 0.08;
     const step = (1 - 2 * margin) / 4;
     const oPositions = [
       { x: w * (margin + 0 * step), y: lineY + 18 },
@@ -158,13 +158,13 @@ function LoginAnimation() {
       { x: w * (margin + 4 * step), y: lineY + 18 },
     ];
     
-    // X positions (defense)
+    // X positions (defense) - same as ChalkPlayDiagram
     const xPositions = [
-      { x: w * 0.2 + (Math.random() - 0.5) * 50, y: lineY - 80 - Math.random() * 35 },
-      { x: w * 0.35 + (Math.random() - 0.5) * 40, y: lineY - 100 - Math.random() * 45 },
-      { x: w * 0.5 + (Math.random() - 0.5) * 60, y: lineY - 90 - Math.random() * 50 },
-      { x: w * 0.65 + (Math.random() - 0.5) * 40, y: lineY - 105 - Math.random() * 40 },
-      { x: w * 0.8 + (Math.random() - 0.5) * 50, y: lineY - 85 - Math.random() * 42 },
+      { x: w * 0.2 + (Math.random() - 0.5) * 50, y: lineY - 45 - Math.random() * 35 },
+      { x: w * 0.35 + (Math.random() - 0.5) * 40, y: lineY - 65 - Math.random() * 45 },
+      { x: w * 0.5 + (Math.random() - 0.5) * 60, y: lineY - 55 - Math.random() * 50 },
+      { x: w * 0.65 + (Math.random() - 0.5) * 40, y: lineY - 70 - Math.random() * 40 },
+      { x: w * 0.8 + (Math.random() - 0.5) * 50, y: lineY - 48 - Math.random() * 42 },
     ];
     
     // Routes from 4 O's (skip center one like OL)
