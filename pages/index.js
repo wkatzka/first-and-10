@@ -144,41 +144,39 @@ function LoginAnimation() {
   const playRef = useRef(null);
 
   const initPlay = useCallback((w, h) => {
-    const centerX = w / 2;
-    const lineY = h * 0.75; // O's start position
+    // Simple centered formation - use percentage of width but capped
+    const cx = w / 2;
+    const lineY = h * 0.72;
     
-    // Use fixed pixel spacing from center (like ChalkPlayDiagram on mobile)
-    // This keeps the formation tight regardless of screen width
-    const formationWidth = Math.min(w * 0.84, 340); // Max 340px wide formation
-    const halfWidth = formationWidth / 2;
+    // Formation uses 70% of width, max 300px total spread
+    const spread = Math.min(w * 0.35, 150); // Half-width of formation
     
-    // O positions - fixed offsets from center
-    const oSpacing = formationWidth / 4;
+    // 5 O's evenly spaced: -spread, -spread/2, 0, +spread/2, +spread
     const oPositions = [
-      { x: centerX - 2 * oSpacing, y: lineY + 18 },
-      { x: centerX - oSpacing, y: lineY },
-      { x: centerX, y: lineY - 8 },
-      { x: centerX + oSpacing, y: lineY },
-      { x: centerX + 2 * oSpacing, y: lineY + 18 },
+      { x: cx - spread, y: lineY + 15 },
+      { x: cx - spread / 2, y: lineY },
+      { x: cx, y: lineY - 6 },
+      { x: cx + spread / 2, y: lineY },
+      { x: cx + spread, y: lineY + 15 },
     ];
     
-    // X positions - fixed offsets from center with some randomness
+    // 5 X's above the O's with slight randomness
     const xPositions = [
-      { x: centerX - halfWidth * 0.75 + (Math.random() - 0.5) * 30, y: lineY - 45 - Math.random() * 35 },
-      { x: centerX - halfWidth * 0.35 + (Math.random() - 0.5) * 25, y: lineY - 65 - Math.random() * 45 },
-      { x: centerX + (Math.random() - 0.5) * 35, y: lineY - 55 - Math.random() * 50 },
-      { x: centerX + halfWidth * 0.35 + (Math.random() - 0.5) * 25, y: lineY - 70 - Math.random() * 40 },
-      { x: centerX + halfWidth * 0.75 + (Math.random() - 0.5) * 30, y: lineY - 48 - Math.random() * 42 },
+      { x: cx - spread * 0.8 + (Math.random() - 0.5) * 20, y: lineY - 50 - Math.random() * 25 },
+      { x: cx - spread * 0.4 + (Math.random() - 0.5) * 15, y: lineY - 65 - Math.random() * 30 },
+      { x: cx + (Math.random() - 0.5) * 25, y: lineY - 55 - Math.random() * 35 },
+      { x: cx + spread * 0.4 + (Math.random() - 0.5) * 15, y: lineY - 65 - Math.random() * 30 },
+      { x: cx + spread * 0.8 + (Math.random() - 0.5) * 20, y: lineY - 50 - Math.random() * 25 },
     ];
     
-    // Routes from 4 O's (skip center one like OL)
+    // Routes from outer 4 O's (skip center OL)
     const arrowIndices = [0, 1, 3, 4];
     const routeOrder = shuffle([0, 1, 2, 3]);
     const routes = arrowIndices.map((idx, i) => {
       const p0 = oPositions[idx];
-      const endY = 100 + Math.random() * (lineY * 0.4);
+      const endY = 80 + Math.random() * 60;
       const build = ROUTE_BUILDERS[routeOrder[i]];
-      return build(p0, endY, centerX);
+      return build(p0, endY, cx);
     });
     
     return { oPositions, xPositions, routes };
