@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import RosterView from '../components/RosterView';
 import StrategySlider from '../components/StrategySlider';
 import OpponentScout from '../components/OpponentScout';
-import { getRosterStrategy, getUserRoster } from '../lib/api';
+import { getRosterStrategy, getUserRoster, getRosterLockStatus } from '../lib/api';
 
 const NAV_CYAN = '#00e5ff';
 const NAV_PURPLE = '#a855f7';
@@ -21,6 +21,9 @@ export default function Team({ user, onLogout, unreadMessages }) {
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
   const [opponentRoster, setOpponentRoster] = useState(null);
   const [loadingOpponent, setLoadingOpponent] = useState(false);
+  
+  // Roster lock state
+  const [rosterLock, setRosterLock] = useState({ locked: false });
 
   useEffect(() => {
     if (!user) {
@@ -28,6 +31,23 @@ export default function Team({ user, onLogout, unreadMessages }) {
       return;
     }
   }, [user, router]);
+
+  // Check roster lock status periodically
+  useEffect(() => {
+    if (!user) return;
+    const checkLock = async () => {
+      try {
+        const status = await getRosterLockStatus();
+        setRosterLock(status);
+      } catch (err) {
+        console.error('Failed to check lock status:', err);
+      }
+    };
+    checkLock();
+    // Check every 30 seconds to catch when lock window starts
+    const interval = setInterval(checkLock, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Fetch upcoming games
   useEffect(() => {
@@ -153,6 +173,26 @@ export default function Team({ user, onLogout, unreadMessages }) {
           />
         )}
 
+        {/* Roster Lock Warning */}
+        {rosterLock.locked && (
+          <div className="flex justify-center mb-2">
+            <div 
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold"
+              style={{ 
+                backgroundColor: 'rgba(239, 68, 68, 0.15)', 
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                color: '#f87171',
+                fontFamily: 'var(--f10-display-font)',
+              }}
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+              </svg>
+              Roster Locked — Game {rosterLock.gameNum} at {rosterLock.gameTime}
+            </div>
+          </div>
+        )}
+
         {/* Desktop: bar at top, same row */}
         <div className="hidden md:block max-w-md mb-4 relative z-50">
           <div className="flex gap-2 items-center">
@@ -165,20 +205,37 @@ export default function Team({ user, onLogout, unreadMessages }) {
                 style={diagramSide === 'defense' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}>Defense</button>
             </div>
             <div className="flex-1 min-w-0">
-              <StrategySlider key={`desktop-${sliderKey}`} side={diagramSide} detectedStrategy={detectedStrategy} onPresetApplied={handlePresetApplied} />
+              <StrategySlider key={`desktop-${sliderKey}`} side={diagramSide} detectedStrategy={detectedStrategy} onPresetApplied={handlePresetApplied} disabled={rosterLock.locked} />
             </div>
           </div>
         </div>
 
         {/* Add top margin when opponent scout is shown to create space */}
         <div style={{ marginTop: opponentRoster ? '21px' : '5px' }}>
-          <RosterView user={user} diagramSide={diagramSide} refreshTrigger={refreshTrigger} />
+          <RosterView user={user} diagramSide={diagramSide} refreshTrigger={refreshTrigger} disabled={rosterLock.locked} />
         </div>
       </div>
 
       {/* Mobile: bar fixed above bottom nav with clearance so buttons aren't cut off by tiles */}
       <div className="md:hidden fixed left-0 right-0 z-40 px-3 safe-area-pb" style={{ bottom: 'calc(7.25rem - 22px)' }}>
         <div className="mx-auto max-w-7xl">
+          {/* Mobile lock warning - compact */}
+          {rosterLock.locked && (
+            <div 
+              className="flex items-center justify-center gap-1.5 mb-1 px-2 py-1 rounded-lg text-[10px] font-bold"
+              style={{ 
+                backgroundColor: 'rgba(239, 68, 68, 0.15)', 
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                color: '#f87171',
+                fontFamily: 'var(--f10-display-font)',
+              }}
+            >
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+              </svg>
+              Locked — Game {rosterLock.gameNum}
+            </div>
+          )}
           <div className="flex gap-2 items-center">
             <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
               <button type="button" onClick={() => setDiagramSide('offense')}
@@ -189,7 +246,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
                 style={diagramSide === 'defense' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}>Defense</button>
             </div>
             <div className="flex-1 min-w-0">
-              <StrategySlider key={`mobile-${sliderKey}`} side={diagramSide} detectedStrategy={detectedStrategy} onPresetApplied={handlePresetApplied} />
+              <StrategySlider key={`mobile-${sliderKey}`} side={diagramSide} detectedStrategy={detectedStrategy} onPresetApplied={handlePresetApplied} disabled={rosterLock.locked} />
             </div>
           </div>
         </div>

@@ -59,7 +59,7 @@ function calculateTierSums(rosterCards) {
   return { offense: offenseSum, defense: defenseSum };
 }
 
-export default function RosterView({ user, diagramSide = 'offense', refreshTrigger = 0 }) {
+export default function RosterView({ user, diagramSide = 'offense', refreshTrigger = 0, disabled = false }) {
   const router = useRouter();
   const [roster, setRoster] = useState(null);
   const [cards, setCards] = useState([]);
@@ -110,7 +110,7 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
   };
 
   const handleSwap = () => {
-    if (!tappedSlot) return;
+    if (!tappedSlot || disabled) return;
     setSelectedSlot(tappedSlot);
     setTappedSlot(null);
   };
@@ -267,10 +267,14 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
                   </button>
                   <button
                     onClick={handleSwap}
-                    className="w-full py-3 rounded-xl font-semibold text-white transition-all active:scale-95"
-                    style={{ background: 'rgba(168,85,247,0.2)', border: '1px solid rgba(168,85,247,0.4)' }}
+                    disabled={disabled}
+                    className={`w-full py-3 rounded-xl font-semibold transition-all ${disabled ? 'text-gray-500 cursor-not-allowed' : 'text-white active:scale-95'}`}
+                    style={{ 
+                      background: disabled ? 'rgba(100,100,100,0.2)' : 'rgba(168,85,247,0.2)', 
+                      border: disabled ? '1px solid rgba(100,100,100,0.4)' : '1px solid rgba(168,85,247,0.4)' 
+                    }}
                   >
-                    🔄 Swap Player
+                    {disabled ? '🔒 Roster Locked' : '🔄 Swap Player'}
                   </button>
                 </div>
               </>
@@ -282,10 +286,14 @@ export default function RosterView({ user, diagramSide = 'offense', refreshTrigg
                 </div>
                 <button
                   onClick={handleSwap}
-                  className="w-full py-3 rounded-xl font-semibold text-white transition-all active:scale-95"
-                  style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid rgba(34,197,94,0.4)' }}
+                  disabled={disabled}
+                  className={`w-full py-3 rounded-xl font-semibold transition-all ${disabled ? 'text-gray-500 cursor-not-allowed' : 'text-white active:scale-95'}`}
+                  style={{ 
+                    background: disabled ? 'rgba(100,100,100,0.2)' : 'rgba(34,197,94,0.2)', 
+                    border: disabled ? '1px solid rgba(100,100,100,0.4)' : '1px solid rgba(34,197,94,0.4)' 
+                  }}
                 >
-                  ➕ Add Player
+                  {disabled ? '🔒 Roster Locked' : '➕ Add Player'}
                 </button>
               </>
             )}

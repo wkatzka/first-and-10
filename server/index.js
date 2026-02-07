@@ -1186,9 +1186,76 @@ function calculateRosterTierSums(cards) {
   return { offense: offenseSum, defense: defenseSum };
 }
 
+// Roster lock: check if user's roster is locked for upcoming games
+// Rosters lock 10 minutes before game time
+const ROSTER_LOCK_MINUTES = 10;
+const GAME_HOURS = [19, 21]; // 7 PM and 9 PM EST
+
+function checkRosterLock(userId) {
+  const now = scheduler.getESTDate();
+  const today = scheduler.formatDate(now);
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  
+  // Load today's schedule
+  const schedule = scheduler.loadSchedule();
+  const todayGames = schedule.games.filter(g => 
+    g.date === today && 
+    g.status === 'scheduled' &&
+    (g.homeUserId === userId || g.awayUserId === userId)
+  );
+  
+  if (todayGames.length === 0) {
+    return { locked: false };
+  }
+  
+  // Check each game to see if we're within lock window
+  for (const game of todayGames) {
+    const gameHour = game.time; // 19 or 21
+    const lockHour = gameHour;
+    const lockMinute = 60 - ROSTER_LOCK_MINUTES; // 50 minutes (lock at X:50)
+    
+    // Calculate minutes until game
+    const minutesUntilGame = (gameHour - currentHour) * 60 + (0 - currentMinute);
+    
+    // If we're within 10 minutes of game time (or past it), roster is locked
+    if (minutesUntilGame <= ROSTER_LOCK_MINUTES && minutesUntilGame > -60) {
+      // Game is within lock window
+      const gameNum = game.time === 19 ? 1 : 2;
+      const gameTimeStr = game.time === 19 ? '7:00 PM' : '9:00 PM';
+      return {
+        locked: true,
+        gameId: game.id,
+        gameNum,
+        gameTime: gameTimeStr,
+        minutesUntilGame: Math.max(0, minutesUntilGame),
+        message: `Roster locked for Game ${gameNum} (${gameTimeStr} EST). Rosters lock 10 minutes before game time.`
+      };
+    }
+  }
+  
+  return { locked: false };
+}
+
+// Check roster lock status
+app.get('/api/roster/lock-status', authMiddleware, async (req, res) => {
+  try {
+    const lockStatus = checkRosterLock(req.user.id);
+    res.json(lockStatus);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Update roster slot
 app.put('/api/roster', authMiddleware, async (req, res) => {
   try {
+    // Check roster lock
+    const lockStatus = checkRosterLock(req.user.id);
+    if (lockStatus.locked) {
+      return res.status(423).json({ error: lockStatus.message, ...lockStatus });
+    }
+    
     const { slots } = req.body;
     
     if (!slots || typeof slots !== 'object') {
@@ -1244,6 +1311,12 @@ app.put('/api/roster', authMiddleware, async (req, res) => {
 // Respects tier cap by picking best cards that fit under the cap
 app.post('/api/roster/auto-fill', authMiddleware, async (req, res) => {
   try {
+    // Check roster lock
+    const lockStatus = checkRosterLock(req.user.id);
+    if (lockStatus.locked) {
+      return res.status(423).json({ error: lockStatus.message, ...lockStatus });
+    }
+    
     const cards = await db.getUserCards(req.user.id);
     const strategy = ['balanced', 'pass_heavy', 'run_heavy'].includes(req.body?.strategy)
       ? req.body.strategy
@@ -1264,6 +1337,12 @@ app.post('/api/roster/auto-fill', authMiddleware, async (req, res) => {
 // Takes targetOffenseRatio or targetDefenseRatio
 app.post('/api/roster/fill-to-ratio', authMiddleware, async (req, res) => {
   try {
+    // Check roster lock
+    const lockStatus = checkRosterLock(req.user.id);
+    if (lockStatus.locked) {
+      return res.status(423).json({ error: lockStatus.message, ...lockStatus });
+    }
+    
     const { side, targetRatio } = req.body;
     if (!side || targetRatio == null) {
       return res.status(400).json({ error: 'side and targetRatio required' });
@@ -1421,6 +1500,12 @@ app.get('/api/roster/presets', authMiddleware, async (req, res) => {
 // Apply a specific preset to the roster (for slider snap)
 app.post('/api/roster/apply-preset', authMiddleware, async (req, res) => {
   try {
+    // Check roster lock
+    const lockStatus = checkRosterLock(req.user.id);
+    if (lockStatus.locked) {
+      return res.status(423).json({ error: lockStatus.message, ...lockStatus });
+    }
+    
     const { side, slots } = req.body;
     console.log(`[apply-preset] Received: side=${side}, slots=`, slots);
     
