@@ -55,31 +55,29 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="pb-28 md:pb-0">
-        {/* Fixed Schedule/Standings Toggle - styled like Game 1/2 buttons */}
-        <div className="sticky top-0 z-20 pt-2 pb-3">
-          <div className="flex justify-center">
-            <div className="flex p-0.5 bg-black/30 backdrop-blur border border-white/10 rounded-xl shadow-lg">
-              <button 
-                type="button" 
-                onClick={() => router.push('/schedule')}
-                className="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-200 text-gray-400 hover:text-white"
-                style={DISPLAY_FONT}
-              >
-                Schedule
-              </button>
-              <button 
-                type="button" 
-                className="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-200 text-white"
-                style={{ ...activeSegmentStyle, ...DISPLAY_FONT }}
-              >
-                Standings
-              </button>
-            </div>
+        {/* Fixed Schedule/Standings Toggle - exact same position as Game 1/2 buttons */}
+        <div className="fixed left-0 right-0 z-20 flex justify-center" style={{ top: '60px' }}>
+          <div className="flex p-0.5 bg-black/30 backdrop-blur border border-white/10 rounded-xl shadow-lg">
+            <button 
+              type="button" 
+              onClick={() => router.push('/schedule')}
+              className="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-200 text-gray-400 hover:text-white"
+              style={DISPLAY_FONT}
+            >
+              Schedule
+            </button>
+            <button 
+              type="button" 
+              className="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-200 text-white"
+              style={{ ...activeSegmentStyle, ...DISPLAY_FONT }}
+            >
+              Standings
+            </button>
           </div>
         </div>
         
         {/* Content positioned below endzone */}
-        <div style={{ marginTop: 'max(180px, 26vh)' }}>
+        <div style={{ marginTop: 'max(120px, calc(26vh - 60px))' }}>
         {loading ? (
           <div className="text-center text-gray-400 py-12" style={DISPLAY_FONT}>Loading leaderboard...</div>
         ) : leaderboard.length === 0 ? (
