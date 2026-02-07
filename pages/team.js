@@ -205,7 +205,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
                 style={diagramSide === 'defense' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}>Defense</button>
             </div>
             <div className="flex-1 min-w-0">
-              <StrategySlider key={`desktop-${sliderKey}`} side={diagramSide} detectedStrategy={detectedStrategy} onPresetApplied={handlePresetApplied} disabled={rosterLock.locked} />
+              <StrategySlider key={`desktop-${sliderKey}`} side={diagramSide} detectedStrategy={detectedStrategy} onPresetApplied={handlePresetApplied} disabled={rosterLock.locked} lockInfo={rosterLock} />
             </div>
           </div>
         </div>
@@ -246,7 +246,7 @@ export default function Team({ user, onLogout, unreadMessages }) {
                 style={diagramSide === 'defense' ? { ...activeSegmentStyle, ...buttonFont } : buttonFont}>Defense</button>
             </div>
             <div className="flex-1 min-w-0">
-              <StrategySlider key={`mobile-${sliderKey}`} side={diagramSide} detectedStrategy={detectedStrategy} onPresetApplied={handlePresetApplied} disabled={rosterLock.locked} />
+              <StrategySlider key={`mobile-${sliderKey}`} side={diagramSide} detectedStrategy={detectedStrategy} onPresetApplied={handlePresetApplied} disabled={rosterLock.locked} lockInfo={rosterLock} />
             </div>
           </div>
         </div>

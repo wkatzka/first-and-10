@@ -27,6 +27,7 @@ export default function StrategySlider({
   detectedStrategy,
   onPresetApplied,
   disabled = false,
+  lockInfo = null, // { locked: true, gameNum: 1, gameTime: '7:00 PM' }
 }) {
   const [presets, setPresets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -361,6 +362,71 @@ export default function StrategySlider({
       <div className="relative rounded-lg overflow-hidden h-10 flex items-center justify-center"
         style={{ backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
         <span className="text-gray-400 text-[9px]">Need more cards</span>
+      </div>
+    );
+  }
+
+  // Show locked state when disabled with lock info
+  if (disabled && lockInfo?.locked) {
+    return (
+      <div className="relative">
+        {/* LOCKED label above slider */}
+        <div 
+          className="flex items-center justify-center gap-1 mb-1"
+          style={{ fontFamily: "'Rajdhani', sans-serif" }}
+        >
+          <svg className="w-3 h-3 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+          </svg>
+          <span className="text-[10px] font-bold text-red-400 tracking-wider">LOCKED</span>
+        </div>
+        {/* Grayed out slider */}
+        <div 
+          className="relative rounded-lg overflow-hidden select-none"
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            border: '1px solid rgba(100,100,100,0.3)',
+            opacity: 0.4,
+            filter: 'grayscale(100%)',
+          }}
+        >
+          {/* Labels row - all grayed */}
+          <div className="flex justify-between px-1.5 pt-1 pb-0 relative z-10 pointer-events-none">
+            <span className="text-[9px] font-semibold text-gray-500" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+              {leftLabel}
+            </span>
+            <span className="text-[9px] font-semibold text-gray-500" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+              {centerLabel}
+            </span>
+            <span className="text-[9px] font-semibold text-gray-500" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+              {rightLabel}
+            </span>
+          </div>
+          {/* Track - grayed */}
+          <div className="relative h-6 mx-1.5 mb-0.5">
+            <div 
+              className="absolute top-1/2 left-0 right-0 h-1.5 rounded-full pointer-events-none"
+              style={{
+                transform: 'translateY(-50%)',
+                background: 'rgba(100,100,100,0.3)',
+              }}
+            />
+            {/* Single dot showing current position */}
+            {currentIndex >= 0 && dotPositions[currentIndex] != null && (
+              <div
+                className="absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                style={{
+                  left: `${dotPositions[currentIndex]}%`,
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(100,100,100,0.5)',
+                  border: '2px solid rgba(150,150,150,0.5)',
+                }}
+              />
+            )}
+          </div>
+        </div>
       </div>
     );
   }
