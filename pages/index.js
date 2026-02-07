@@ -5,9 +5,11 @@ import { checkUsername, login } from '../lib/api';
 const DISPLAY_FONT = { fontFamily: 'var(--f10-display-font)' };
 const ICY_BLUE = '#8FD9FF';
 
-// Animation constants
-const CYCLE_PAUSE_MS = 400;
-const ARROW_TRAVEL_MS = 3000;
+// Animation constants (same as ChalkPlayDiagram)
+const ARROW_TRAVEL_MS = 3200;
+const CYCLE_PAUSE_MS = 800;
+const CHALK_STROKE = 2.5;
+const BG_DIM = 0.62;
 
 function frayNoise(seed, i) {
   const x = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
@@ -17,11 +19,11 @@ function frayNoise(seed, i) {
 function drawChalkO(ctx, x, y, color) {
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2.5;
+  ctx.lineWidth = CHALK_STROKE;
   ctx.shadowColor = color;
   ctx.shadowBlur = 6;
-  ctx.globalAlpha = 0.7;
-  const r = 10;
+  ctx.globalAlpha = BG_DIM;
+  const r = 12;
   for (let pass = 0; pass < 3; pass++) {
     ctx.beginPath();
     ctx.arc(x + frayNoise(pass, 0) * 1.2, y + frayNoise(pass, 1) * 1.2, r, 0, Math.PI * 2);
@@ -33,11 +35,11 @@ function drawChalkO(ctx, x, y, color) {
 function drawChalkX(ctx, x, y, color) {
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2.5;
+  ctx.lineWidth = CHALK_STROKE;
   ctx.shadowColor = color;
   ctx.shadowBlur = 6;
-  ctx.globalAlpha = 0.7;
-  const s = 10;
+  ctx.globalAlpha = BG_DIM;
+  const s = 12;
   for (let pass = 0; pass < 3; pass++) {
     const j1 = frayNoise(pass, 0) * 1.5;
     const j2 = frayNoise(pass, 1) * 1.5;
@@ -55,12 +57,12 @@ function drawChalkLine(ctx, points, color) {
   if (points.length < 2) return;
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2.5;
+  ctx.lineWidth = CHALK_STROKE;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.shadowColor = color;
   ctx.shadowBlur = 10;
-  ctx.globalAlpha = 0.7;
+  ctx.globalAlpha = BG_DIM;
   for (let pass = 0; pass < 4; pass++) {
     ctx.beginPath();
     for (let i = 0; i < points.length; i++) {
@@ -76,37 +78,62 @@ function drawChalkLine(ctx, points, color) {
 }
 
 function drawChalkArrowhead(ctx, tip, angle, color) {
-  const size = 16;
+  const size = 20;
   const halfAngle = Math.PI / 4;
   const left = { x: tip.x - size * Math.cos(angle - halfAngle), y: tip.y - size * Math.sin(angle - halfAngle) };
   const right = { x: tip.x - size * Math.cos(angle + halfAngle), y: tip.y - size * Math.sin(angle + halfAngle) };
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2.5;
-  ctx.lineCap = 'round';
+  ctx.lineWidth = CHALK_STROKE;
   ctx.shadowColor = color;
-  ctx.shadowBlur = 10;
-  ctx.globalAlpha = 0.7;
-  for (let pass = 0; pass < 3; pass++) {
-    ctx.beginPath();
-    ctx.moveTo(left.x + frayNoise(pass, 10) * 1.2, left.y + frayNoise(pass, 11) * 1.2);
-    ctx.lineTo(tip.x + frayNoise(pass, 12) * 0.5, tip.y + frayNoise(pass, 13) * 0.5);
-    ctx.lineTo(right.x + frayNoise(pass, 14) * 1.2, right.y + frayNoise(pass, 15) * 1.2);
-    ctx.stroke();
-  }
+  ctx.shadowBlur = 8;
+  ctx.globalAlpha = BG_DIM;
+  ctx.beginPath();
+  ctx.moveTo(left.x, left.y);
+  ctx.lineTo(tip.x, tip.y);
+  ctx.lineTo(right.x, right.y);
+  ctx.stroke();
   ctx.restore();
 }
 
 function bezierPoint(p0, p1, p2, p3, t) {
-  const t2 = t * t;
-  const t3 = t2 * t;
-  const mt = 1 - t;
-  const mt2 = mt * mt;
-  const mt3 = mt2 * mt;
+  const u = 1 - t;
+  const uu = u * u, uuu = uu * u;
+  const tt = t * t, ttt = tt * t;
   return {
-    x: mt3 * p0.x + 3 * mt2 * t * p1.x + 3 * mt * t2 * p2.x + t3 * p3.x,
-    y: mt3 * p0.y + 3 * mt2 * t * p1.y + 3 * mt * t2 * p2.y + t3 * p3.y,
+    x: uuu * p0.x + 3 * uu * t * p1.x + 3 * u * tt * p2.x + ttt * p3.x,
+    y: uuu * p0.y + 3 * uu * t * p1.y + 3 * u * tt * p2.y + ttt * p3.y,
   };
+}
+
+// Route builders (same as ChalkPlayDiagram)
+function buildSlant(p0, endY) {
+  const p3 = { x: p0.x + 30, y: p0.y - endY };
+  return { p0, p1: { x: p0.x + (p3.x - p0.x) * 0.35, y: p0.y + (p3.y - p0.y) * 0.35 }, p2: { x: p0.x + (p3.x - p0.x) * 0.7, y: p0.y + (p3.y - p0.y) * 0.7 }, p3 };
+}
+function buildPost(p0, endY, centerX) {
+  const p3 = { x: p0.x + (centerX - p0.x) * 0.6, y: p0.y - endY };
+  return { p0, p1: { x: p0.x + (p3.x - p0.x) * 0.3, y: p0.y + (p3.y - p0.y) * 0.35 }, p2: { x: p0.x + (p3.x - p0.x) * 0.7, y: p0.y + (p3.y - p0.y) * 0.75 }, p3 };
+}
+function buildFlag(p0, endY, centerX) {
+  const side = p0.x >= centerX ? 1 : -1;
+  const p3 = { x: p0.x + side * 80, y: p0.y - endY * 0.8 };
+  return { p0, p1: { x: p0.x + (p3.x - p0.x) * 0.3, y: p0.y + (p3.y - p0.y) * 0.35 }, p2: { x: p0.x + (p3.x - p0.x) * 0.7, y: p0.y + (p3.y - p0.y) * 0.75 }, p3 };
+}
+function buildButtonhook(p0, endY) {
+  const p3 = { x: p0.x - 20, y: p0.y - endY * 0.6 };
+  const midY = p0.y - endY * 0.4;
+  return { p0, p1: { x: p0.x + 25, y: midY }, p2: { x: p3.x + 30, y: midY }, p3 };
+}
+const ROUTE_BUILDERS = [buildSlant, buildPost, buildFlag, buildButtonhook];
+
+function shuffle(arr) {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
 }
 
 // Login Animation Component
@@ -117,86 +144,38 @@ function LoginAnimation() {
   const playRef = useRef(null);
 
   const initPlay = useCallback((w, h) => {
-    // Boundary padding and shift
-    const pad = 30;
-    const shiftLeft = 60; // Additional 30px left
-    const usableW = w - pad * 2 - shiftLeft;
+    const centerX = w / 2;
+    const lineY = h * 0.75; // O's start position
     
-    // Create O's with horizontal variation, pinched together
+    // O positions (offense line)
+    const margin = 0.12;
+    const step = (1 - 2 * margin) / 4;
     const oPositions = [
-      { x: pad + usableW * 0.15 + (Math.random() - 0.5) * 30, y: h - 30 },
-      { x: pad + usableW * 0.32 + (Math.random() - 0.5) * 30, y: h - 40 },
-      { x: pad + usableW * 0.5 + (Math.random() - 0.5) * 30, y: h - 25 },
-      { x: pad + usableW * 0.68 + (Math.random() - 0.5) * 30, y: h - 40 },
-      { x: pad + usableW * 0.85 + (Math.random() - 0.5) * 30, y: h - 30 },
+      { x: w * (margin + 0 * step), y: lineY + 18 },
+      { x: w * (margin + 1 * step), y: lineY },
+      { x: w * (margin + 2 * step), y: lineY - 8 },
+      { x: w * (margin + 3 * step), y: lineY },
+      { x: w * (margin + 4 * step), y: lineY + 18 },
     ];
     
-    // Clamp O positions to boundaries
-    oPositions.forEach(o => {
-      o.x = Math.max(pad, Math.min(w - pad - shiftLeft, o.x));
-    });
-    
-    // Create X's (defense) higher up, also within boundaries and shifted
+    // X positions (defense)
     const xPositions = [
-      { x: pad + usableW * 0.18 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
-      { x: pad + usableW * 0.36 + Math.random() * 20, y: h * 0.35 + Math.random() * 30 },
-      { x: pad + usableW * 0.5 + Math.random() * 20, y: h * 0.45 + Math.random() * 30 },
-      { x: pad + usableW * 0.64 + Math.random() * 20, y: h * 0.35 + Math.random() * 30 },
-      { x: pad + usableW * 0.82 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
+      { x: w * 0.2 + (Math.random() - 0.5) * 50, y: lineY - 80 - Math.random() * 35 },
+      { x: w * 0.35 + (Math.random() - 0.5) * 40, y: lineY - 100 - Math.random() * 45 },
+      { x: w * 0.5 + (Math.random() - 0.5) * 60, y: lineY - 90 - Math.random() * 50 },
+      { x: w * 0.65 + (Math.random() - 0.5) * 40, y: lineY - 105 - Math.random() * 40 },
+      { x: w * 0.8 + (Math.random() - 0.5) * 50, y: lineY - 85 - Math.random() * 42 },
     ];
     
-    // Route length (80% of original)
-    const routeLen = h * 0.65;
-    const curve = 15; // Softness of turns
-    
-    // Routes with soft turns (add intermediate points for gentle curves)
-    const routes = [];
-    
-    // Route 0: Straight up (go route)
-    const o0 = oPositions[0];
-    routes.push([
-      o0,
-      { x: o0.x, y: o0.y - routeLen },
-    ]);
-    
-    // Route 1: 90 degree turn at 50% (out route) - soft curve at turn
-    const o1 = oPositions[1];
-    const turn1Y = o1.y - routeLen * 0.5;
-    routes.push([
-      o1,
-      { x: o1.x, y: turn1Y + curve },
-      { x: o1.x + curve * 0.5, y: turn1Y },
-      { x: Math.min(o1.x + routeLen * 0.4, w - pad - shiftLeft), y: turn1Y },
-    ]);
-    
-    // Route 2: Straight up (another go route from center)
-    const o2 = oPositions[2];
-    routes.push([
-      o2,
-      { x: o2.x, y: o2.y - routeLen },
-    ]);
-    
-    // Route 3: 45 degree turn at 75% (post route) - soft curve at turn
-    const o3 = oPositions[3];
-    const turn3Y = o3.y - routeLen * 0.75;
-    const postDist = routeLen * 0.25;
-    routes.push([
-      o3,
-      { x: o3.x, y: turn3Y + curve },
-      { x: o3.x - curve * 0.35, y: turn3Y - curve * 0.35 },
-      { x: Math.max(o3.x - postDist * 0.707, pad), y: turn3Y - postDist * 0.707 },
-    ]);
-    
-    // Route 4: 135 degree turn at 90% (comeback route) - soft curve at turn
-    const o4 = oPositions[4];
-    const turn4Y = o4.y - routeLen * 0.9;
-    const comebackDist = routeLen * 0.15;
-    routes.push([
-      o4,
-      { x: o4.x, y: turn4Y + curve },
-      { x: o4.x + curve * 0.35, y: turn4Y + curve * 0.35 },
-      { x: Math.min(o4.x + comebackDist * 0.707, w - pad - shiftLeft), y: turn4Y + comebackDist * 0.707 },
-    ]);
+    // Routes from 4 O's (skip center one like OL)
+    const arrowIndices = [0, 1, 3, 4];
+    const routeOrder = shuffle([0, 1, 2, 3]);
+    const routes = arrowIndices.map((idx, i) => {
+      const p0 = oPositions[idx];
+      const endY = 100 + Math.random() * (lineY * 0.4);
+      const build = ROUTE_BUILDERS[routeOrder[i]];
+      return build(p0, endY, centerX);
+    });
     
     return { oPositions, xPositions, routes };
   }, []);
@@ -240,52 +219,18 @@ function LoginAnimation() {
       // Draw X's
       play.xPositions.forEach(pos => drawChalkX(ctx, pos.x, pos.y, ICY_BLUE));
       
-      // Draw animated routes (line segments with sharp turns)
+      // Draw animated routes (bezier curves like ChalkPlayDiagram)
       const drawT = Math.min(1, (dt - CYCLE_PAUSE_MS) / ARROW_TRAVEL_MS);
       const eased = drawT < 0 ? 0 : drawT < 0.5 ? 4 * drawT * drawT * drawT : 1 - Math.pow(-2 * drawT + 2, 3) / 2;
       
-      play.routes.forEach((routePoints) => {
-        if (routePoints.length < 2) return;
-        
-        // Calculate total route length
-        let totalLen = 0;
-        const segLens = [];
-        for (let i = 1; i < routePoints.length; i++) {
-          const dx = routePoints[i].x - routePoints[i-1].x;
-          const dy = routePoints[i].y - routePoints[i-1].y;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          segLens.push(len);
-          totalLen += len;
+      play.routes.forEach((r) => {
+        const segments = 80;
+        const endI = Math.ceil(eased * segments);
+        const pts = [];
+        for (let j = 0; j <= endI; j++) {
+          const t = j / segments;
+          pts.push(bezierPoint(r.p0, r.p1, r.p2, r.p3, t));
         }
-        
-        // How far along the route to draw
-        const drawLen = eased * totalLen;
-        
-        // Build points up to drawLen
-        const pts = [routePoints[0]];
-        let accumulated = 0;
-        
-        for (let i = 0; i < segLens.length; i++) {
-          const segLen = segLens[i];
-          const segStart = routePoints[i];
-          const segEnd = routePoints[i + 1];
-          
-          if (accumulated + segLen <= drawLen) {
-            // Full segment
-            pts.push(segEnd);
-            accumulated += segLen;
-          } else {
-            // Partial segment
-            const remaining = drawLen - accumulated;
-            const t = remaining / segLen;
-            pts.push({
-              x: segStart.x + (segEnd.x - segStart.x) * t,
-              y: segStart.y + (segEnd.y - segStart.y) * t,
-            });
-            break;
-          }
-        }
-        
         if (pts.length >= 2) {
           drawChalkLine(ctx, pts, ICY_BLUE);
           const tip = pts[pts.length - 1];
@@ -295,7 +240,7 @@ function LoginAnimation() {
       });
       
       // Reset cycle
-      if (dt > CYCLE_PAUSE_MS + ARROW_TRAVEL_MS + 800) {
+      if (dt > CYCLE_PAUSE_MS + ARROW_TRAVEL_MS + 600) {
         cycleStartRef.current = now;
         playRef.current = initPlay(w, h);
       }
@@ -319,7 +264,7 @@ function LoginAnimation() {
         bottom: 0,
         left: 0,
         right: 0,
-        height: '45vh',
+        height: '50vh',
         pointerEvents: 'none',
         zIndex: 5,
       }}
