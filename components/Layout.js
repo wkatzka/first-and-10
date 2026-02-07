@@ -66,7 +66,7 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-transparent z-50 safe-area-pb">
         <div className="mx-auto max-w-7xl px-3 pb-3">
-          <div className="flex justify-between items-center gap-2 bg-black/30 backdrop-blur border border-white/10 rounded-2xl px-2 py-2">
+          <div className="flex justify-between items-center gap-2 px-2 py-2">
           {mobileNavItems.map(item => {
             const isActive = router.pathname === item.href;
             const stroke = NAV[item.variant]?.color || '#ffffff';

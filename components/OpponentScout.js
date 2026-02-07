@@ -409,11 +409,11 @@ export default function OpponentScout({
           {/* Info icon linking to rules */}
           <Link
             href="/how-to-play#strategy"
-            className="absolute -top-4 right-0 w-4 h-4 flex items-center justify-center rounded-full text-[10px] font-bold transition-all hover:scale-110"
+            className="absolute -top-5 right-0 w-5 h-5 flex items-center justify-center rounded-full text-[12px] font-bold transition-all hover:scale-110"
             style={{
-              backgroundColor: 'rgba(168,85,247,0.2)',
-              border: '1px solid rgba(168,85,247,0.4)',
-              color: '#a855f7',
+              backgroundColor: 'rgba(143,217,255,0.2)',
+              border: '1px solid rgba(143,217,255,0.4)',
+              color: '#8FD9FF',
               fontFamily: 'var(--f10-display-font)',
               zIndex: 35,
             }}
