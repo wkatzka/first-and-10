@@ -180,7 +180,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="pb-28 md:pb-0">
         {/* Fixed Schedule/Standings Toggle */}
-        <div className="fixed left-0 right-0 z-20 flex justify-center" style={{ top: '5px' }}>
+        <div className="fixed left-0 right-0 z-20 flex justify-center" style={{ top: '14px' }}>
           <div className="flex p-0.5 bg-black/30 backdrop-blur border border-white/10 rounded-xl shadow-lg">
             <button 
               type="button" 
