@@ -317,7 +317,7 @@ export default function OpponentScout({
   return (
     <div className="mb-2">
       {/* Opponent Info - Tier on left, Slider on right (compact) */}
-      <div className="flex items-end justify-between px-1 mb-1" style={{ marginTop: '76px' }}>
+      <div className="flex items-end justify-between px-1 mb-1 relative" style={{ marginTop: '76px', zIndex: 25 }}>
         {/* Opponent Tier Info - Left side, purple styling, positioned higher */}
         <div className="flex flex-col gap-0.5" style={{ marginTop: '-23px' }}>
           <div 
@@ -356,6 +356,7 @@ export default function OpponentScout({
             border: '1px solid rgba(255,255,255,0.1)',
             cursor: presets.length > 0 ? 'pointer' : 'default',
             touchAction: 'none',
+            zIndex: 30,
           }}
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
