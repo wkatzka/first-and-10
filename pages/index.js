@@ -265,7 +265,7 @@ function LoginAnimation() {
         position: 'fixed',
         bottom: 0,
         left: 0,
-        right: 0,
+        width: '100vw',
         height: '50vh',
         pointerEvents: 'none',
         zIndex: 5,
