@@ -322,15 +322,35 @@ function GameplayTab() {
 
       {/* Schedule */}
       <section className="p-4 rounded-xl" style={{ backgroundColor: 'rgba(255,230,0,0.08)', border: '1px solid rgba(255,230,0,0.2)' }}>
-        <h3 className="text-white font-semibold mb-2" style={{ fontFamily: 'var(--f10-display-font)' }}>
-          Game Schedule
+        <h3 className="text-white font-semibold mb-3" style={{ fontFamily: 'var(--f10-display-font)' }}>
+          Season Schedule
         </h3>
-        <div className="text-sm text-gray-300">
-          <p className="font-semibold text-yellow-400">Monday - Sunday</p>
-          <p className="text-gray-400">2 games per day at <strong className="text-white">7 PM</strong> & <strong className="text-white">9 PM EST</strong></p>
+        <div className="space-y-2 text-sm">
+          <div className="flex items-center justify-between p-2 rounded-lg bg-black/20">
+            <span className="text-cyan-400 font-medium">Regular Season</span>
+            <span className="text-gray-300">Monday - Friday</span>
+          </div>
+          <div className="flex items-center justify-between p-2 rounded-lg bg-black/20">
+            <span className="text-purple-400 font-medium">Playoffs</span>
+            <span className="text-gray-300">Saturday</span>
+          </div>
+          <div className="flex items-center justify-between p-2 rounded-lg bg-black/20">
+            <span className="text-yellow-400 font-medium">Super Bowl</span>
+            <span className="text-gray-300">Sunday</span>
+          </div>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          Check the League tab to see your upcoming matchups!
+        <p className="text-xs text-gray-400 mt-3">
+          Games at <strong className="text-white">7 PM</strong> & <strong className="text-white">9 PM EST</strong> daily
+        </p>
+      </section>
+
+      {/* Super Bowl Prize */}
+      <section className="p-4 rounded-xl" style={{ backgroundColor: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.3)' }}>
+        <h3 className="text-yellow-400 font-semibold mb-2" style={{ fontFamily: 'var(--f10-display-font)' }}>
+          Super Bowl Champions
+        </h3>
+        <p className="text-sm text-gray-300">
+          Win the Super Bowl and receive a <strong className="text-yellow-400">Super Bowl Trophy NFT</strong> — a permanent on-chain record of your championship!
         </p>
       </section>
 
