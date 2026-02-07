@@ -499,21 +499,20 @@ export default function OpponentScout({
               );
             })}
 
-            {/* Dragging indicator */}
-            {dragging && dragPosition != null && (
+            {/* Dragging indicator - snaps to nearest dot position */}
+            {dragging && dragPosition != null && dragNearestIdx >= 0 && (
               <div
                 className="absolute top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
                 style={{
-                  left: `${dragPosition}%`,
+                  left: `${dotPositions[dragNearestIdx]}%`,
                   width: '20px',
                   height: '20px',
                   borderRadius: '50%',
-                  backgroundColor: dragNearestIdx >= 0 
-                    ? getColorForStrategy(presets[dragNearestIdx].strategy) 
-                    : '#a3a3a3',
+                  backgroundColor: getColorForStrategy(presets[dragNearestIdx].strategy),
                   border: '2px solid rgba(255,255,255,0.8)',
                   boxShadow: '0 0 12px rgba(255,255,255,0.3)',
                   zIndex: 10,
+                  transition: 'left 0.1s ease-out',
                   opacity: 0.7,
                 }}
               />
