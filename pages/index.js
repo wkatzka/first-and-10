@@ -117,77 +117,82 @@ function LoginAnimation() {
   const playRef = useRef(null);
 
   const initPlay = useCallback((w, h) => {
-    // Create O's (offense) at bottom - just above where 30 yard line would be
+    // Boundary padding
+    const pad = 30;
+    const usableW = w - pad * 2;
+    
+    // Create O's with horizontal variation, constrained within boundaries
     const oPositions = [
-      { x: w * 0.15, y: h - 30 },
-      { x: w * 0.35, y: h - 40 },
-      { x: w * 0.5, y: h - 25 },
-      { x: w * 0.65, y: h - 40 },
-      { x: w * 0.85, y: h - 30 },
+      { x: pad + usableW * 0.1 + (Math.random() - 0.5) * 30, y: h - 30 },
+      { x: pad + usableW * 0.3 + (Math.random() - 0.5) * 30, y: h - 40 },
+      { x: pad + usableW * 0.5 + (Math.random() - 0.5) * 30, y: h - 25 },
+      { x: pad + usableW * 0.7 + (Math.random() - 0.5) * 30, y: h - 40 },
+      { x: pad + usableW * 0.9 + (Math.random() - 0.5) * 30, y: h - 30 },
     ];
     
-    // Create X's (defense) higher up
+    // Clamp O positions to boundaries
+    oPositions.forEach(o => {
+      o.x = Math.max(pad, Math.min(w - pad, o.x));
+    });
+    
+    // Create X's (defense) higher up, also within boundaries
     const xPositions = [
-      { x: w * 0.2 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
-      { x: w * 0.4 + Math.random() * 20, y: h * 0.35 + Math.random() * 30 },
-      { x: w * 0.5 + Math.random() * 20, y: h * 0.45 + Math.random() * 30 },
-      { x: w * 0.6 + Math.random() * 20, y: h * 0.35 + Math.random() * 30 },
-      { x: w * 0.8 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
+      { x: pad + usableW * 0.15 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
+      { x: pad + usableW * 0.35 + Math.random() * 20, y: h * 0.35 + Math.random() * 30 },
+      { x: pad + usableW * 0.5 + Math.random() * 20, y: h * 0.45 + Math.random() * 30 },
+      { x: pad + usableW * 0.65 + Math.random() * 20, y: h * 0.35 + Math.random() * 30 },
+      { x: pad + usableW * 0.85 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
     ];
     
     // Route length (80% of original)
     const routeLen = h * 0.65;
     
-    // Specific route patterns:
+    // Routes use segments for sharp turns (not bezier curves)
+    // Each route is an array of points
     const routes = [];
     
     // Route 0: Straight up (go route)
     const o0 = oPositions[0];
-    routes.push({
-      p0: o0,
-      p1: { x: o0.x, y: o0.y - routeLen * 0.33 },
-      p2: { x: o0.x, y: o0.y - routeLen * 0.67 },
-      p3: { x: o0.x, y: o0.y - routeLen },
-    });
+    routes.push([
+      o0,
+      { x: o0.x, y: o0.y - routeLen },
+    ]);
     
     // Route 1: 90 degree turn at 50% (out route) - goes up then cuts right
     const o1 = oPositions[1];
     const turn1Y = o1.y - routeLen * 0.5;
-    routes.push({
-      p0: o1,
-      p1: { x: o1.x, y: o1.y - routeLen * 0.4 },
-      p2: { x: o1.x + routeLen * 0.3, y: turn1Y },
-      p3: { x: o1.x + routeLen * 0.5, y: turn1Y },
-    });
+    routes.push([
+      o1,
+      { x: o1.x, y: turn1Y },
+      { x: Math.min(o1.x + routeLen * 0.4, w - pad), y: turn1Y },
+    ]);
     
     // Route 2: Straight up (another go route from center)
     const o2 = oPositions[2];
-    routes.push({
-      p0: o2,
-      p1: { x: o2.x, y: o2.y - routeLen * 0.33 },
-      p2: { x: o2.x, y: o2.y - routeLen * 0.67 },
-      p3: { x: o2.x, y: o2.y - routeLen },
-    });
+    routes.push([
+      o2,
+      { x: o2.x, y: o2.y - routeLen },
+    ]);
     
-    // Route 3: 45 degree turn at 75% (post route) - goes up then angles left
+    // Route 3: 45 degree turn at 75% (post route) - goes up then angles up-left at 45°
     const o3 = oPositions[3];
     const turn3Y = o3.y - routeLen * 0.75;
-    routes.push({
-      p0: o3,
-      p1: { x: o3.x, y: o3.y - routeLen * 0.5 },
-      p2: { x: o3.x - routeLen * 0.1, y: turn3Y },
-      p3: { x: o3.x - routeLen * 0.25, y: turn3Y - routeLen * 0.2 },
-    });
+    const postDist = routeLen * 0.25;
+    routes.push([
+      o3,
+      { x: o3.x, y: turn3Y },
+      { x: Math.max(o3.x - postDist * 0.707, pad), y: turn3Y - postDist * 0.707 },
+    ]);
     
     // Route 4: 135 degree turn at 90% (comeback route) - goes up then cuts back down-right
     const o4 = oPositions[4];
     const turn4Y = o4.y - routeLen * 0.9;
-    routes.push({
-      p0: o4,
-      p1: { x: o4.x, y: o4.y - routeLen * 0.6 },
-      p2: { x: o4.x, y: turn4Y },
-      p3: { x: o4.x + routeLen * 0.15, y: turn4Y + routeLen * 0.12 },
-    });
+    const comebackDist = routeLen * 0.15;
+    routes.push([
+      o4,
+      { x: o4.x, y: turn4Y },
+      { x: Math.min(o4.x + comebackDist * 0.707, w - pad), y: turn4Y + comebackDist * 0.707 },
+    ]);
     
     return { oPositions, xPositions, routes };
   }, []);
@@ -231,18 +236,52 @@ function LoginAnimation() {
       // Draw X's
       play.xPositions.forEach(pos => drawChalkX(ctx, pos.x, pos.y, ICY_BLUE));
       
-      // Draw animated routes
+      // Draw animated routes (line segments with sharp turns)
       const drawT = Math.min(1, (dt - CYCLE_PAUSE_MS) / ARROW_TRAVEL_MS);
       const eased = drawT < 0 ? 0 : drawT < 0.5 ? 4 * drawT * drawT * drawT : 1 - Math.pow(-2 * drawT + 2, 3) / 2;
       
-      play.routes.forEach((r) => {
-        const segments = 80;
-        const endI = Math.ceil(eased * segments);
-        const pts = [];
-        for (let j = 0; j <= endI; j++) {
-          const t = j / segments;
-          pts.push(bezierPoint(r.p0, r.p1, r.p2, r.p3, t));
+      play.routes.forEach((routePoints) => {
+        if (routePoints.length < 2) return;
+        
+        // Calculate total route length
+        let totalLen = 0;
+        const segLens = [];
+        for (let i = 1; i < routePoints.length; i++) {
+          const dx = routePoints[i].x - routePoints[i-1].x;
+          const dy = routePoints[i].y - routePoints[i-1].y;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          segLens.push(len);
+          totalLen += len;
         }
+        
+        // How far along the route to draw
+        const drawLen = eased * totalLen;
+        
+        // Build points up to drawLen
+        const pts = [routePoints[0]];
+        let accumulated = 0;
+        
+        for (let i = 0; i < segLens.length; i++) {
+          const segLen = segLens[i];
+          const segStart = routePoints[i];
+          const segEnd = routePoints[i + 1];
+          
+          if (accumulated + segLen <= drawLen) {
+            // Full segment
+            pts.push(segEnd);
+            accumulated += segLen;
+          } else {
+            // Partial segment
+            const remaining = drawLen - accumulated;
+            const t = remaining / segLen;
+            pts.push({
+              x: segStart.x + (segEnd.x - segStart.x) * t,
+              y: segStart.y + (segEnd.y - segStart.y) * t,
+            });
+            break;
+          }
+        }
+        
         if (pts.length >= 2) {
           drawChalkLine(ctx, pts, ICY_BLUE);
           const tip = pts[pts.length - 1];
@@ -365,7 +404,7 @@ export default function Home({ user, onLogin }) {
   };
   
   return (
-    <div className="min-h-screen min-h-screen-mobile flex flex-col items-center justify-start px-4 relative z-10" style={{ paddingTop: 'calc(18vh + 23px)' }}>
+    <div className="min-h-screen min-h-screen-mobile flex flex-col items-center justify-start px-4 relative z-10" style={{ paddingTop: 'calc(18vh + 53px)' }}>
       {/* Login Animation at bottom */}
       <LoginAnimation />
       
