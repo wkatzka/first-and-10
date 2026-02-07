@@ -119,11 +119,10 @@ function LoginAnimation() {
   const initPlay = useCallback((w, h) => {
     // Boundary padding and shift
     const pad = 30;
-    const shiftLeft = 30;
+    const shiftLeft = 60; // Additional 30px left
     const usableW = w - pad * 2 - shiftLeft;
     
-    // Create O's with horizontal variation, pinched together (20px each = narrower spread)
-    // Using 0.15 to 0.85 range instead of 0.1 to 0.9 to pinch in
+    // Create O's with horizontal variation, pinched together
     const oPositions = [
       { x: pad + usableW * 0.15 + (Math.random() - 0.5) * 30, y: h - 30 },
       { x: pad + usableW * 0.32 + (Math.random() - 0.5) * 30, y: h - 40 },
@@ -148,9 +147,9 @@ function LoginAnimation() {
     
     // Route length (80% of original)
     const routeLen = h * 0.65;
+    const curve = 15; // Softness of turns
     
-    // Routes use segments for sharp turns (not bezier curves)
-    // Each route is an array of points
+    // Routes with soft turns (add intermediate points for gentle curves)
     const routes = [];
     
     // Route 0: Straight up (go route)
@@ -160,13 +159,14 @@ function LoginAnimation() {
       { x: o0.x, y: o0.y - routeLen },
     ]);
     
-    // Route 1: 90 degree turn at 50% (out route) - goes up then cuts right
+    // Route 1: 90 degree turn at 50% (out route) - soft curve at turn
     const o1 = oPositions[1];
     const turn1Y = o1.y - routeLen * 0.5;
     routes.push([
       o1,
-      { x: o1.x, y: turn1Y },
-      { x: Math.min(o1.x + routeLen * 0.4, w - pad), y: turn1Y },
+      { x: o1.x, y: turn1Y + curve },
+      { x: o1.x + curve * 0.5, y: turn1Y },
+      { x: Math.min(o1.x + routeLen * 0.4, w - pad - shiftLeft), y: turn1Y },
     ]);
     
     // Route 2: Straight up (another go route from center)
@@ -176,24 +176,26 @@ function LoginAnimation() {
       { x: o2.x, y: o2.y - routeLen },
     ]);
     
-    // Route 3: 45 degree turn at 75% (post route) - goes up then angles up-left at 45°
+    // Route 3: 45 degree turn at 75% (post route) - soft curve at turn
     const o3 = oPositions[3];
     const turn3Y = o3.y - routeLen * 0.75;
     const postDist = routeLen * 0.25;
     routes.push([
       o3,
-      { x: o3.x, y: turn3Y },
+      { x: o3.x, y: turn3Y + curve },
+      { x: o3.x - curve * 0.35, y: turn3Y - curve * 0.35 },
       { x: Math.max(o3.x - postDist * 0.707, pad), y: turn3Y - postDist * 0.707 },
     ]);
     
-    // Route 4: 135 degree turn at 90% (comeback route) - goes up then cuts back down-right
+    // Route 4: 135 degree turn at 90% (comeback route) - soft curve at turn
     const o4 = oPositions[4];
     const turn4Y = o4.y - routeLen * 0.9;
     const comebackDist = routeLen * 0.15;
     routes.push([
       o4,
-      { x: o4.x, y: turn4Y },
-      { x: Math.min(o4.x + comebackDist * 0.707, w - pad), y: turn4Y + comebackDist * 0.707 },
+      { x: o4.x, y: turn4Y + curve },
+      { x: o4.x + curve * 0.35, y: turn4Y + curve * 0.35 },
+      { x: Math.min(o4.x + comebackDist * 0.707, w - pad - shiftLeft), y: turn4Y + comebackDist * 0.707 },
     ]);
     
     return { oPositions, xPositions, routes };
@@ -406,7 +408,7 @@ export default function Home({ user, onLogin }) {
   };
   
   return (
-    <div className="min-h-screen min-h-screen-mobile flex flex-col items-center justify-start px-4 relative z-10" style={{ paddingTop: 'calc(18vh + 53px)' }}>
+    <div className="min-h-screen min-h-screen-mobile flex flex-col items-center justify-start px-4 relative z-10" style={{ paddingTop: 'calc(18vh + 63px)' }}>
       {/* Login Animation at bottom */}
       <LoginAnimation />
       
