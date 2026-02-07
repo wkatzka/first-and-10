@@ -6,6 +6,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { MiniCard } from './Card';
+import CardModal from './CardModal';
 import { getUserPresets } from '../lib/api';
 import { 
   STRATEGY_LABELS, 
@@ -76,6 +77,7 @@ export default function OpponentScout({
   const [loadingPresets, setLoadingPresets] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [dragPosition, setDragPosition] = useState(null);
+  const [viewingCard, setViewingCard] = useState(null); // For viewing opponent card details
   const sliderRef = useRef(null);
   
   const isOffense = showSide === 'offense';
@@ -561,10 +563,11 @@ export default function OpponentScout({
           <>
             {/* QB at top center */}
             <div 
-              className="absolute left-1/2"
+              className="absolute left-1/2 cursor-pointer"
               style={{ top: '0', transform: 'translateX(-50%) scale(var(--card-scale, 1))' }}
+              onClick={() => displayCards[QB_SLOT.id] && setViewingCard(displayCards[QB_SLOT.id])}
             >
-              <div className="opacity-80" style={{ filter: 'saturate(0.7)' }}>
+              <div className="opacity-80 hover:opacity-100 transition-opacity" style={{ filter: 'saturate(0.7)' }}>
                 <MiniCard
                   card={displayCards[QB_SLOT.id]}
                   position={QB_SLOT.label}
@@ -583,14 +586,15 @@ export default function OpponentScout({
               return (
                 <div 
                   key={slot.id}
-                  className="absolute"
+                  className="absolute cursor-pointer"
                   style={{ 
                     left: `${xPositions[idx] * 100}%`,
                     top: `${yPercents[idx]}%`,
                     transform: 'translateX(-50%) scale(var(--card-scale, 1))'
                   }}
+                  onClick={() => displayCards[slot.id] && setViewingCard(displayCards[slot.id])}
                 >
-                  <div className="opacity-80" style={{ filter: 'saturate(0.7)' }}>
+                  <div className="opacity-80 hover:opacity-100 transition-opacity" style={{ filter: 'saturate(0.7)' }}>
                     <MiniCard
                       card={displayCards[slot.id]}
                       position={slot.label}
@@ -609,10 +613,11 @@ export default function OpponentScout({
               return (
                 <div 
                   key={slot.id}
-                  className="flex flex-col items-center"
+                  className="flex flex-col items-center cursor-pointer"
                   style={{ marginTop: `${yOffsets[idx]}px` }}
+                  onClick={() => displayCards[slot.id] && setViewingCard(displayCards[slot.id])}
                 >
-                  <div className="opacity-80" style={{ filter: 'saturate(0.7)' }}>
+                  <div className="opacity-80 hover:opacity-100 transition-opacity" style={{ filter: 'saturate(0.7)' }}>
                     <MiniCard
                       card={displayCards[slot.id]}
                       position={slot.label}
@@ -633,6 +638,11 @@ export default function OpponentScout({
           VS
         </span>
       </div>
+
+      {/* Card View Modal for opponent cards */}
+      {viewingCard && (
+        <CardModal card={viewingCard} onClose={() => setViewingCard(null)} />
+      )}
     </div>
   );
 }
