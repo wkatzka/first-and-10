@@ -160,21 +160,21 @@ function LoginAnimation() {
       { x: cx + spread, y: lineY + 15 },
     ];
     
-    // 5 X's above the O's with slight randomness
+    // 5 X's above the O's with slight randomness (moved up 50px)
     const xPositions = [
-      { x: cx - spread * 0.8 + (Math.random() - 0.5) * 20, y: lineY - 50 - Math.random() * 25 },
-      { x: cx - spread * 0.4 + (Math.random() - 0.5) * 15, y: lineY - 65 - Math.random() * 30 },
-      { x: cx + (Math.random() - 0.5) * 25, y: lineY - 55 - Math.random() * 35 },
-      { x: cx + spread * 0.4 + (Math.random() - 0.5) * 15, y: lineY - 65 - Math.random() * 30 },
-      { x: cx + spread * 0.8 + (Math.random() - 0.5) * 20, y: lineY - 50 - Math.random() * 25 },
+      { x: cx - spread * 0.8 + (Math.random() - 0.5) * 20, y: lineY - 100 - Math.random() * 25 },
+      { x: cx - spread * 0.4 + (Math.random() - 0.5) * 15, y: lineY - 115 - Math.random() * 30 },
+      { x: cx + (Math.random() - 0.5) * 25, y: lineY - 105 - Math.random() * 35 },
+      { x: cx + spread * 0.4 + (Math.random() - 0.5) * 15, y: lineY - 115 - Math.random() * 30 },
+      { x: cx + spread * 0.8 + (Math.random() - 0.5) * 20, y: lineY - 100 - Math.random() * 25 },
     ];
     
-    // Routes from outer 4 O's (skip center OL)
+    // Routes from outer 4 O's (skip center OL) - 30% longer
     const arrowIndices = [0, 1, 3, 4];
     const routeOrder = shuffle([0, 1, 2, 3]);
     const routes = arrowIndices.map((idx, i) => {
       const p0 = oPositions[idx];
-      const endY = 80 + Math.random() * 60;
+      const endY = (80 + Math.random() * 60) * 1.3; // 30% longer
       const build = ROUTE_BUILDERS[routeOrder[i]];
       return build(p0, endY, cx);
     });
