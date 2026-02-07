@@ -155,33 +155,91 @@ export default function OpponentScout({
     return { start: BOUNDARY_FIRST + ZONE_PAD, end: BOUNDARY_SECOND - ZONE_PAD };
   }, [leftStrategies, rightStrategies]);
 
-  // Pre-compute visual positions for all dots
+  // Map ratio to visual position (0-100%) based on side
+  const ratioToPosition = useCallback((ratio) => {
+    if (isOffense) {
+      // Offense ratio: ~0.5 to ~2.5, boundaries at 1.2 and 1.8
+      if (ratio <= 1.2) {
+        return ((ratio - 0.5) / 0.7) * BOUNDARY_FIRST;
+      } else if (ratio >= 1.8) {
+        return BOUNDARY_SECOND + ((ratio - 1.8) / 0.7) * (100 - BOUNDARY_SECOND);
+      } else {
+        return BOUNDARY_FIRST + ((ratio - 1.2) / 0.6) * (BOUNDARY_SECOND - BOUNDARY_FIRST);
+      }
+    } else {
+      // Defense ratio: -3 to +3, boundaries at -2 and +2
+      if (ratio <= -2) {
+        return ((ratio + 3) / 1) * BOUNDARY_FIRST;
+      } else if (ratio >= 2) {
+        return BOUNDARY_SECOND + ((ratio - 2) / 1) * (100 - BOUNDARY_SECOND);
+      } else {
+        return BOUNDARY_FIRST + ((ratio + 2) / 4) * (BOUNDARY_SECOND - BOUNDARY_FIRST);
+      }
+    }
+  }, [isOffense]);
+
+  // Pre-compute visual positions for all dots based on ratio with collision detection
   const dotPositions = useMemo(() => {
     if (presets.length === 0) return [];
-
+    
+    const MIN_SPACING = 4; // Minimum 4% between dots
+    
+    // Group presets by strategy zone
     const groups = {};
     presets.forEach((preset, i) => {
       const s = preset.strategy;
       if (!groups[s]) groups[s] = [];
-      groups[s].push(i);
+      groups[s].push({ index: i, ratio: preset.ratio });
     });
 
     const positions = new Array(presets.length);
-    for (const [strategy, indices] of Object.entries(groups)) {
+    
+    for (const [strategy, items] of Object.entries(groups)) {
       const { start, end } = getZoneBounds(strategy);
-      const count = indices.length;
-      if (count === 1) {
-        positions[indices[0]] = (start + end) / 2;
-      } else {
-        const width = end - start;
-        const spacing = width / (count - 1);
-        indices.forEach((presetIdx, zoneIdx) => {
-          positions[presetIdx] = start + zoneIdx * spacing;
-        });
+      
+      // Sort by ratio within zone
+      items.sort((a, b) => a.ratio - b.ratio);
+      
+      // Calculate initial positions based on ratio
+      const initialPositions = items.map(item => {
+        let pos = ratioToPosition(item.ratio);
+        // Clamp to zone bounds
+        return Math.max(start, Math.min(end, pos));
+      });
+      
+      // Apply collision detection - spread dots that are too close
+      const finalPositions = [...initialPositions];
+      
+      // Multiple passes to resolve collisions
+      for (let pass = 0; pass < 5; pass++) {
+        for (let i = 1; i < finalPositions.length; i++) {
+          const gap = finalPositions[i] - finalPositions[i - 1];
+          if (gap < MIN_SPACING) {
+            const needed = MIN_SPACING - gap;
+            const pushLeft = Math.min(needed / 2, finalPositions[i - 1] - start);
+            const pushRight = Math.min(needed / 2, end - finalPositions[i]);
+            finalPositions[i - 1] -= pushLeft;
+            finalPositions[i] += pushRight;
+            const remaining = needed - pushLeft - pushRight;
+            if (remaining > 0) {
+              if (finalPositions[i] + remaining <= end) {
+                finalPositions[i] += remaining;
+              } else if (finalPositions[i - 1] - remaining >= start) {
+                finalPositions[i - 1] -= remaining;
+              }
+            }
+          }
+        }
       }
+      
+      // Assign final positions
+      items.forEach((item, idx) => {
+        positions[item.index] = finalPositions[idx];
+      });
     }
+    
     return positions;
-  }, [presets, getZoneBounds]);
+  }, [presets, getZoneBounds, ratioToPosition]);
 
   // Find nearest dot by visual position
   const findNearestDotByPosition = useCallback((pct) => {
