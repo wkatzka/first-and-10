@@ -355,35 +355,46 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                       </div>
                     )}
                     
-                    {/* Significant Plays */}
+                    {/* Highlights - Scoring & Turnovers */}
                     {practiceResult.significantPlays && practiceResult.significantPlays.length > 0 && (
                       <div className="p-4">
-                        <div className="text-sm font-bold text-white mb-3" style={DISPLAY_FONT}>KEY PLAYS</div>
+                        <div className="text-sm font-bold text-white mb-3" style={DISPLAY_FONT}>HIGHLIGHTS</div>
                         <div className="space-y-2 max-h-60 overflow-y-auto">
-                          {practiceResult.significantPlays.map((play, idx) => (
-                            <div 
-                              key={idx}
-                              className={`text-sm p-2 rounded ${
-                                play.team === 'you' 
-                                  ? play.type === 'touchdown' ? 'bg-green-900/40 border-l-2 border-green-500'
-                                  : play.type === 'big_play' ? 'bg-blue-900/40 border-l-2 border-blue-500'
-                                  : 'bg-gray-700/50'
-                                  : play.type === 'touchdown' ? 'bg-red-900/40 border-l-2 border-red-500'
-                                  : play.type === 'interception' || play.type === 'fumble' 
-                                    ? 'bg-orange-900/40 border-l-2 border-orange-500'
-                                  : 'bg-gray-700/50'
-                              }`}
-                              style={DISPLAY_FONT}
-                            >
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-xs font-medium ${play.team === 'you' ? 'text-blue-400' : 'text-red-400'}`}>
-                                  {play.team === 'you' ? 'YOU' : 'OPP'}
-                                </span>
-                                {play.quarter && <span className="text-xs text-gray-500">Q{play.quarter}</span>}
+                          {practiceResult.significantPlays.map((play, idx) => {
+                            const isScoring = play.type === 'touchdown' || play.type === 'field_goal' || play.type === 'safety';
+                            const isTurnover = play.type === 'interception' || play.type === 'fumble';
+                            const isYourScore = play.team === 'you' && isScoring;
+                            const isOppScore = play.team === 'opponent' && isScoring;
+                            const isYourTurnover = play.team === 'you' && isTurnover;
+                            
+                            return (
+                              <div 
+                                key={idx}
+                                className={`text-sm p-2 rounded ${
+                                  isYourScore ? 'bg-green-900/40 border-l-2 border-green-500'
+                                  : isOppScore ? 'bg-red-900/40 border-l-2 border-red-500'
+                                  : isYourTurnover ? 'bg-cyan-900/40 border-l-2 border-cyan-500'
+                                  : 'bg-orange-900/40 border-l-2 border-orange-500'
+                                }`}
+                                style={DISPLAY_FONT}
+                              >
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs">
+                                    {play.type === 'touchdown' && 'TD'}
+                                    {play.type === 'field_goal' && 'FG'}
+                                    {play.type === 'safety' && 'SAF'}
+                                    {play.type === 'interception' && 'INT'}
+                                    {play.type === 'fumble' && 'FUM'}
+                                  </span>
+                                  <span className={`text-xs font-medium ${play.team === 'you' ? 'text-blue-400' : 'text-red-400'}`}>
+                                    {play.team === 'you' ? 'YOU' : 'OPP'}
+                                  </span>
+                                  {play.quarter && <span className="text-xs text-gray-500">Q{play.quarter}</span>}
+                                </div>
+                                <div className="text-gray-300">{play.description}</div>
                               </div>
-                              <div className="text-gray-300">{play.description}</div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}

@@ -1592,14 +1592,14 @@ app.post('/api/games/practice', authMiddleware, async (req, res) => {
     // Run simulation using game engine (home = you, away = opponent)
     const result = gameEngine.simulateGameFromDB(myRoster, opponentRoster);
     
-    // Extract significant plays for post-game report
+    // Extract highlights - only scoring plays and turnovers
     const significantPlays = [];
     if (result.plays) {
       for (const play of result.plays) {
-        // Skip extra points and kickoffs for key plays display
+        // Skip extra points and kickoffs
         if (play.type === 'extra_point' || play.type === 'kickoff') continue;
         
-        // Touchdowns (marked by game-bridge)
+        // Touchdowns
         if (play.touchdown) {
           significantPlays.push({
             type: 'touchdown',
@@ -1617,6 +1617,17 @@ app.post('/api/games/practice', authMiddleware, async (req, res) => {
             quarter: play.quarter,
             time: play.time,
             team: play.possession === 'home' ? 'you' : 'opponent',
+            description: play.description,
+          });
+          continue;
+        }
+        // Safeties
+        if (play.type === 'safety' || play.result === 'safety') {
+          significantPlays.push({
+            type: 'safety',
+            quarter: play.quarter,
+            time: play.time,
+            team: play.possession === 'home' ? 'opponent' : 'you', // Defense scores
             description: play.description,
           });
           continue;
@@ -1642,28 +1653,6 @@ app.post('/api/games/practice', authMiddleware, async (req, res) => {
             description: play.description,
           });
           continue;
-        }
-        // Sacks
-        if (play.result === 'sack') {
-          significantPlays.push({
-            type: 'sack',
-            quarter: play.quarter,
-            time: play.time,
-            team: play.possession === 'home' ? 'opponent' : 'you', // Defense gets sack
-            description: play.description,
-          });
-          continue;
-        }
-        // Big plays (20+ yards)
-        if (play.yards && play.yards >= 20) {
-          significantPlays.push({
-            type: 'big_play',
-            quarter: play.quarter,
-            time: play.time,
-            team: play.possession === 'home' ? 'you' : 'opponent',
-            description: play.description,
-            yards: play.yards,
-          });
         }
       }
     }
