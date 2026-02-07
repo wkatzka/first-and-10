@@ -56,7 +56,7 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="pb-28 md:pb-0">
         {/* Fixed Schedule/Standings Toggle */}
-        <div className="fixed left-0 right-0 z-20 flex justify-center" style={{ top: '40px' }}>
+        <div className="fixed left-0 right-0 z-20 flex justify-center" style={{ top: '5px' }}>
           <div className="flex p-0.5 bg-black/30 backdrop-blur border border-white/10 rounded-xl shadow-lg">
             <button 
               type="button" 
@@ -77,7 +77,7 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
         </div>
         
         {/* Content positioned below endzone */}
-        <div style={{ marginTop: 'max(140px, calc(26vh - 40px))' }}>
+        <div style={{ marginTop: 'max(150px, calc(26vh - 30px))' }}>
         {loading ? (
           <div className="text-center text-gray-400 py-12" style={DISPLAY_FONT}>Loading leaderboard...</div>
         ) : leaderboard.length === 0 ? (

@@ -180,7 +180,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="pb-28 md:pb-0">
         {/* Fixed Schedule/Standings Toggle */}
-        <div className="fixed left-0 right-0 z-20 flex justify-center" style={{ top: '40px' }}>
+        <div className="fixed left-0 right-0 z-20 flex justify-center" style={{ top: '5px' }}>
           <div className="flex p-0.5 bg-black/30 backdrop-blur border border-white/10 rounded-xl shadow-lg">
             <button 
               type="button" 
@@ -201,7 +201,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
         </div>
         
         {/* Tabs - positioned below endzone */}
-        <div className="flex gap-1 border-b border-white/10 overflow-x-auto mb-4" style={{ marginTop: 'max(140px, calc(26vh - 40px))' }}>
+        <div className="flex gap-1 border-b border-white/10 overflow-x-auto mb-4" style={{ marginTop: 'max(150px, calc(26vh - 30px))' }}>
           {['practice', 'today', 'tomorrow', 'my-games'].map(tab => (
             <button
               key={tab}
