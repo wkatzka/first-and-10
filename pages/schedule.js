@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import { getAllUsers, simulatePractice } from '../lib/api';
 
 const NAV_PURPLE = '#a855f7';
+const DISPLAY_FONT = { fontFamily: 'var(--f10-display-font)' };
 
 export default function Schedule({ user, onLogout, unreadMessages }) {
   const router = useRouter();
@@ -106,14 +107,14 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
         className={`f10-panel p-4 ${isMyGame ? 'ring-2 ring-white/20' : ''}`}
       >
         {showDate && (
-          <div className="text-xs text-gray-500 mb-2">{game.date}</div>
+          <div className="text-xs text-gray-500 mb-2" style={DISPLAY_FONT}>{game.date}</div>
         )}
         
         <div className="flex items-center justify-between">
           {/* Home Team */}
           <div className={`flex-1 text-center ${amHome ? 'text-blue-400' : ''}`}>
-            <div className="text-sm text-gray-400">Home</div>
-            <div className="font-bold text-white">
+            <div className="text-sm text-gray-400" style={DISPLAY_FONT}>Home</div>
+            <div className="font-bold text-white" style={DISPLAY_FONT}>
               {game.homeUser?.username || 'Unknown'}
               {amHome && <span className="text-xs text-blue-400 ml-1">(You)</span>}
             </div>
@@ -128,6 +129,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                 onClick={() => router.push(`/post-game/${reportId}`)}
                 className={`text-xl font-bold ${canOpenReport ? 'cursor-pointer hover:opacity-90' : 'cursor-default'} transition-opacity`}
                 title={canOpenReport ? 'View post-game report' : 'Post-game report not available'}
+                style={DISPLAY_FONT}
               >
                 <span className={game.result?.winner === 'home' ? 'text-green-400' : 'text-white'}>
                   {game.result?.homeScore}
@@ -138,14 +140,15 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                 </span>
               </button>
             ) : (
-              <div className="text-gray-500">vs</div>
+              <div className="text-gray-500" style={DISPLAY_FONT}>vs</div>
             )}
-            <div className="text-xs mt-1">{formatGameStatus(game)}</div>
+            <div className="text-xs mt-1" style={DISPLAY_FONT}>{formatGameStatus(game)}</div>
             {canOpenReport && (
               <button
                 type="button"
                 onClick={() => router.push(`/post-game/${reportId}`)}
                 className="mt-2 text-[11px] text-cyan-300 hover:text-cyan-200 underline underline-offset-2"
+                style={DISPLAY_FONT}
               >
                 Post-game report
               </button>
@@ -154,8 +157,8 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
           
           {/* Away Team */}
           <div className={`flex-1 text-center ${!amHome && isMyGame ? 'text-blue-400' : ''}`}>
-            <div className="text-sm text-gray-400">Away</div>
-            <div className="font-bold text-white">
+            <div className="text-sm text-gray-400" style={DISPLAY_FONT}>Away</div>
+            <div className="font-bold text-white" style={DISPLAY_FONT}>
               {game.awayUser?.username || (game.status === 'bye' ? 'BYE' : 'Unknown')}
               {!amHome && isMyGame && <span className="text-xs text-blue-400 ml-1">(You)</span>}
             </div>
@@ -172,57 +175,36 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
     border: `2px solid ${NAV_PURPLE}`, 
     boxShadow: `0 0 12px ${NAV_PURPLE}80` 
   };
-  const buttonFont = { fontFamily: 'var(--f10-display-font)' };
   
   return (
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
-      <div className="space-y-6">
-        {/* Toggle Buttons */}
-        <div className="flex justify-center">
-          <div className="flex p-1 bg-black/30 backdrop-blur border border-white/10 rounded-2xl shadow-lg">
-            <button 
-              type="button" 
-              className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-white"
-              style={{ ...activeSegmentStyle, ...buttonFont }}
-            >
-              Schedule
-            </button>
-            <button 
-              type="button" 
-              onClick={() => router.push('/leaderboard')}
-              className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 text-gray-400 hover:text-white"
-              style={buttonFont}
-            >
-              Standings
-            </button>
-          </div>
-        </div>
-        
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-3xl f10-title text-white mb-2">Game Schedule</h1>
-          <p className="f10-subtitle">
-            Regular season Mon–Fri (7 & 9 PM EST) · Playoffs Saturday · Super Bowl Sunday
-          </p>
-        </div>
-        
-        {/* Info Box */}
-        <div className="max-w-2xl mx-auto f10-panel p-4" style={{ borderColor: 'rgba(0,229,255,0.25)' }}>
-          <div className="flex items-start gap-3">
-            <span className="text-2xl">📅</span>
-            <div>
-              <div className="font-semibold" style={{ color: 'var(--nav-cyan)' }}>Auto-Compete Mode</div>
-              <div className="text-sm text-gray-300">
-                Your roster plays automatically at scheduled times. 
-                Make sure your best lineup is set before game time!
-              </div>
+      <div className="pb-28 md:pb-0">
+        {/* Fixed Schedule/Standings Toggle - styled like Game 1/2 buttons */}
+        <div className="sticky top-0 z-20 pt-2 pb-3" style={{ background: 'linear-gradient(to bottom, rgba(26,26,46,1) 0%, rgba(26,26,46,0.95) 80%, rgba(26,26,46,0) 100%)' }}>
+          <div className="flex justify-center">
+            <div className="flex p-0.5 bg-black/30 backdrop-blur border border-white/10 rounded-xl shadow-lg">
+              <button 
+                type="button" 
+                className="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-200 text-white"
+                style={{ ...activeSegmentStyle, ...DISPLAY_FONT }}
+              >
+                Schedule
+              </button>
+              <button 
+                type="button" 
+                onClick={() => router.push('/leaderboard')}
+                className="px-3 py-1 rounded-lg text-xs font-bold transition-all duration-200 text-gray-400 hover:text-white"
+                style={DISPLAY_FONT}
+              >
+                Standings
+              </button>
             </div>
           </div>
         </div>
         
-        {/* Tabs */}
-        <div className="flex gap-1 border-b border-white/10 overflow-x-auto">
-          {['standings', 'practice', 'today', 'tomorrow', 'my-games'].map(tab => (
+        {/* Tabs - styled with aesthetic font */}
+        <div className="flex gap-1 border-b border-white/10 overflow-x-auto mb-4">
+          {['practice', 'today', 'tomorrow', 'my-games'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -231,12 +213,11 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                   ? 'text-white border-b-2'
                   : 'text-gray-400 hover:text-white'
               }`}
-              style={activeTab === tab ? { borderColor: 'rgba(255,255,255,0.18)' } : undefined}
+              style={activeTab === tab ? { borderColor: 'rgba(255,255,255,0.18)', ...DISPLAY_FONT } : DISPLAY_FONT}
             >
-              {tab === 'standings' && '📊 Standings'}
-              {tab === 'practice' && '🏈 Practice'}
-              {tab === 'today' && "Today"}
-              {tab === 'tomorrow' && "Tomorrow"}
+              {tab === 'practice' && 'Practice'}
+              {tab === 'today' && 'Today'}
+              {tab === 'tomorrow' && 'Tomorrow'}
               {tab === 'my-games' && 'My Games'}
             </button>
           ))}
@@ -244,58 +225,20 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
         
         {/* Content */}
         {loading ? (
-          <div className="text-center text-gray-400 py-12">Loading schedule...</div>
+          <div className="text-center text-gray-400 py-12" style={DISPLAY_FONT}>Loading schedule...</div>
         ) : (
           <div className="space-y-4">
-            {activeTab === 'standings' && (
-              <div className="max-w-md mx-auto f10-panel p-6">
-                <h2 className="text-xl f10-title text-white mb-2">League Standings</h2>
-                <p className="text-sm text-gray-400 mb-4">
-                  Records from regular-season games. Top 4 make the playoffs (Saturday), then Super Bowl Sunday.
-                </p>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-left text-gray-400 border-b border-white/10">
-                        <th className="py-2 pr-2">#</th>
-                        <th className="py-2">Team</th>
-                        <th className="py-2 text-center">W</th>
-                        <th className="py-2 text-center">L</th>
-                        <th className="py-2 text-right">Record</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {standings.map((row, idx) => (
-                        <tr
-                          key={row.userId}
-                          className={`border-b border-white/5 ${row.userId === user?.id ? 'text-cyan-300' : 'text-white'}`}
-                        >
-                          <td className="py-2 pr-2 font-medium">{idx + 1}</td>
-                          <td className="py-2">{row.user?.username || row.user?.team_name || `Team ${row.userId}`}{row.userId === user?.id ? ' (You)' : ''}</td>
-                          <td className="py-2 text-center text-green-400">{row.wins}</td>
-                          <td className="py-2 text-center text-red-400">{row.losses}</td>
-                          <td className="py-2 text-right font-medium">{row.wins}-{row.losses}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {standings.length === 0 && (
-                  <div className="text-center text-gray-500 py-6">No regular-season games completed yet.</div>
-                )}
-              </div>
-            )}
             {activeTab === 'practice' && (
               <div className="max-w-md mx-auto space-y-4">
                 <div className="f10-panel p-6">
-                  <h2 className="text-xl f10-title text-white mb-2">Practice Simulation</h2>
-                  <p className="f10-subtitle text-sm mb-4">
+                  <h2 className="text-xl text-white mb-2" style={DISPLAY_FONT}>Practice Simulation</h2>
+                  <p className="text-sm mb-4 text-gray-400" style={DISPLAY_FONT}>
                     Test your roster against another team. Practice games don't affect standings.
                   </p>
                   
                   {/* Opponent Selection */}
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-300 mb-2" style={DISPLAY_FONT}>
                       Select Opponent
                     </label>
                     <select
@@ -306,7 +249,8 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                         setPracticeResult(null);
                         setPracticeError(null);
                       }}
-                      className="w-full f10-input px-4 py-3 text-white focus:outline-none"
+                      className="w-full f10-input px-4 py-3 text-white focus:outline-none rounded-xl"
+                      style={{ ...DISPLAY_FONT, backgroundColor: 'rgba(0,0,0,0.4)', border: '1px solid rgba(168,85,247,0.3)' }}
                     >
                       <option value="">Choose a team...</option>
                       {teams.map(team => (
@@ -322,14 +266,19 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                     onClick={runPracticeSim}
                     disabled={!selectedOpponent || simulating}
                     className="w-full py-3 text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: 'rgba(0,255,127,0.22)', border: '1px solid rgba(0,255,127,0.28)' }}
+                    style={{ 
+                      ...DISPLAY_FONT,
+                      backgroundColor: `${NAV_PURPLE}20`, 
+                      border: `1px solid ${NAV_PURPLE}50`,
+                      boxShadow: `0 0 8px ${NAV_PURPLE}40`
+                    }}
                   >
-                    {simulating ? 'Simulating...' : '🏈 Run Practice Game'}
+                    {simulating ? 'Simulating...' : 'Run Practice Game'}
                   </button>
                   
                   {/* Error Message */}
                   {practiceError && (
-                    <div className="mt-3 p-3 bg-red-900/50 border border-red-600 rounded-lg text-red-300 text-sm">
+                    <div className="mt-3 p-3 bg-red-900/50 border border-red-600 rounded-lg text-red-300 text-sm" style={DISPLAY_FONT}>
                       <div className="font-bold mb-1">Can't run practice</div>
                       {practiceError}
                     </div>
@@ -344,11 +293,11 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                       practiceResult.winner === 'you' ? 'bg-green-900/50' : 
                       practiceResult.winner === 'opponent' ? 'bg-red-900/50' : 'bg-yellow-900/50'
                     }`}>
-                      <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Practice Game</div>
-                      <div className="text-lg font-medium text-white mb-2">
+                      <div className="text-xs text-gray-400 uppercase tracking-wider mb-1" style={DISPLAY_FONT}>Practice Game</div>
+                      <div className="text-lg font-medium text-white mb-2" style={DISPLAY_FONT}>
                         {practiceResult.yourTeam || 'You'} vs {practiceResult.opponentTeam || 'Opponent'}
                       </div>
-                      <div className="text-5xl font-bold mb-2">
+                      <div className="text-5xl font-bold mb-2" style={DISPLAY_FONT}>
                         <span className={practiceResult.winner === 'you' ? 'text-green-400' : 'text-white'}>
                           {practiceResult.yourScore}
                         </span>
@@ -357,11 +306,11 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                           {practiceResult.opponentScore}
                         </span>
                       </div>
-                      <div className="text-xl font-bold">
+                      <div className="text-xl font-bold" style={DISPLAY_FONT}>
                         {practiceResult.winner === 'you' ? (
-                          <span className="text-green-400">VICTORY! 🏆</span>
+                          <span className="text-green-400">VICTORY!</span>
                         ) : practiceResult.winner === 'opponent' ? (
-                          <span className="text-red-400">DEFEAT 😔</span>
+                          <span className="text-red-400">DEFEAT</span>
                         ) : (
                           <span className="text-yellow-400">TIE GAME</span>
                         )}
@@ -371,8 +320,8 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                     {/* Team Stats */}
                     {practiceResult.stats && (practiceResult.stats.you || practiceResult.stats.opponent) && (
                       <div className="p-4 border-b border-gray-700">
-                        <div className="text-sm font-bold text-white mb-3 text-center">TEAM STATS</div>
-                        <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div className="text-sm font-bold text-white mb-3 text-center" style={DISPLAY_FONT}>TEAM STATS</div>
+                        <div className="grid grid-cols-3 gap-2 text-sm" style={DISPLAY_FONT}>
                           <div className="text-right text-blue-400 font-medium">
                             {practiceResult.stats.you?.passingYards || 0}
                           </div>
@@ -411,7 +360,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                     {/* Significant Plays */}
                     {practiceResult.significantPlays && practiceResult.significantPlays.length > 0 && (
                       <div className="p-4">
-                        <div className="text-sm font-bold text-white mb-3">KEY PLAYS</div>
+                        <div className="text-sm font-bold text-white mb-3" style={DISPLAY_FONT}>KEY PLAYS</div>
                         <div className="space-y-2 max-h-60 overflow-y-auto">
                           {practiceResult.significantPlays.map((play, idx) => (
                             <div 
@@ -426,16 +375,9 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                                     ? 'bg-orange-900/40 border-l-2 border-orange-500'
                                   : 'bg-gray-700/50'
                               }`}
+                              style={DISPLAY_FONT}
                             >
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs">
-                                  {play.type === 'touchdown' && '🏈'}
-                                  {play.type === 'field_goal' && '🥅'}
-                                  {play.type === 'interception' && '🔄'}
-                                  {play.type === 'fumble' && '💥'}
-                                  {play.type === 'sack' && '💪'}
-                                  {play.type === 'big_play' && '⚡'}
-                                </span>
                                 <span className={`text-xs font-medium ${play.team === 'you' ? 'text-blue-400' : 'text-red-400'}`}>
                                   {play.team === 'you' ? 'YOU' : 'OPP'}
                                 </span>
@@ -450,7 +392,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                     
                     {/* No significant plays message */}
                     {(!practiceResult.significantPlays || practiceResult.significantPlays.length === 0) && (
-                      <div className="p-4 text-center text-gray-500 text-sm">
+                      <div className="p-4 text-center text-gray-500 text-sm" style={DISPLAY_FONT}>
                         No major highlights in this game
                       </div>
                     )}
@@ -459,7 +401,13 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                     <div className="p-4 border-t border-gray-700">
                       <button
                         onClick={() => setPracticeResult(null)}
-                        className="w-full py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-500 transition-colors"
+                        className="w-full py-3 text-white font-bold rounded-lg transition-colors"
+                        style={{ 
+                          ...DISPLAY_FONT,
+                          backgroundColor: `${NAV_PURPLE}20`, 
+                          border: `1px solid ${NAV_PURPLE}50`,
+                          boxShadow: `0 0 8px ${NAV_PURPLE}40`
+                        }}
                       >
                         Play Again
                       </button>
@@ -471,7 +419,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
             
             {activeTab === 'today' && (
               todayGames.length === 0 ? (
-                <div className="text-center text-gray-400 py-12">
+                <div className="text-center text-gray-400 py-12" style={DISPLAY_FONT}>
                   No games scheduled for today.
                 </div>
               ) : (
@@ -481,7 +429,7 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
             
             {activeTab === 'tomorrow' && (
               tomorrowGames.length === 0 ? (
-                <div className="text-center text-gray-400 py-12">
+                <div className="text-center text-gray-400 py-12" style={DISPLAY_FONT}>
                   Tomorrow's schedule not yet released.
                 </div>
               ) : (
@@ -491,15 +439,15 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
             
             {activeTab === 'my-games' && (
               myGames.length === 0 ? (
-                <div className="text-center text-gray-400 py-12">
+                <div className="text-center text-gray-400 py-12" style={DISPLAY_FONT}>
                   No games scheduled yet. Check back when the season starts!
                 </div>
               ) : (
                 <>
                   {/* Upcoming */}
-                  <h3 className="text-lg font-bold text-white">Upcoming</h3>
+                  <h3 className="text-lg font-bold text-white" style={DISPLAY_FONT}>Upcoming</h3>
                   {myGames.filter(g => g.status === 'scheduled').length === 0 ? (
-                    <div className="text-gray-400 text-sm">No upcoming games</div>
+                    <div className="text-gray-400 text-sm" style={DISPLAY_FONT}>No upcoming games</div>
                   ) : (
                     myGames
                       .filter(g => g.status === 'scheduled')
@@ -508,9 +456,9 @@ export default function Schedule({ user, onLogout, unreadMessages }) {
                   )}
                   
                   {/* Completed */}
-                  <h3 className="text-lg font-bold text-white mt-6">Completed</h3>
+                  <h3 className="text-lg font-bold text-white mt-6" style={DISPLAY_FONT}>Completed</h3>
                   {myGames.filter(g => g.status === 'completed').length === 0 ? (
-                    <div className="text-gray-400 text-sm">No completed games yet</div>
+                    <div className="text-gray-400 text-sm" style={DISPLAY_FONT}>No completed games yet</div>
                   ) : (
                     myGames
                       .filter(g => g.status === 'completed')
