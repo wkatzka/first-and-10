@@ -56,7 +56,7 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
     <Layout user={user} onLogout={onLogout} unreadMessages={unreadMessages}>
       <div className="pb-28 md:pb-0">
         {/* Fixed Schedule/Standings Toggle - styled like Game 1/2 buttons */}
-        <div className="sticky top-0 z-20 pt-2 pb-3" style={{ background: 'linear-gradient(to bottom, rgba(26,26,46,1) 0%, rgba(26,26,46,0.95) 80%, rgba(26,26,46,0) 100%)' }}>
+        <div className="sticky top-0 z-20 pt-2 pb-3">
           <div className="flex justify-center">
             <div className="flex p-0.5 bg-black/30 backdrop-blur border border-white/10 rounded-xl shadow-lg">
               <button 
@@ -78,6 +78,8 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
           </div>
         </div>
         
+        {/* Content positioned below endzone */}
+        <div style={{ marginTop: 'max(180px, 26vh)' }}>
         {loading ? (
           <div className="text-center text-gray-400 py-12" style={DISPLAY_FONT}>Loading leaderboard...</div>
         ) : leaderboard.length === 0 ? (
@@ -91,7 +93,7 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
               <div className="col-span-1">Rank</div>
               <div className="col-span-5">Player</div>
               <div className="col-span-2 text-center">Games</div>
-              <div className="col-span-2 text-center">W-L-T</div>
+              <div className="col-span-2 text-center">W-L</div>
               <div className="col-span-2 text-right">Win %</div>
             </div>
             
@@ -129,8 +131,6 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
                       <span className="text-green-400">{entry.wins}</span>
                       <span className="text-gray-500">-</span>
                       <span className="text-red-400">{entry.losses}</span>
-                      <span className="text-gray-500">-</span>
-                      <span className="text-yellow-400">{entry.ties}</span>
                     </div>
                     <div className="col-span-2 text-right">
                       <span className={`font-bold ${
@@ -200,6 +200,7 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
             </div>
           </div>
         )}
+        </div>
       </div>
     </Layout>
   );
