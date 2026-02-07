@@ -262,7 +262,7 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick, tierInfo }
       const build = OFFENSE_ROUTE_BUILDERS[routeOrder[i]];
       return build(p0, endY, centerX);
     });
-    const routeColors = routes.map((_, i) => NEON[i % NEON.length]);
+    const routeColors = routes.map(() => COLORS.icy); // All arrows icy blue
     const xCoords = [
       { x: w * 0.2 + (Math.random() - 0.5) * 50, y: line10Y - 45 - Math.random() * 35 },
       { x: w * 0.35 + (Math.random() - 0.5) * 40, y: line10Y - 65 - Math.random() * 45 },
@@ -303,7 +303,7 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick, tierInfo }
       const p2 = { x: p0.x + (p3.x - p0.x) * 0.67, y: p0.y + (p3.y - p0.y) * 0.67 };
       return { p0, p1, p2, p3 };
     });
-    const routeColors = routes.map((_, i) => NEON[i % NEON.length]);
+    const routeColors = routes.map(() => COLORS.icy); // All arrows icy blue
     return { cardPositions, routes, routeColors, xCoords };
   }, [w, line10Y, goalLineY]);
 
@@ -331,13 +331,13 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick, tierInfo }
       // Transparent – only chalk arrows and X's; background shows through
       ctx.clearRect(0, 0, w, h);
 
-      play.xCoords.forEach((xc, i) => drawChalkX(ctx, xc.x, xc.y, NEON[i % NEON.length]));
+      // X's removed per user request
 
       if (mode === 'offense' && play.routes && play.routes.length) {
         const drawT = Math.min(1, (dt - CYCLE_PAUSE_MS) / ARROW_TRAVEL_MS);
         const eased = drawT < 0 ? 0 : drawT < 0.5 ? 4 * drawT * drawT * drawT : 1 - Math.pow(-2 * drawT + 2, 3) / 2;
         play.routes.forEach((r, i) => {
-          const color = play.routeColors[i] || NEON[i % NEON.length];
+          const color = play.routeColors[i] || COLORS.icy;
           const segments = 80;
           const endI = Math.ceil(eased * segments);
           const pts = [];
@@ -362,7 +362,7 @@ export default function ChalkPlayDiagram({ mode, roster, onSlotClick, tierInfo }
         const drawT = Math.min(1, (dt - CYCLE_PAUSE_MS) / ARROW_TRAVEL_MS);
         const eased = drawT < 0 ? 0 : drawT < 0.5 ? 4 * drawT * drawT * drawT : 1 - Math.pow(-2 * drawT + 2, 3) / 2;
         play.routes.forEach((r, i) => {
-          const color = play.routeColors[i] || NEON[i % NEON.length];
+          const color = play.routeColors[i] || COLORS.icy;
           const segments = 80;
           const endI = Math.ceil(eased * segments);
           const pts = [];
