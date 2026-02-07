@@ -274,18 +274,168 @@ function handleHalftime(state) {
 }
 
 /**
- * Handle end of game
+ * Handle end of game - check for overtime if tied
  */
 function handleEndOfGame(state) {
+  endDrive(state, 'end_of_regulation');
+  
+  if (state.homeScore === state.awayScore && !state.overtime) {
+    // Tied at end of regulation - go to overtime
+    runOvertime(state);
+    return;
+  }
+  
   state.gameOver = true;
-  endDrive(state, 'end_of_game');
   
   if (state.homeScore > state.awayScore) {
     state.winner = 'home';
   } else if (state.awayScore > state.homeScore) {
     state.winner = 'away';
   } else {
+    // Should not happen with overtime, but fallback
     state.winner = 'tie';
+  }
+}
+
+/**
+ * NFL Overtime Rules:
+ * 1. Both teams get at least one possession (guaranteed)
+ * 2. After both teams have had one possession, sudden death applies
+ * 3. Next score wins after both teams have possessed
+ */
+function runOvertime(state) {
+  state.overtime = true;
+  state.quarter = 5; // OT is "5th quarter"
+  state.timeRemaining = GAME.QUARTER_LENGTH; // 10 min OT period
+  
+  // Track OT possessions
+  state.otPossessions = { home: 0, away: 0 };
+  state.otSuddenDeath = false;
+  
+  // Coin toss - random team receives
+  const otReceiver = Math.random() < 0.5 ? 'home' : 'away';
+  state.possession = otReceiver;
+  
+  state.plays.push({
+    type: 'overtime_start',
+    description: `Overtime begins. ${otReceiver === 'home' ? 'Home' : 'Away'} team receives.`,
+    quarter: 5,
+    time: formatTime(state.timeRemaining),
+  });
+  
+  // OT kickoff
+  const kicker = state[otReceiver === 'home' ? 'away' : 'home'].roster.K;
+  const kickoff = simulateKickoff(kicker);
+  state.plays.push({
+    ...kickoff,
+    quarter: 5,
+    time: formatTime(state.timeRemaining),
+    possession: state.possession,
+  });
+  
+  startDrive(state, kickoff.newFieldPosition, 'overtime_kickoff');
+  state.otPossessions[otReceiver]++;
+  
+  // Run OT plays
+  let playCount = 0;
+  const maxOTPlays = 100;
+  
+  while (!state.gameOver && playCount < maxOTPlays) {
+    const prevPossession = state.possession;
+    const prevHomeScore = state.homeScore;
+    const prevAwayScore = state.awayScore;
+    
+    runPlay(state);
+    playCount++;
+    
+    // Check if possession changed (drive ended without scoring)
+    if (state.possession !== prevPossession && !state.gameOver) {
+      state.otPossessions[state.possession]++;
+      
+      // Check if both teams have now had a possession
+      if (state.otPossessions.home >= 1 && state.otPossessions.away >= 1) {
+        state.otSuddenDeath = true;
+      }
+    }
+    
+    // Check for score
+    const homeScored = state.homeScore > prevHomeScore;
+    const awayScored = state.awayScore > prevAwayScore;
+    
+    if (homeScored || awayScored) {
+      const scoringTeam = homeScored ? 'home' : 'away';
+      const otherTeam = scoringTeam === 'home' ? 'away' : 'home';
+      
+      // In sudden death, any score wins
+      if (state.otSuddenDeath) {
+        state.gameOver = true;
+        state.winner = scoringTeam;
+        state.plays.push({
+          type: 'overtime_end',
+          description: `${scoringTeam === 'home' ? 'Home' : 'Away'} team wins in sudden death overtime!`,
+          quarter: 5,
+          time: formatTime(state.timeRemaining),
+        });
+        return;
+      }
+      
+      // Not sudden death yet - check if other team has had possession
+      if (state.otPossessions[otherTeam] >= 1) {
+        // Other team had a chance, this score wins
+        state.gameOver = true;
+        state.winner = scoringTeam;
+        state.plays.push({
+          type: 'overtime_end',
+          description: `${scoringTeam === 'home' ? 'Home' : 'Away'} team wins in overtime!`,
+          quarter: 5,
+          time: formatTime(state.timeRemaining),
+        });
+        return;
+      }
+      
+      // Other team hasn't had possession yet - they get their guaranteed chance
+      // Give them a kickoff
+      state.possession = scoringTeam; // Scoring team kicks
+      const kicker = state[scoringTeam].roster.K;
+      const kickoff = simulateKickoff(kicker);
+      
+      state.possession = otherTeam; // Other team receives
+      state.otPossessions[otherTeam]++;
+      
+      state.plays.push({
+        ...kickoff,
+        quarter: 5,
+        time: formatTime(state.timeRemaining),
+        possession: state.possession,
+        description: `Kickoff to ${otherTeam === 'home' ? 'Home' : 'Away'} team for their guaranteed possession.`,
+      });
+      
+      startDrive(state, kickoff.newFieldPosition, 'overtime_kickoff');
+      
+      // After this possession ends, it will be sudden death
+      // (both teams will have had at least one possession)
+    }
+    
+    // Time check - if OT period ends
+    if (state.timeRemaining <= 0) {
+      // If still tied after OT period and both had possession, end as tie (rare in NFL)
+      // But in our game, let's keep playing sudden death until someone scores
+      if (state.homeScore === state.awayScore) {
+        state.otSuddenDeath = true;
+        state.timeRemaining = GAME.QUARTER_LENGTH; // Reset clock for continued sudden death
+      }
+    }
+  }
+  
+  // If we somehow exit without a winner, determine by score
+  state.gameOver = true;
+  if (state.homeScore > state.awayScore) {
+    state.winner = 'home';
+  } else if (state.awayScore > state.homeScore) {
+    state.winner = 'away';
+  } else {
+    // Extremely rare - true tie after max plays
+    state.winner = Math.random() < 0.5 ? 'home' : 'away'; // Coin flip to avoid ties
   }
 }
 
@@ -326,6 +476,11 @@ function handleTouchdown(state) {
   
   endDrive(state, 'touchdown');
   
+  // In overtime, don't kickoff - let the OT loop handle game end
+  if (state.overtime) {
+    return;
+  }
+  
   // Kickoff
   handleKickoff(state);
 }
@@ -353,7 +508,11 @@ function handleFieldGoalAttempt(state) {
     state[team + 'Score'] += SCORING.FIELD_GOAL;
     state[team].stats.fieldGoals++;
     endDrive(state, 'field_goal');
-    handleKickoff(state);
+    
+    // In overtime, don't kickoff - let the OT loop handle game end
+    if (!state.overtime) {
+      handleKickoff(state);
+    }
   } else {
     // Missed FG - other team gets ball at spot of kick (or 20)
     endDrive(state, 'missed_fg');
@@ -557,6 +716,11 @@ function runPlay(state) {
     state[defenseTeam + 'Score'] += SCORING.SAFETY;
     endDrive(state, 'safety');
     
+    // In overtime, don't kickoff - let the OT loop handle
+    if (state.overtime) {
+      return;
+    }
+    
     // Free kick from 20
     state.possession = offenseKey; // Same team kicks
     state.fieldPosition = 20;
@@ -635,6 +799,7 @@ function simulateGame(homeRoster, awayRoster, options = {}) {
     homeScore: state.homeScore,
     awayScore: state.awayScore,
     winner: state.winner,
+    overtime: state.overtime || false,
     plays: state.plays,
     drives: state.drives,
     homeStats: state.home.stats,
