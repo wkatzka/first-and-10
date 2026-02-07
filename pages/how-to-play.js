@@ -35,12 +35,12 @@ const TabIcons = {
 const MATCHUP_TABLE = {
   offense: ['Run Heavy', 'Balanced', 'Pass Heavy'],
   defense: ['Run Stuff', 'Base', 'Coverage'],
-  // Outcomes: offense row vs defense column
-  // 2 = strong advantage, 1 = advantage, 0 = neutral, -1 = disadvantage
+  // Outcomes from OFFENSE perspective: offense row vs defense column
+  // 2 = strong advantage, 1 = advantage, 0 = neutral, -1 = disadvantage, -2 = strong disadvantage
   outcomes: [
-    [0, 1, 2],   // Run Heavy vs [Run Stuff, Base, Coverage]
-    [0, 0, 0],   // Balanced vs [Run Stuff, Base, Coverage]
-    [2, 1, 0],   // Pass Heavy vs [Run Stuff, Base, Coverage]
+    [-2, 0, 2],  // Run Heavy vs [Run Stuff (bad), Base (even), Coverage (good)]
+    [0, 0, 0],   // Balanced vs [Run Stuff, Base, Coverage] - always neutral
+    [2, 0, -2],  // Pass Heavy vs [Run Stuff (good), Base (even), Coverage (bad)]
   ],
 };
 
@@ -49,7 +49,7 @@ const getOutcomeStyle = (value) => {
   if (value === 1) return { bg: 'rgba(74, 222, 128, 0.15)', text: '#86efac', label: 'Good' };
   if (value === 0) return { bg: 'rgba(163, 163, 163, 0.15)', text: '#a3a3a3', label: 'Even' };
   if (value === -1) return { bg: 'rgba(248, 113, 113, 0.15)', text: '#f87171', label: 'Weak' };
-  return { bg: 'rgba(248, 113, 113, 0.25)', text: '#ef4444', label: 'Bad' };
+  return { bg: 'rgba(248, 113, 113, 0.25)', text: '#ef4444', label: 'Countered' };
 };
 
 // Collapsible section component
@@ -134,7 +134,7 @@ function StrategyTab() {
         </div>
         
         <p className="text-xs text-gray-500 mt-3">
-          Run Heavy beats Coverage defenses. Pass Heavy beats Run Stuff defenses.
+          Counter their strategy: Run Heavy beats Coverage, Pass Heavy beats Run Stuff. Getting countered is bad!
         </p>
       </section>
 
