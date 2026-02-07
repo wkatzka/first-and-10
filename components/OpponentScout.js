@@ -79,6 +79,7 @@ export default function OpponentScout({
   const [dragPosition, setDragPosition] = useState(null);
   const [viewingCard, setViewingCard] = useState(null); // For viewing opponent card details
   const sliderRef = useRef(null);
+  const dragNearestIdxRef = useRef(-1); // Track which dot the visual indicator is on
   
   const isOffense = showSide === 'offense';
   const colors = isOffense ? OFFENSE_COLORS : DEFENSE_COLORS;
@@ -296,13 +297,13 @@ export default function OpponentScout({
   const handlePointerUp = useCallback(() => {
     if (!dragging) return;
     
-    const finalPos = dragPosition;
+    // Use the stored nearest index (what the visual indicator was showing)
+    const nearestIdx = dragNearestIdxRef.current;
+    
     setDragging(false);
     setDragPosition(null);
+    dragNearestIdxRef.current = -1;
     
-    if (finalPos == null) return;
-    
-    const nearestIdx = findNearestDotByPosition(finalPos);
     if (nearestIdx >= 0) {
       selectPreset(nearestIdx);
     }
@@ -344,10 +345,15 @@ export default function OpponentScout({
     handlePointerUp();
   }, [handlePointerUp]);
 
-  // Highlight nearest dot while dragging
+  // Highlight nearest dot while dragging - also store in ref for release handler
   const dragNearestIdx = dragging && dragPosition != null 
     ? findNearestDotByPosition(dragPosition)
     : -1;
+  
+  // Keep ref in sync with calculated value
+  if (dragging && dragNearestIdx >= 0) {
+    dragNearestIdxRef.current = dragNearestIdx;
+  }
 
   if (loading) {
     return (

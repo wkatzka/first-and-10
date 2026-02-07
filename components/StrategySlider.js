@@ -37,6 +37,7 @@ export default function StrategySlider({
   const [startPosition, setStartPosition] = useState(null);
   const [appliedIndex, setAppliedIndex] = useState(null);
   const sliderRef = useRef(null);
+  const dragNearestIdxRef = useRef(-1); // Track which dot the visual indicator is on
 
   // Load presets when side changes
   useEffect(() => {
@@ -279,19 +280,18 @@ export default function StrategySlider({
   const handlePointerUp = useCallback(async () => {
     if (!dragging) return;
     
-    const finalPos = dragPosition;
+    // Use the stored nearest index (what the visual indicator was showing)
+    const nearestIdx = dragNearestIdxRef.current;
     
     setDragging(false);
     setDragPosition(null);
     setStartPosition(null);
+    dragNearestIdxRef.current = -1;
     
-    if (finalPos == null) return;
-    
-    const nearestIdx = findNearestDotByPosition(finalPos);
     if (nearestIdx >= 0) {
       await applyPreset(nearestIdx);
     }
-  }, [dragging, dragPosition, findNearestDotByPosition, applyPreset]);
+  }, [dragging, applyPreset]);
 
   // Mouse events on track
   const handleMouseDown = (e) => {
@@ -343,10 +343,15 @@ export default function StrategySlider({
   const centerColor = side === 'offense' ? OFFENSE_COLORS.balanced : DEFENSE_COLORS.base_defense;
   const rightColor = side === 'offense' ? OFFENSE_COLORS.pass_heavy : DEFENSE_COLORS.coverage_shell;
 
-  // Highlight nearest dot while dragging
+  // Highlight nearest dot while dragging - also store in ref for release handler
   const dragNearestIdx = dragging && dragPosition != null 
     ? findNearestDotByPosition(dragPosition)
     : -1;
+  
+  // Keep ref in sync with calculated value
+  if (dragging && dragNearestIdx >= 0) {
+    dragNearestIdxRef.current = dragNearestIdx;
+  }
 
   if (loading) {
     return (
