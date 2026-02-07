@@ -556,7 +556,8 @@ export default function OpponentScout({
         className="relative" 
         style={{ 
           height: isOffense ? 'min(95px, 13vh)' : 'min(50px, 7vh)', 
-          marginTop: '14px' 
+          marginTop: '14px',
+          zIndex: 40,
         }}
       >
         {isOffense ? (
@@ -564,7 +565,7 @@ export default function OpponentScout({
             {/* QB at top center */}
             <div 
               className="absolute left-1/2 cursor-pointer"
-              style={{ top: '0', transform: 'translateX(-50%) scale(var(--card-scale, 1))' }}
+              style={{ top: '0', transform: 'translateX(-50%) scale(var(--card-scale, 1))', pointerEvents: 'auto' }}
               onClick={() => displayCards[QB_SLOT.id] && setViewingCard(displayCards[QB_SLOT.id])}
             >
               <div className="opacity-80 hover:opacity-100 transition-opacity" style={{ filter: 'saturate(0.7)' }}>
@@ -590,7 +591,8 @@ export default function OpponentScout({
                   style={{ 
                     left: `${xPositions[idx] * 100}%`,
                     top: `${yPercents[idx]}%`,
-                    transform: 'translateX(-50%) scale(var(--card-scale, 1))'
+                    transform: 'translateX(-50%) scale(var(--card-scale, 1))',
+                    pointerEvents: 'auto',
                   }}
                   onClick={() => displayCards[slot.id] && setViewingCard(displayCards[slot.id])}
                 >
@@ -614,7 +616,7 @@ export default function OpponentScout({
                 <div 
                   key={slot.id}
                   className="flex flex-col items-center cursor-pointer"
-                  style={{ marginTop: `${yOffsets[idx]}px` }}
+                  style={{ marginTop: `${yOffsets[idx]}px`, pointerEvents: 'auto' }}
                   onClick={() => displayCards[slot.id] && setViewingCard(displayCards[slot.id])}
                 >
                   <div className="opacity-80 hover:opacity-100 transition-opacity" style={{ filter: 'saturate(0.7)' }}>
