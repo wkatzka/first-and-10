@@ -7,7 +7,7 @@ const ICY_BLUE = '#8FD9FF';
 
 // Animation constants
 const CYCLE_PAUSE_MS = 400;
-const ARROW_TRAVEL_MS = 1500;
+const ARROW_TRAVEL_MS = 3000;
 
 function frayNoise(seed, i) {
   const x = Math.sin(seed * 12.9898 + i * 78.233) * 43758.5453;
@@ -118,7 +118,6 @@ function LoginAnimation() {
 
   const initPlay = useCallback((w, h) => {
     // Create O's (offense) at bottom - just above where 30 yard line would be
-    // Animation area is 45vh at bottom, so O's start near the bottom
     const oPositions = [
       { x: w * 0.15, y: h - 30 },
       { x: w * 0.35, y: h - 40 },
@@ -136,16 +135,58 @@ function LoginAnimation() {
       { x: w * 0.8 + Math.random() * 20, y: h * 0.4 + Math.random() * 30 },
     ];
     
-    // Routes from O's curving upward
-    const routes = oPositions.map((o, i) => {
-      const targetX = w * (0.15 + Math.random() * 0.7);
-      const targetY = 20 + Math.random() * 40;
-      return {
-        p0: o,
-        p1: { x: o.x + (Math.random() - 0.5) * 80, y: o.y - 80 },
-        p2: { x: targetX + (Math.random() - 0.5) * 60, y: targetY + 80 },
-        p3: { x: targetX, y: targetY },
-      };
+    // Route length (80% of original)
+    const routeLen = h * 0.65;
+    
+    // Specific route patterns:
+    const routes = [];
+    
+    // Route 0: Straight up (go route)
+    const o0 = oPositions[0];
+    routes.push({
+      p0: o0,
+      p1: { x: o0.x, y: o0.y - routeLen * 0.33 },
+      p2: { x: o0.x, y: o0.y - routeLen * 0.67 },
+      p3: { x: o0.x, y: o0.y - routeLen },
+    });
+    
+    // Route 1: 90 degree turn at 50% (out route) - goes up then cuts right
+    const o1 = oPositions[1];
+    const turn1Y = o1.y - routeLen * 0.5;
+    routes.push({
+      p0: o1,
+      p1: { x: o1.x, y: o1.y - routeLen * 0.4 },
+      p2: { x: o1.x + routeLen * 0.3, y: turn1Y },
+      p3: { x: o1.x + routeLen * 0.5, y: turn1Y },
+    });
+    
+    // Route 2: Straight up (another go route from center)
+    const o2 = oPositions[2];
+    routes.push({
+      p0: o2,
+      p1: { x: o2.x, y: o2.y - routeLen * 0.33 },
+      p2: { x: o2.x, y: o2.y - routeLen * 0.67 },
+      p3: { x: o2.x, y: o2.y - routeLen },
+    });
+    
+    // Route 3: 45 degree turn at 75% (post route) - goes up then angles left
+    const o3 = oPositions[3];
+    const turn3Y = o3.y - routeLen * 0.75;
+    routes.push({
+      p0: o3,
+      p1: { x: o3.x, y: o3.y - routeLen * 0.5 },
+      p2: { x: o3.x - routeLen * 0.1, y: turn3Y },
+      p3: { x: o3.x - routeLen * 0.25, y: turn3Y - routeLen * 0.2 },
+    });
+    
+    // Route 4: 135 degree turn at 90% (comeback route) - goes up then cuts back down-right
+    const o4 = oPositions[4];
+    const turn4Y = o4.y - routeLen * 0.9;
+    routes.push({
+      p0: o4,
+      p1: { x: o4.x, y: o4.y - routeLen * 0.6 },
+      p2: { x: o4.x, y: turn4Y },
+      p3: { x: o4.x + routeLen * 0.15, y: turn4Y + routeLen * 0.12 },
     });
     
     return { oPositions, xPositions, routes };
@@ -324,7 +365,7 @@ export default function Home({ user, onLogin }) {
   };
   
   return (
-    <div className="min-h-screen min-h-screen-mobile flex flex-col items-center justify-start pt-[18vh] px-4 relative z-10">
+    <div className="min-h-screen min-h-screen-mobile flex flex-col items-center justify-start px-4 relative z-10" style={{ paddingTop: 'calc(18vh + 23px)' }}>
       {/* Login Animation at bottom */}
       <LoginAnimation />
       
