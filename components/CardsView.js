@@ -74,9 +74,10 @@ export default function CardsView({ user }) {
   if (!user) return null;
 
   return (
-    <div className="flex flex-col" style={{ paddingBottom: '80px', paddingTop: '24px' }}>
-      {/* Top row: Sort dropdown + Tier dropdown */}
-      <div className="flex items-center gap-2 mb-3">
+    <div className="flex flex-col" style={{ paddingBottom: '80px' }}>
+      {/* Top row: Sort by (left) + All Tiers (right) — pulled up 30px into endzone */}
+      <div className="flex items-center justify-between" style={{ marginTop: '-6px' }}>
+        {/* Sort Dropdown — left */}
         <div className="relative">
           <select
             value={sortBy}
@@ -100,7 +101,7 @@ export default function CardsView({ user }) {
           </div>
         </div>
 
-        {/* Tier Filter Dropdown */}
+        {/* Tier Filter Dropdown — right */}
         <div className="relative">
           <select
             value={tierFilter}
@@ -124,8 +125,8 @@ export default function CardsView({ user }) {
         </div>
       </div>
 
-      {/* Position Filter Buttons - own row below dropdowns */}
-      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+      {/* Position Filter Buttons — pushed down 50px */}
+      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch', marginTop: '50px' }}>
         {POSITIONS.map(pos => (
           <button
             key={pos}
@@ -179,7 +180,7 @@ export default function CardsView({ user }) {
       {packInfoLoaded && (
         <div
           className="fixed left-0 right-0 z-40"
-          style={{ bottom: '72px' }}
+          style={{ bottom: '82px' }}
         >
           <div className="mx-auto max-w-7xl px-3 flex justify-center">
             <button
