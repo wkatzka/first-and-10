@@ -126,7 +126,7 @@ export default function CardsView({ user }) {
       </div>
 
       {/* Position Filter Buttons — pushed down 50px */}
-      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch', marginTop: '50px' }}>
+      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch', marginTop: '100px' }}>
         {POSITIONS.map(pos => (
           <button
             key={pos}
@@ -180,7 +180,7 @@ export default function CardsView({ user }) {
       {packInfoLoaded && (
         <div
           className="fixed left-0 right-0 z-40"
-          style={{ bottom: '82px' }}
+          style={{ bottom: '92px' }}
         >
           <div className="mx-auto max-w-7xl px-3 flex justify-center">
             <button
