@@ -205,24 +205,38 @@ function CardsTab() {
         <p className="text-sm text-gray-400 mb-4">
           Higher tier = better stats = more impact in games
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1.5">
           {[
-            { name: 'Legendary', color: '#EAB308', tier: 'T11', pct: 'Top 3%' },
-            { name: 'Epic', color: '#F97316', tier: 'T10', pct: 'Top 5%' },
-            { name: 'Ultra Rare', color: '#EC4899', tier: 'T9', pct: 'Top 10%' },
-            { name: 'Very Rare', color: '#A855F7', tier: 'T8', pct: 'Top 15%' },
-            { name: 'Rare', color: '#8B5CF6', tier: 'T7', pct: 'Top 25%' },
-            { name: 'Common', color: '#6b7280', tier: 'T1-6', pct: 'Rest' },
+            { name: 'Hall of Fame', color: '#FFD700', tier: 'T11', pct: '0.5%', bg: 'linear-gradient(90deg, rgba(255,0,0,0.08), rgba(255,127,0,0.08), rgba(255,255,0,0.08), rgba(0,255,0,0.08), rgba(0,0,255,0.08), rgba(148,0,211,0.08))' },
+            { name: 'Legendary', color: '#EAB308', tier: 'T10', pct: '1.0%' },
+            { name: 'Epic', color: '#F97316', tier: 'T9', pct: '3.0%' },
+            { name: 'Ultra Rare', color: '#EC4899', tier: 'T8', pct: '7.0%' },
+            { name: 'Very Rare', color: '#A855F7', tier: 'T7', pct: '12.0%' },
+            { name: 'Rare', color: '#8B5CF6', tier: 'T6', pct: '18.0%' },
+            { name: 'Uncommon+', color: '#6B8AE0', tier: 'T5', pct: '22.0%' },
+            { name: 'Uncommon', color: '#60A5FA', tier: 'T4', pct: '20.0%' },
+            { name: 'Common+', color: '#9CA3AF', tier: 'T3', pct: '10.0%' },
+            { name: 'Common', color: '#6b7280', tier: 'T2', pct: '5.0%' },
+            { name: 'Basic', color: '#4b5563', tier: 'T1', pct: '2.0%' },
           ].map(tier => (
             <div 
               key={tier.name}
               className="flex items-center justify-between p-2 rounded-xl"
-              style={{ backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ 
+                background: tier.bg || 'rgba(255,255,255,0.05)',
+                border: `1px solid ${tier.color}22`,
+              }}
             >
               <div className="flex items-center gap-2">
+                <span 
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                  style={{ backgroundColor: `${tier.color}30`, color: tier.color }}
+                >
+                  {tier.tier}
+                </span>
                 <span style={{ color: tier.color }} className="font-semibold text-sm">{tier.name}</span>
               </div>
-              <span className="text-gray-500 text-xs">{tier.pct}</span>
+              <span className="text-gray-400 text-xs font-medium">{tier.pct}</span>
             </div>
           ))}
         </div>
