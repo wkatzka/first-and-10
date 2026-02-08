@@ -340,9 +340,12 @@ async function getLeaderboard(limit = 20) {
     const stats = await getUserStats(u.id);
     withStats.push({ ...u, ...stats });
   }
+  // Sort: users with games first (by wins, then win%), then 0-game users alphabetically
   return withStats
-    .filter(u => u.total_games > 0)
     .sort((a, b) => {
+      if (a.total_games > 0 && b.total_games === 0) return -1;
+      if (a.total_games === 0 && b.total_games > 0) return 1;
+      if (a.total_games === 0 && b.total_games === 0) return (a.username || '').localeCompare(b.username || '');
       if (b.wins !== a.wins) return b.wins - a.wins;
       const aPct = a.total_games > 0 ? a.wins / a.total_games : 0;
       const bPct = b.total_games > 0 ? b.wins / b.total_games : 0;

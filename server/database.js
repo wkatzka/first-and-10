@@ -774,10 +774,12 @@ function getLeaderboard(limit = 20) {
     };
   });
   
-  // Filter to users with games and sort
+  // Sort: users with games first (by wins, then win%), then 0-game users alphabetically
   return userStats
-    .filter(u => u.total_games > 0)
     .sort((a, b) => {
+      if (a.total_games > 0 && b.total_games === 0) return -1;
+      if (a.total_games === 0 && b.total_games > 0) return 1;
+      if (a.total_games === 0 && b.total_games === 0) return (a.username || '').localeCompare(b.username || '');
       if (b.wins !== a.wins) return b.wins - a.wins;
       const aWinPct = a.total_games > 0 ? a.wins / a.total_games : 0;
       const bWinPct = b.total_games > 0 ? b.wins / b.total_games : 0;

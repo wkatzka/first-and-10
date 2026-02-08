@@ -660,6 +660,91 @@ async function checkAndGenerateNextWeek() {
 }
 
 /**
+ * Integrate new users into the schedule.
+ * Detects eligible users who have no future games and injects matchups for
+ * them on every upcoming scheduled date. Called on server boot, hourly, and
+ * whenever a user updates their roster.
+ */
+async function integrateNewUsers() {
+  const schedule = loadSchedule();
+  if (!schedule.seasonStart) return;
+
+  const allUsersRaw = await db.getAllUsers();
+  const allUsers = Array.isArray(allUsersRaw) ? allUsersRaw : [];
+  const eligibleUsers = await getEligibleUsers(allUsers);
+  if (eligibleUsers.length < 2) return;
+
+  const now = getESTDate();
+  const today = formatDate(now);
+
+  // Collect future scheduled dates (today + beyond, only unplayed games)
+  const futureDates = [...new Set(
+    schedule.games
+      .filter(g => g.date >= today && g.status === 'scheduled')
+      .map(g => g.date)
+  )].sort();
+
+  if (futureDates.length === 0) return;
+
+  // Find users who already have future scheduled games
+  const usersInFuture = new Set();
+  for (const g of schedule.games) {
+    if (g.date >= today && g.status === 'scheduled') {
+      usersInFuture.add(g.homeUserId);
+      if (g.awayUserId) usersInFuture.add(g.awayUserId);
+    }
+  }
+
+  const newUsers = eligibleUsers.filter(u => !usersInFuture.has(u.id));
+  if (newUsers.length === 0) return;
+
+  console.log(`Integrating ${newUsers.length} new user(s) into schedule: ${newUsers.map(u => u.username).join(', ')}`);
+
+  let added = 0;
+  for (const dateStr of futureDates) {
+    for (const newUser of newUsers) {
+      for (const hour of GAME_TIMES) {
+        // Find users already playing in this time slot on this date
+        const busyInSlot = new Set(
+          schedule.games
+            .filter(g => g.date === dateStr && g.time === hour && g.status === 'scheduled')
+            .flatMap(g => [g.homeUserId, g.awayUserId].filter(Boolean))
+        );
+
+        // Pick an opponent not busy in this slot (prefer that, fall back to any eligible)
+        let opponents = eligibleUsers.filter(u => u.id !== newUser.id && !busyInSlot.has(u.id));
+        if (opponents.length === 0) {
+          opponents = eligibleUsers.filter(u => u.id !== newUser.id);
+        }
+        if (opponents.length === 0) continue;
+
+        const opponent = opponents[Math.floor(Math.random() * opponents.length)];
+        const homeUserId = Math.random() < 0.5 ? newUser.id : opponent.id;
+        const awayUserId = homeUserId === newUser.id ? opponent.id : newUser.id;
+
+        schedule.games.push({
+          id: `${dateStr}_${hour}_${homeUserId}_${awayUserId}_int`,
+          date: dateStr,
+          time: hour,
+          timeDisplay: hour === 19 ? '7:00 PM EST' : '9:00 PM EST',
+          homeUserId,
+          awayUserId,
+          status: 'scheduled',
+          result: null,
+          phase: schedule.phase === 'regular' ? 'regular' : schedule.phase,
+        });
+        added++;
+      }
+    }
+  }
+
+  if (added > 0) {
+    saveSchedule(schedule);
+    console.log(`Added ${added} games for new users across ${futureDates.length} date(s)`);
+  }
+}
+
+/**
  * Get full schedule with user details
  */
 async function getScheduleWithDetails() {
@@ -719,6 +804,7 @@ function startScheduler() {
   initializeSchedule()
     .then(() => swapUserInSchedule('Nick!', 'John!'))
     .then((r) => { if (r.swapped) console.log('Schedule: swapped Nick! for John! in', r.swapped, 'slot(s)'); })
+    .then(() => integrateNewUsers())
     .catch((err) => { if (err.message && !err.message.includes('not found')) console.error('Schedule init/swap error:', err); });
   
   // Check every minute for games to run
@@ -731,8 +817,15 @@ function startScheduler() {
       console.log(`Game time! Running scheduled games at ${now.getHours()}:00 EST`);
       runPendingGames().catch(err => console.error('runPendingGames error:', err));
     }
+    // Midnight: generate next week + integrate any new users
     if (now.getHours() === 0 && minute === 0) {
-      checkAndGenerateNextWeek().catch(err => console.error('checkAndGenerateNextWeek error:', err));
+      checkAndGenerateNextWeek()
+        .then(() => integrateNewUsers())
+        .catch(err => console.error('checkAndGenerateNextWeek error:', err));
+    }
+    // Hourly: check for new users to integrate
+    if (minute === 30) {
+      integrateNewUsers().catch(err => console.error('integrateNewUsers error:', err));
     }
   }, 60000);
   runPendingGames().catch(err => console.error('runPendingGames error:', err));
@@ -759,4 +852,5 @@ module.exports = {
   hasFullRoster,
   getEligibleUsers,
   swapUserInSchedule,
+  integrateNewUsers,
 };

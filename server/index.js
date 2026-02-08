@@ -1301,6 +1301,8 @@ app.put('/api/roster', authMiddleware, async (req, res) => {
     
     await db.updateRoster(req.user.id, slots);
     const fullRoster = await db.getFullRoster(req.user.id);
+    // Fire-and-forget: integrate new user into schedule if they just completed their roster
+    scheduler.integrateNewUsers().catch(err => console.error('integrateNewUsers error:', err));
     res.json(fullRoster);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1327,6 +1329,7 @@ app.post('/api/roster/auto-fill', authMiddleware, async (req, res) => {
     const slots = gameEngine.autoFillRoster(cards, strategy, defenseStrategy, { offense: OFFENSE_TIER_CAP, defense: DEFENSE_TIER_CAP });
     await db.updateRoster(req.user.id, slots);
     const fullRoster = await db.getFullRoster(req.user.id);
+    scheduler.integrateNewUsers().catch(err => console.error('integrateNewUsers error:', err));
     res.json(fullRoster);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1379,6 +1382,7 @@ app.post('/api/roster/fill-to-ratio', authMiddleware, async (req, res) => {
     
     await db.updateRoster(req.user.id, slots);
     const fullRoster = await db.getFullRoster(req.user.id);
+    scheduler.integrateNewUsers().catch(err => console.error('integrateNewUsers error:', err));
     res.json(fullRoster);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1551,6 +1555,7 @@ app.post('/api/roster/apply-preset', authMiddleware, async (req, res) => {
     console.log(`[apply-preset] Merged slots to save:`, mergedSlots);
     await db.updateRoster(req.user.id, mergedSlots);
     console.log(`[apply-preset] Roster updated successfully`);
+    scheduler.integrateNewUsers().catch(err => console.error('integrateNewUsers error:', err));
     
     res.json({ success: true });
   } catch (err) {
