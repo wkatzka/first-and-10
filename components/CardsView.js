@@ -2,21 +2,25 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Card from './Card';
 import CardModal from './CardModal';
-import { getCards } from '../lib/api';
+import { getCards, getPackInfo } from '../lib/api';
 
 const POSITIONS = ['ALL', 'QB', 'RB', 'WR', 'TE', 'OL', 'DL', 'LB', 'DB', 'K', 'P'];
+const TIERS = ['ALL', 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 
 export default function CardsView({ user }) {
   const router = useRouter();
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
+  const [tierFilter, setTierFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('recent');
   const [selectedCard, setSelectedCard] = useState(null);
-
+  const [packsRemaining, setPacksRemaining] = useState(0);
+  const [packInfoLoaded, setPackInfoLoaded] = useState(false);
   useEffect(() => {
     if (!user) return;
     loadCards();
+    loadPackInfo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -31,103 +35,120 @@ export default function CardsView({ user }) {
     }
   };
 
+  const loadPackInfo = async () => {
+    try {
+      const data = await getPackInfo();
+      setPacksRemaining(data.packsRemaining || 0);
+    } catch (err) {
+      console.error('Failed to load pack info:', err);
+    } finally {
+      setPackInfoLoaded(true);
+    }
+  };
+
   // Filter and sort cards
   const filteredCards = cards
     .filter(c => filter === 'ALL' || c.position === filter)
+    .filter(c => tierFilter === 'ALL' || c.tier === tierFilter)
     .sort((a, b) => {
-      if (sortBy === 'recent') return b.id - a.id; // Higher ID = more recently minted
-      if (sortBy === 'tier') return b.tier - a.tier;
+      if (sortBy === 'recent') return b.id - a.id;
+      if (sortBy === 'tier-high') return b.tier - a.tier;
+      if (sortBy === 'tier-low') return a.tier - b.tier;
       if (sortBy === 'score') return (b.composite_score || 0) - (a.composite_score || 0);
-      if (sortBy === 'season') return b.season - a.season;
       if (sortBy === 'name') return a.player_name.localeCompare(b.player_name);
       return 0;
     });
 
   // Stats
-  const stats = {
-    total: cards.length,
-    byTier: {},
-    byPosition: {},
-  };
-
+  const stats = { total: cards.length, byPosition: {} };
   for (const card of cards) {
-    stats.byTier[card.tier] = (stats.byTier[card.tier] || 0) + 1;
     stats.byPosition[card.position] = (stats.byPosition[card.position] || 0) + 1;
   }
 
   if (!user) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col" style={{ paddingBottom: '80px' }}>
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl f10-title text-white">My Cards</h1>
-          <p className="f10-subtitle">{cards.length} cards in collection</p>
-        </div>
-
-        {cards.length === 0 && !loading && (
-          <button
-            onClick={() => router.push('/cards')}
-            className="px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold rounded-lg hover:from-yellow-600 hover:to-orange-600 transition-all"
-          >
-            Open Your First Pack!
-          </button>
-        )}
+      <div className="mb-3">
+        <h1 className="text-2xl f10-title text-white">My Cards</h1>
+        <p className="f10-subtitle text-sm">{cards.length} cards in collection</p>
       </div>
 
-      {/* Tier Distribution */}
-      {cards.length > 0 && (
-        <div className="f10-panel p-4">
-          <h3 className="text-sm text-gray-400 mb-2">Tier Distribution</h3>
-          <div className="flex flex-wrap gap-2">
-            {[11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map(tier => (
-              <div
-                key={tier}
-                className={`px-3 py-1 rounded text-sm ${stats.byTier[tier] ? 'text-white' : 'text-gray-600'}`}
-                style={{
-                  backgroundColor: stats.byTier[tier] ? `var(--tier-${tier})` : '#374151',
-                  color: tier >= 9 && stats.byTier[tier] ? '#000' : undefined,
-                }}
-              >
-                T{tier}: {stats.byTier[tier] || 0}
-              </div>
+      {/* Filter Row: Tier dropdown | Sort dropdown */}
+      <div className="flex items-center gap-2 mb-3">
+        {/* Tier Filter Dropdown */}
+        <div className="relative">
+          <select
+            value={tierFilter}
+            onChange={(e) => setTierFilter(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
+            className="appearance-none pl-3 pr-8 py-2 rounded-lg text-sm text-white font-medium cursor-pointer"
+            style={{
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              fontFamily: 'var(--f10-display-font)',
+            }}
+          >
+            <option value="ALL">All Tiers</option>
+            {TIERS.filter(t => t !== 'ALL').map(t => (
+              <option key={t} value={t}>Tier {t}</option>
             ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
         </div>
-      )}
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        {/* Position Filter */}
-        <div className="flex flex-wrap gap-1">
-          {POSITIONS.map(pos => (
-            <button
-              key={pos}
-              onClick={() => setFilter(pos)}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                filter === pos
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              }`}
-            >
-              {pos} {pos !== 'ALL' && stats.byPosition[pos] ? `(${stats.byPosition[pos]})` : ''}
-            </button>
-          ))}
+        {/* Sort Dropdown */}
+        <div className="relative">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="appearance-none pl-3 pr-8 py-2 rounded-lg text-sm text-white font-medium cursor-pointer"
+            style={{
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              fontFamily: 'var(--f10-display-font)',
+            }}
+          >
+            <option value="recent">Sort by: Recent</option>
+            <option value="tier-high">Sort by: Tier ↓</option>
+            <option value="tier-low">Sort by: Tier ↑</option>
+            <option value="score">Sort by: Score</option>
+            <option value="name">Sort by: Name</option>
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
         </div>
+      </div>
 
-        {/* Sort */}
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className="px-3 py-1.5 f10-input text-white rounded text-sm"
-        >
-          <option value="recent">Recently Minted</option>
-          <option value="tier">Sort by Tier</option>
-          <option value="score">Sort by Score</option>
-          <option value="season">Sort by Season</option>
-          <option value="name">Sort by Name</option>
-        </select>
+      {/* Position Filter - Horizontal Scroll */}
+      <div
+        className="flex gap-1.5 mb-4 overflow-x-auto hide-scrollbar"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {POSITIONS.map(pos => (
+          <button
+            key={pos}
+            onClick={() => setFilter(pos)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              filter === pos
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-300 hover:bg-gray-600'
+            }`}
+            style={{
+              background: filter === pos ? undefined : 'rgba(255,255,255,0.06)',
+              fontFamily: 'var(--f10-display-font)',
+            }}
+          >
+            {pos}{pos !== 'ALL' && stats.byPosition[pos] ? ` (${stats.byPosition[pos]})` : ''}
+          </button>
+        ))}
       </div>
 
       {/* Cards Grid */}
@@ -138,7 +159,7 @@ export default function CardsView({ user }) {
           {cards.length === 0 ? 'No cards yet. Open some packs!' : 'No cards match filter.'}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
           {filteredCards.map(card => (
             <Card
               key={card.id}
@@ -149,14 +170,80 @@ export default function CardsView({ user }) {
         </div>
       )}
 
-      {/* Card Detail Modal with Flip */}
+      {/* Card Detail Modal */}
       {selectedCard && (
         <CardModal
           card={selectedCard}
           onClose={() => setSelectedCard(null)}
         />
       )}
+
+      {/* Sticky Pack Banner - fixed just above the bottom tab bar */}
+      {packInfoLoaded && (
+        <div
+          className="fixed left-0 right-0 z-40"
+          style={{ bottom: '72px' }}
+        >
+          <div className="mx-auto max-w-7xl px-3">
+            <button
+              onClick={() => {
+                if (packsRemaining > 0) {
+                  router.push('/packs');
+                } else {
+                  router.push('/shop');
+                }
+              }}
+              className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl transition-all active:scale-[0.98]"
+              style={{
+                background: packsRemaining > 0
+                  ? 'linear-gradient(135deg, rgba(234,179,8,0.25) 0%, rgba(249,115,22,0.25) 100%)'
+                  : 'rgba(255,255,255,0.08)',
+                border: packsRemaining > 0
+                  ? '1px solid rgba(234,179,8,0.4)'
+                  : '1px solid rgba(255,255,255,0.12)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+              }}
+            >
+              {/* Foil Pack Image */}
+              <div
+                className="flex-shrink-0 rounded-lg overflow-hidden"
+                style={{ width: '36px', height: '54px' }}
+              >
+                <img
+                  src="/foil-pack.png"
+                  alt="Pack"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Fallback: show a gradient box if image missing
+                    e.target.style.display = 'none';
+                    e.target.parentNode.style.background = 'linear-gradient(135deg, #eab308, #f97316)';
+                  }}
+                />
+              </div>
+
+              {/* Label */}
+              <span
+                className="text-sm font-bold"
+                style={{
+                  fontFamily: 'var(--f10-display-font)',
+                  color: packsRemaining > 0 ? '#fbbf24' : '#9ca3af',
+                }}
+              >
+                {packsRemaining > 0
+                  ? `${packsRemaining} Unopened Pack${packsRemaining !== 1 ? 's' : ''}`
+                  : 'Buy Packs'}
+              </span>
+
+              {/* Arrow */}
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={packsRemaining > 0 ? '#fbbf24' : '#9ca3af'} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
-
