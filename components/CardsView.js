@@ -74,10 +74,10 @@ export default function CardsView({ user }) {
   if (!user) return null;
 
   return (
-    <div className="flex flex-col" style={{ paddingBottom: '80px' }}>
-      {/* Sort dropdown - top line where "My Cards" used to be */}
-      <div className="mb-3">
-        <div className="relative inline-block">
+    <div className="flex flex-col" style={{ paddingBottom: '80px', paddingTop: '24px' }}>
+      {/* Top row: Sort dropdown + Tier dropdown */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="relative">
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
@@ -99,12 +99,9 @@ export default function CardsView({ user }) {
             </svg>
           </div>
         </div>
-      </div>
 
-      {/* Filter Row: Tier dropdown + Position buttons (horizontal scroll) */}
-      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
         {/* Tier Filter Dropdown */}
-        <div className="relative flex-shrink-0">
+        <div className="relative">
           <select
             value={tierFilter}
             onChange={(e) => setTierFilter(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
@@ -125,8 +122,10 @@ export default function CardsView({ user }) {
             </svg>
           </div>
         </div>
+      </div>
 
-        {/* Position Filter Buttons */}
+      {/* Position Filter Buttons - own row below dropdowns */}
+      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
         {POSITIONS.map(pos => (
           <button
             key={pos}
@@ -182,7 +181,7 @@ export default function CardsView({ user }) {
           className="fixed left-0 right-0 z-40"
           style={{ bottom: '72px' }}
         >
-          <div className="mx-auto max-w-7xl px-3">
+          <div className="mx-auto max-w-7xl px-3 flex justify-center">
             <button
               onClick={() => {
                 if (packsRemaining > 0) {
@@ -191,7 +190,7 @@ export default function CardsView({ user }) {
                   router.push('/shop');
                 }
               }}
-              className="w-full flex items-center justify-center gap-3 py-2 px-4 rounded-xl transition-all active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-2 py-2 px-5 rounded-xl transition-all active:scale-[0.98]"
               style={{
                 background: packsRemaining > 0
                   ? 'linear-gradient(135deg, rgba(100,160,220,0.30) 0%, rgba(140,180,230,0.25) 100%)'
