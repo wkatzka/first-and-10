@@ -18,6 +18,23 @@ function isScoringPlay(play) {
   );
 }
 
+function isHighlightPlay(play) {
+  const t = String(play?.type || '').toLowerCase();
+  const r = String(play?.result || '').toLowerCase();
+  const d = String(play?.description || '').toLowerCase();
+  return (
+    isScoringPlay(play) ||
+    r === 'interception' ||
+    r === 'fumble' ||
+    r === 'sack' ||
+    d.includes('interception') ||
+    d.includes('fumble') ||
+    d.includes('sack') ||
+    d.includes('turnover') ||
+    (typeof play?.yards === 'number' && play.yards >= 20)
+  );
+}
+
 function playBadge(play) {
   const t = String(play?.type || '').toLowerCase();
   const r = String(play?.result || '').toLowerCase();
@@ -37,6 +54,7 @@ export default function PostGameReport({ user, onLogout, unreadMessages }) {
   const [loading, setLoading] = useState(true);
   const [game, setGame] = useState(null);
   const [error, setError] = useState(null);
+  const [showAllPlays, setShowAllPlays] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -139,7 +157,24 @@ export default function PostGameReport({ user, onLogout, unreadMessages }) {
 
             {/* Play-by-play */}
             <div className="f10-panel p-5">
-              <h2 className="text-xl f10-title text-white mb-3">Play-by-Play</h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xl f10-title text-white">
+                  {showAllPlays ? 'Play-by-Play' : 'Highlights'}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowAllPlays(!showAllPlays)}
+                  className="px-3 py-1 rounded-lg text-xs font-semibold transition-colors"
+                  style={{
+                    background: showAllPlays ? 'rgba(168,85,247,0.2)' : 'rgba(255,255,255,0.06)',
+                    border: showAllPlays ? '1px solid rgba(168,85,247,0.4)' : '1px solid rgba(255,255,255,0.12)',
+                    color: showAllPlays ? '#c084fc' : '#9ca3af',
+                    fontFamily: 'var(--f10-display-font)',
+                  }}
+                >
+                  {showAllPlays ? 'Show Highlights' : 'Show All Plays'}
+                </button>
+              </div>
 
               {plays.length === 0 ? (
                 <div className="text-gray-400 text-sm">
@@ -147,17 +182,20 @@ export default function PostGameReport({ user, onLogout, unreadMessages }) {
                 </div>
               ) : (
                 <div className="space-y-5">
-                  {playsByQuarter.map(([quarter, qPlays]) => (
+                  {playsByQuarter.map(([quarter, qPlays]) => {
+                    const filteredPlays = showAllPlays ? qPlays : qPlays.filter(isHighlightPlay);
+                    if (filteredPlays.length === 0) return null;
+                    return (
                     <div key={quarter} className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="text-sm font-bold text-white">
                           {quarter > 0 ? `Q${quarter}` : 'Game'}
                         </div>
-                        <div className="text-xs text-gray-500">{qPlays.length} plays</div>
+                        <div className="text-xs text-gray-500">{filteredPlays.length} plays</div>
                       </div>
 
                       <div className="space-y-2">
-                        {qPlays.map((p) => {
+                        {filteredPlays.map((p) => {
                           const badge = playBadge(p);
                           const highlight = isScoringPlay(p);
                           const key = `${p.playNumber || ''}-${p.time || ''}-${p.description || ''}`;
@@ -199,7 +237,8 @@ export default function PostGameReport({ user, onLogout, unreadMessages }) {
                         })}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
