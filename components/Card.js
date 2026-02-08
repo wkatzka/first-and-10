@@ -29,7 +29,7 @@ export default function Card({ card, onClick, selected, small, showImage = true 
           transition-all duration-200 active:scale-95
           ${selected ? 'ring-4 ring-green-400' : ''}
           ${isHOF ? 'hof-rainbow-border' : ''}
-          w-48
+          w-full
         `}
         style={{
           border: isHOF ? 'none' : `3px solid ${tierColor}`,
@@ -165,7 +165,7 @@ export default function Card({ card, onClick, selected, small, showImage = true 
         relative rounded-lg overflow-hidden cursor-pointer
         transition-all duration-200 active:scale-95
         ${selected ? 'ring-4 ring-green-400' : ''}
-        w-48
+        w-full
       `}
       style={{
         border: isHOF ? 'none' : `${card.tier >= 9 ? 3 : 2}px solid ${tierColor}`,
