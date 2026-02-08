@@ -17,6 +17,7 @@ export default function CardsView({ user }) {
   const [selectedCard, setSelectedCard] = useState(null);
   const [packsRemaining, setPacksRemaining] = useState(0);
   const [packInfoLoaded, setPackInfoLoaded] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     loadCards();
@@ -65,52 +66,25 @@ export default function CardsView({ user }) {
     stats.byPosition[card.position] = (stats.byPosition[card.position] || 0) + 1;
   }
 
+  const btnStyle = {
+    background: 'rgba(255,255,255,0.06)',
+    fontFamily: 'var(--f10-display-font)',
+  };
+
   if (!user) return null;
 
   return (
     <div className="flex flex-col" style={{ paddingBottom: '80px' }}>
-      {/* Header */}
+      {/* Sort dropdown - top line where "My Cards" used to be */}
       <div className="mb-3">
-        <h1 className="text-2xl f10-title text-white">My Cards</h1>
-        <p className="f10-subtitle text-sm">{cards.length} cards in collection</p>
-      </div>
-
-      {/* Filter Row: Tier dropdown | Sort dropdown */}
-      <div className="flex items-center gap-2 mb-3">
-        {/* Tier Filter Dropdown */}
-        <div className="relative">
-          <select
-            value={tierFilter}
-            onChange={(e) => setTierFilter(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
-            className="appearance-none pl-3 pr-8 py-2 rounded-lg text-sm text-white font-medium cursor-pointer"
-            style={{
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              fontFamily: 'var(--f10-display-font)',
-            }}
-          >
-            <option value="ALL">All Tiers</option>
-            {TIERS.filter(t => t !== 'ALL').map(t => (
-              <option key={t} value={t}>Tier {t}</option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </div>
-
-        {/* Sort Dropdown */}
-        <div className="relative">
+        <div className="relative inline-block">
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="appearance-none pl-3 pr-8 py-2 rounded-lg text-sm text-white font-medium cursor-pointer"
+            className="appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs font-semibold text-white cursor-pointer"
             style={{
-              background: 'rgba(255,255,255,0.08)',
+              ...btnStyle,
               border: '1px solid rgba(255,255,255,0.12)',
-              fontFamily: 'var(--f10-display-font)',
             }}
           >
             <option value="recent">Sort by: Recent</option>
@@ -120,18 +94,39 @@ export default function CardsView({ user }) {
             <option value="name">Sort by: Name</option>
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
             </svg>
           </div>
         </div>
       </div>
 
-      {/* Position Filter - Horizontal Scroll */}
-      <div
-        className="flex gap-1.5 mb-4 overflow-x-auto hide-scrollbar"
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
+      {/* Filter Row: Tier dropdown + Position buttons (horizontal scroll) */}
+      <div className="flex items-center gap-1.5 mb-4 overflow-x-auto hide-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+        {/* Tier Filter Dropdown */}
+        <div className="relative flex-shrink-0">
+          <select
+            value={tierFilter}
+            onChange={(e) => setTierFilter(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
+            className="appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs font-semibold text-white cursor-pointer"
+            style={{
+              ...btnStyle,
+              border: '1px solid rgba(255,255,255,0.12)',
+            }}
+          >
+            <option value="ALL">All Tiers</option>
+            {TIERS.filter(t => t !== 'ALL').map(t => (
+              <option key={t} value={t}>Tier {t}</option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1.5">
+            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Position Filter Buttons */}
         {POSITIONS.map(pos => (
           <button
             key={pos}
@@ -142,16 +137,19 @@ export default function CardsView({ user }) {
                 : 'text-gray-300 hover:bg-gray-600'
             }`}
             style={{
-              background: filter === pos ? undefined : 'rgba(255,255,255,0.06)',
-              fontFamily: 'var(--f10-display-font)',
+              background: filter === pos ? undefined : btnStyle.background,
+              fontFamily: btnStyle.fontFamily,
             }}
           >
-            {pos}{pos !== 'ALL' && stats.byPosition[pos] ? ` (${stats.byPosition[pos]})` : ''}
+            {pos === 'ALL'
+              ? `ALL (${stats.total})`
+              : `${pos}${stats.byPosition[pos] ? ` (${stats.byPosition[pos]})` : ''}`
+            }
           </button>
         ))}
       </div>
 
-      {/* Cards Grid */}
+      {/* Cards Grid - 3 columns on mobile */}
       {loading ? (
         <div className="text-center text-gray-400 py-12">Loading cards...</div>
       ) : filteredCards.length === 0 ? (
@@ -159,7 +157,7 @@ export default function CardsView({ user }) {
           {cards.length === 0 ? 'No cards yet. Open some packs!' : 'No cards match filter.'}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
           {filteredCards.map(card => (
             <Card
               key={card.id}
@@ -193,41 +191,33 @@ export default function CardsView({ user }) {
                   router.push('/shop');
                 }
               }}
-              className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl transition-all active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-3 py-2 px-4 rounded-xl transition-all active:scale-[0.98]"
               style={{
                 background: packsRemaining > 0
-                  ? 'linear-gradient(135deg, rgba(234,179,8,0.25) 0%, rgba(249,115,22,0.25) 100%)'
+                  ? 'linear-gradient(135deg, rgba(100,160,220,0.30) 0%, rgba(140,180,230,0.25) 100%)'
                   : 'rgba(255,255,255,0.08)',
                 border: packsRemaining > 0
-                  ? '1px solid rgba(234,179,8,0.4)'
+                  ? '1px solid rgba(140,180,230,0.4)'
                   : '1px solid rgba(255,255,255,0.12)',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
               }}
             >
-              {/* Foil Pack Image */}
-              <div
-                className="flex-shrink-0 rounded-lg overflow-hidden"
-                style={{ width: '36px', height: '54px' }}
-              >
-                <img
-                  src="/foil-pack.png"
-                  alt="Pack"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    // Fallback: show a gradient box if image missing
-                    e.target.style.display = 'none';
-                    e.target.parentNode.style.background = 'linear-gradient(135deg, #eab308, #f97316)';
-                  }}
-                />
-              </div>
+              {/* Pack Image */}
+              <img
+                src="/pack-banner.png"
+                alt="Pack"
+                className="flex-shrink-0 object-contain"
+                style={{ width: '32px', height: '44px' }}
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
 
               {/* Label */}
               <span
                 className="text-sm font-bold"
                 style={{
                   fontFamily: 'var(--f10-display-font)',
-                  color: packsRemaining > 0 ? '#fbbf24' : '#9ca3af',
+                  color: packsRemaining > 0 ? '#93c5fd' : '#9ca3af',
                 }}
               >
                 {packsRemaining > 0
@@ -236,7 +226,7 @@ export default function CardsView({ user }) {
               </span>
 
               {/* Arrow */}
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={packsRemaining > 0 ? '#fbbf24' : '#9ca3af'} viewBox="0 0 24 24">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke={packsRemaining > 0 ? '#93c5fd' : '#9ca3af'} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
               </svg>
             </button>

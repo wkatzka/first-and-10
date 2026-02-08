@@ -43,7 +43,7 @@ export default function Layout({ children, user, onLogout, unreadMessages = 0 })
   };
 
   const baseNavItems = [
-    { href: '/cards', label: 'Cards', variant: 'cards' },
+    { href: '/cards', label: 'My Cards', variant: 'cards' },
     { href: '/leaderboard', label: 'League', variant: 'league', badge: unreadMessages },
     { href: '/team', label: 'My Team', variant: 'team' },
     ...(cryptoShopEnabled ? [{ href: '/shop', label: 'Shop', variant: 'shop' }] : []),
