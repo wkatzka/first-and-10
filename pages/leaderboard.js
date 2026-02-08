@@ -127,9 +127,9 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
             <div className="grid grid-cols-12 gap-2 px-4 py-2 text-sm text-gray-400 font-medium" style={DISPLAY_FONT}>
               <div className="col-span-1">Rank</div>
               <div className="col-span-3">Player</div>
-              <div className="col-span-2 text-center" style={{ marginLeft: '-10px' }}>W-L</div>
-              <div className="col-span-2 text-center" style={{ marginLeft: '-10px' }}>Win %</div>
-              <div className="col-span-2 text-center" style={{ marginLeft: '-10px' }}>vs Them</div>
+              <div className="col-span-2 text-center" style={{ marginLeft: '-20px' }}>W-L</div>
+              <div className="col-span-2 text-center" style={{ marginLeft: '-20px' }}>Win %</div>
+              <div className="col-span-2 text-center" style={{ marginLeft: '-20px' }}>vs Them</div>
               <div className="col-span-2 text-right"></div>
             </div>
             
@@ -161,12 +161,12 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
                         {isCurrentUser && <span className="ml-1 text-xs text-gray-400">(You)</span>}
                       </span>
                     </div>
-                    <div className="col-span-2 text-center text-sm" style={{ marginLeft: '-10px' }}>
+                    <div className="col-span-2 text-center text-sm" style={{ marginLeft: '-20px' }}>
                       <span className="text-green-400">{entry.wins}</span>
                       <span className="text-gray-500">-</span>
                       <span className="text-red-400">{entry.losses}</span>
                     </div>
-                    <div className="col-span-2 text-center" style={{ marginLeft: '-10px' }}>
+                    <div className="col-span-2 text-center" style={{ marginLeft: '-20px' }}>
                       <span className={`font-bold text-sm ${
                         parseFloat(winPct) >= 60 ? 'text-green-400' :
                         parseFloat(winPct) >= 40 ? 'text-yellow-400' :
@@ -175,7 +175,7 @@ export default function Leaderboard({ user, onLogout, unreadMessages }) {
                         {winPct}%
                       </span>
                     </div>
-                    <div className="col-span-2 text-center text-sm" style={{ marginLeft: '-10px' }}>
+                    <div className="col-span-2 text-center text-sm" style={{ marginLeft: '-20px' }}>
                       {isCurrentUser ? (
                         <span className="text-gray-500">—</span>
                       ) : record ? (
