@@ -351,6 +351,28 @@ async function getLeaderboard(limit = 20) {
     .slice(0, limit);
 }
 
+async function getH2HRecords(userId) {
+  const r = await query('SELECT * FROM games WHERE home_user_id = $1 OR away_user_id = $1', [userId]);
+  const records = {};
+
+  for (const game of r.rows) {
+    const isHome = game.home_user_id === userId;
+    const opponentId = isHome ? game.away_user_id : game.home_user_id;
+
+    if (!records[opponentId]) records[opponentId] = { wins: 0, losses: 0, ties: 0 };
+
+    if (game.winner_user_id === userId) {
+      records[opponentId].wins++;
+    } else if (game.winner_user_id === null) {
+      records[opponentId].ties++;
+    } else {
+      records[opponentId].losses++;
+    }
+  }
+
+  return records;
+}
+
 // =============================================================================
 // WALLETS
 // =============================================================================
@@ -411,6 +433,7 @@ module.exports = {
   getUserGames,
   getUserStats,
   getLeaderboard,
+  getH2HRecords,
   getUserWallet,
   linkWallet,
   getWalletByAddress,

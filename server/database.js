@@ -786,6 +786,30 @@ function getLeaderboard(limit = 20) {
     .slice(0, limit);
 }
 
+// Get head-to-head records for a user against all opponents
+function getH2HRecords(userId) {
+  const db = getDb();
+  const games = db.games.filter(g => g.home_user_id === userId || g.away_user_id === userId);
+  const records = {};
+
+  for (const game of games) {
+    const isHome = game.home_user_id === userId;
+    const opponentId = isHome ? game.away_user_id : game.home_user_id;
+
+    if (!records[opponentId]) records[opponentId] = { wins: 0, losses: 0, ties: 0 };
+
+    if (game.winner_user_id === userId) {
+      records[opponentId].wins++;
+    } else if (game.winner_user_id === null) {
+      records[opponentId].ties++;
+    } else {
+      records[opponentId].losses++;
+    }
+  }
+
+  return records;
+}
+
 // Update user's team name
 function updateTeamName(userId, teamName) {
   const db = getDb();
@@ -889,6 +913,7 @@ const raw = {
   getUserGames,
   getUserStats,
   getLeaderboard,
+  getH2HRecords,
 };
 
 function wrapAsync(obj) {

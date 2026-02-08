@@ -1931,6 +1931,12 @@ app.get('/api/leaderboard', async (req, res) => {
   res.json({ leaderboard });
 });
 
+// Head-to-head records for the current user vs all opponents
+app.get('/api/leaderboard/h2h', authMiddleware, async (req, res) => {
+  const records = await db.getH2HRecords(req.user.id);
+  res.json({ records });
+});
+
 // =============================================================================
 // SEARCH (for testing)
 // =============================================================================
